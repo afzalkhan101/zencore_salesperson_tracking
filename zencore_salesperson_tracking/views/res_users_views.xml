@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_res_users_form_inherit_salesperson" model="ir.ui.view">
+        <field name="name">res.users.form.inherit.salesperson</field>
+        <field name="model">res.users</field>
+        <field name="inherit_id" ref="base.view_users_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='access_rights']" position="inside">
+                <group string="Salesperson Role" name="salesperson_role_group">
+                    <field name="salesperson_role" required="1"/>
+                </group>
+            </xpath>
+            <xpath expr="//notebook" position="inside">
+                <page string="Tracking Reports" name="tracking_reports" groups="zencore_salesperson_tracking.group_salesperson_manager">
+                    <field name="salesperson_tracker_ids">
+                        <list>
+                            <field name="visit_date"/>
+                            <field name="tracking_status"/>
+                            <field name="total_visits"/>
+                            <field name="total_visited"/>
+                            <field name="total_distance_km"/>
+                            <field name="duration_hours"/>
+                            <field name="state"/>
+                        </list>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

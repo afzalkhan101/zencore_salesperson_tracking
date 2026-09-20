@@ -1,0 +1,394 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="action_report_tracking_summary" model="ir.actions.report">
+        <field name="name">Tracking Summary Report</field>
+        <field name="model">salesperson.tracker</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">zencore_salesperson_tracking.report_tracking_summary</field>
+        <field name="binding_model_id" ref="model_salesperson_tracker"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="report_tracking_summary">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="tracker">
+                <t t-call="web.external_layout">
+                    <div class="page">
+
+                        <style>
+                        * { box-sizing: border-box; margin: 0; padding: 0; }
+                        body { font-family: Arial, sans-serif; font-size: 12px; color: #111; }
+                        .rpt-header { border-bottom: 2px solid #1e3a5f; padding-bottom: 10px; margin-bottom: 16px; }
+                        .rpt-title { font-size: 16px; font-weight: bold; color: #1e3a5f; }
+                        .rpt-subtitle { font-size: 10px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; }
+                        .rpt-meta-row { display: flex; gap: 24px; margin-top: 8px; }
+                        .rpt-meta-item label { font-size: 9px; text-transform: uppercase; color: #888; display: block; }
+                        .rpt-meta-item span { font-size: 12px; font-weight: bold; }
+                        .rpt-badge { border: 1px solid #1e3a5f; border-radius: 4px; padding: 2px 8px; font-size: 10px; font-weight: bold; color: #1e3a5f; }
+                        .kpi-row { display: flex; gap: 8px; margin-bottom: 16px; }
+                        .kpi-card { flex: 1; border: 1px solid #ccc; border-radius: 4px; padding: 10px; text-align: center; }
+                        .kpi-num { font-size: 20px; font-weight: bold; }
+                        .kpi-lbl { font-size: 9px; color: #666; text-transform: uppercase; margin-top: 2px; }
+                        .kpi-card.green .kpi-num { color: #16a34a; }
+                        .kpi-card.blue .kpi-num { color: #2563eb; }
+                        .kpi-card.amber .kpi-num { color: #d97706; }
+                        .kpi-card.slate .kpi-num { color: #475569; }
+                        .kpi-card.purple .kpi-num { color: #7c3aed; }
+                        table { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 11px; }
+                        th { background: #f3f4f6; border: 1px solid #d1d5db; padding: 6px 8px; text-align: left; font-weight: bold; font-size: 10px; text-transform: uppercase; color: #374151; }
+                        td { border: 1px solid #e5e7eb; padding: 5px 8px; vertical-align: top; }
+                        tr:nth-child(even) td { background: #f9fafb; }
+                        .section-title { font-size: 13px; font-weight: bold; color: #1e3a5f; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px; margin: 14px 0 8px; }
+                        .badge-live { color: #059669; font-weight: bold; }
+                        .badge-offline { color: #64748b; }
+                        .text-muted { color: #9ca3af; font-style: italic; }
+                        .progress-bar-wrap { background: #e5e7eb; border-radius: 4px; height: 8px; }
+                        .progress-bar-fill { background: #2563eb; border-radius: 4px; height: 8px; }
+                        .page-break { page-break-after: always; }
+                        </style>
+
+                        <!-- ══ HEADER BANNER ══ -->
+                        <div class="rpt-header">
+                            <div class="rpt-header-top">
+                                <div>
+                                    <div class="rpt-title">Tracking Summary Report</div>
+                                    <div class="rpt-subtitle">ZenCore Salesperson Tracking</div>
+                                </div>
+                                <div class="rpt-badge">
+                                    <t t-esc="tracker.state.replace('_',' ').title()"/>
+                                </div>
+                            </div>
+                            <table style="margin-top:8px; border-collapse:collapse; width:100%;">
+                                <tr>
+                                    <td style="font-size:9px; text-transform:uppercase; color:#888; padding-right:32px;">Salesperson</td>
+                                    <td style="font-size:9px; text-transform:uppercase; color:#888; padding-right:32px;">Visit Date</td>
+                                    <td style="font-size:9px; text-transform:uppercase; color:#888; padding-right:32px;">Duration</td>
+                                    <td style="font-size:9px; text-transform:uppercase; color:#888;">Distance</td>
+                                </tr>
+                                <tr>
+                                    <td style="font-size:12px; font-weight:bold; padding-right:32px;"><t t-esc="tracker.user_id.name"/></td>
+                                    <td style="font-size:12px; font-weight:bold; padding-right:32px;"><t t-esc="tracker.visit_date"/></td>
+                                    <td style="font-size:12px; font-weight:bold; padding-right:32px;"><t t-esc="'%.2f' % tracker.duration_minutes"/> min</td>
+                                    <td style="font-size:12px; font-weight:bold;"><t t-esc="tracker.total_distance_km"/> km</td>
+                                </tr>
+                            </table>
+                        </div>
+
+                        <!-- ══ KPI SUMMARY ══ -->
+                        <p style="margin: 8px 0 14px; padding: 6px 0; border-top: 1px solid #e5e7eb; border-bottom: 1px solid #e5e7eb;">
+                            <strong>Planned:</strong>&#160;<t t-esc="tracker.total_visits"/>&#160;&#160;&#160;
+                            <strong>Visited:</strong>&#160;<t t-esc="tracker.total_visited"/>&#160;&#160;&#160;
+                            <strong>Skipped:</strong>&#160;<t t-esc="tracker.skipped_visits"/>&#160;&#160;&#160;
+                            <strong>Coverage:</strong>&#160;<t t-if="tracker.total_visits"><t t-esc="int(tracker.total_visited * 100 / tracker.total_visits)"/>%</t><t t-else="">—</t>&#160;&#160;&#160;
+                            <strong>Distance:</strong>&#160;<t t-esc="tracker.total_distance_km"/> km
+                        </p>
+
+                        <!-- ══ TIMING + EXPENSES (side by side) ══ -->
+                        <div class="two-col">
+
+                            <!-- Timing -->
+                            <div class="col">
+                                <div class="section-header">
+                                    <div class="section-bar"/>
+                                    <div class="section-title">Timing</div>
+                                    <div class="section-line"/>
+                                </div>
+                                <table class="rpt-table">
+                                    <tbody>
+                                        <tr>
+                                            <td class="label">First Check-In</td>
+                                            <td>
+                                                <t t-esc="tracker.checkin_time"/>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td class="label">Last Check-Out</td>
+                                            <td>
+                                                <t t-esc="tracker.checkout_time"/>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td class="label">Duration (Min)</td>
+                                            <td>
+                                                <t t-esc="'%.2f' % tracker.duration_minutes"/> min</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="label">Distance</td>
+                                            <td>
+                                                <t t-esc="tracker.total_distance_km"/>
+ km</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="label">Total Tracking Time (min)</td>
+                                            <td>
+                                                <t t-esc="'%.2f' % tracker.total_tracking_time_minutes"/> min</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="label">Traveling Time (min)</td>
+                                            <td>
+                                                <t t-esc="'%.2f' % tracker.traveling_time_minutes"/> min</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- Expenses -->
+                            <div class="col">
+                                <div class="section-header">
+                                    <div class="section-bar"/>
+                                    <div class="section-title">Expenses</div>
+                                    <div class="section-line"/>
+                                </div>
+                                <table class="rpt-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Category</th>
+                                            <th class="right">Claimed</th>
+                                            <th class="right">Actual</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td class="label">Transport</td>
+                                            <td class="right">
+                                                <t t-esc="tracker.transport_cost"/>
+                                            </td>
+                                            <td class="right">
+                                                <t t-esc="tracker.actual_transport_cost"/>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td class="label">Food</td>
+                                            <td class="right">
+                                                <t t-esc="tracker.food_cost"/>
+                                            </td>
+                                            <td class="right">
+                                                <t t-esc="tracker.actual_food_cost"/>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td class="label">Other</td>
+                                            <td class="right">
+                                                <t t-esc="tracker.other_cost"/>
+                                            </td>
+                                            <td class="right">
+                                                <t t-esc="tracker.actual_other_cost"/>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                    <tfoot>
+                                        <tr>
+                                            <td>Total</td>
+                                            <td class="right">
+                                                <t t-esc="tracker.total_cost"/>
+                                            </td>
+                                            <td class="right">
+                                                <t t-esc="tracker.actual_total_cost"/>
+                                            </td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+
+                        </div>
+
+                        <!-- ══ TARGET LINES ══ -->
+                        <div class="section-header">
+                            <div class="section-bar"/>
+                            <div class="section-title">Target Lines</div>
+                            <div class="section-line"/>
+                        </div>
+
+                        <table class="rpt-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Customers</th>
+                                    <th>From</th>
+                                    <th>To</th>
+                                    <th class="right">Exp. Time (min)</th>
+                                    <th class="right">Exp. KM</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-foreach="tracker.target_line_ids" t-as="tline">
+                                    <tr>
+                                        <td style="color:#94a3b8; width:28px;">
+                                            <t t-esc="tline_index + 1"/>
+                                        </td>
+                                        <td style="font-weight:600;">
+                                            <t t-esc="', '.join(tline.customer_ids.mapped('name'))"/>
+                                        </td>
+                                        <td><t t-esc="tline.from_location or '—'"/></td>
+                                        <td><t t-esc="tline.to_location or '—'"/></td>
+                                        <td class="right"><t t-esc="tline.expected_time_minutes"/></td>
+                                        <td class="right"><t t-esc="tline.expected_km"/></td>
+                                    </tr>
+                                </t>
+                                <t t-if="not tracker.target_line_ids">
+                                    <tr>
+                                        <td colspan="6" style="text-align:center; color:#94a3b8; padding:20px;">
+                                            No target lines defined.
+                                        </td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+
+                        <!-- ══ VISITED CUSTOMERS ══ -->
+                        <div class="section-header">
+                            <div class="section-bar"/>
+                            <div class="section-title">Visited Customers</div>
+                            <div class="section-line"/>
+                        </div>
+
+                        <table class="rpt-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Customer</th>
+                                    <th>Check-In</th>
+                                    <th>Check-Out</th>
+                                    <th class="right">Time Spent</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-foreach="tracker.visited_line_ids" t-as="visited">
+                                    <tr>
+                                        <td style="color:#94a3b8; width:28px;">
+                                            <t t-esc="visited_index + 1"/>
+                                        </td>
+                                        <td style="font-weight:600;">
+                                            <t t-esc="visited.partner_id.name"/>
+                                        </td>
+                                        <td>
+                                            <t t-esc="visited.checkin_time"/>
+                                        </td>
+                                        <td>
+                                            <t t-esc="visited.checkout_time"/>
+                                        </td>
+                                        <td class="right">
+                                            <span class="pill green">
+                                                <t t-esc="visited.time_spent_minutes"/>
+ min
+                                            </span>
+                                        </td>
+                                    </tr>
+                                </t>
+                                <t t-if="not tracker.visited_line_ids">
+                                    <tr>
+                                        <td colspan="5" style="text-align:center; color:#94a3b8; padding:20px;">
+                                            No visits recorded yet.
+                                        </td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+
+                        <!-- ══ TRACKING SESSIONS ══ -->
+                        <div class="section-header">
+                            <div class="section-bar"/>
+                            <div class="section-title">Tracking Sessions</div>
+                            <div class="section-line"/>
+                        </div>
+
+                        <table class="rpt-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Start</th>
+                                    <th>End</th>
+                                    <th>Duration</th>
+                                    <th>State</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-foreach="tracker.session_ids" t-as="session">
+                                    <tr>
+                                        <td style="color:#94a3b8; width:28px;">
+                                            <t t-esc="session_index + 1"/>
+                                        </td>
+                                        <td><t t-esc="session.start_time"/></td>
+                                        <td><t t-esc="session.end_time or '—'"/></td>
+                                        <td><t t-esc="session.duration_display or '—'"/></td>
+                                        <td>
+                                            <t t-if="session.state == 'active'">
+                                                <span class="badge-live">Active</span>
+                                            </t>
+                                            <t t-else="">
+                                                <span class="badge-offline">Stopped</span>
+                                            </t>
+                                        </td>
+                                    </tr>
+                                </t>
+                                <t t-if="not tracker.session_ids">
+                                    <tr>
+                                        <td colspan="5" style="text-align:center; color:#94a3b8; padding:20px;">
+                                            No tracking sessions recorded.
+                                        </td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+
+                        <!-- ══ IDLE TIME ══ -->
+                        <div class="section-header">
+                            <div class="section-bar"/>
+                            <div class="section-title">Idle Time</div>
+                            <div class="section-line"/>
+                        </div>
+
+                        <table class="rpt-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Location</th>
+                                    <th>Idle Since</th>
+                                    <th>Idle Until</th>
+                                    <th class="right">Time Spent</th>
+                                    <th>Remarks</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-foreach="tracker.idle_line_ids" t-as="idle">
+                                    <tr>
+                                        <td style="color:#94a3b8; width:28px;">
+                                            <t t-esc="idle_index + 1"/>
+                                        </td>
+                                        <td style="font-weight:600;">
+                                            <t t-esc="idle.location_name or '—'"/>
+                                        </td>
+                                        <td><t t-esc="idle.start_time"/></td>
+                                        <td><t t-esc="idle.end_time or '—'"/></td>
+                                        <td class="right">
+                                            <span class="pill green">
+                                                <t t-esc="'%.0f' % idle.duration_minutes"/>
+ min
+                                            </span>
+                                        </td>
+                                        <td><t t-esc="idle.remarks or '—'"/></td>
+                                    </tr>
+                                </t>
+                                <t t-if="not tracker.idle_line_ids">
+                                    <tr>
+                                        <td colspan="6" style="text-align:center; color:#94a3b8; padding:20px;">
+                                            No idle time recorded.
+                                        </td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+
+                        <!-- ══ FOOTER ══ -->
+                        <div class="rpt-footer">
+                            Generated by ZenCore Solutions Limited.
+                        </div>
+
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+</odoo>

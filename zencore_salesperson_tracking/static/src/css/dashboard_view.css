@@ -1,0 +1,244 @@
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+            --bg:        #F0F4F8;
+            --surface:   #FFFFFF;
+            --surface2:  #F8FAFC;
+            --border:    #E2E8F0;
+            --border2:   #CBD5E1;
+            --text:      #0F172A;
+            --text2:     #334155;
+            --muted:     #64748B;
+            --faint:     #94A3B8;
+
+            --at-customer: #065F46;
+            --moving:       #34D399;
+            --idle:         #EAB308;
+            --offline:      #DC2626;
+            --blue:         #2563EB;
+            --blue-bg:      #EFF6FF;
+            --blue-bdr:     #BFDBFE;
+            --indigo:       #4F46E5;
+            --violet:       #7C3AED;
+
+            --radius-sm: 6px;
+            --radius-md: 10px;
+            --radius-lg: 14px;
+            --radius-xl: 18px;
+            --shadow-sm: 0 1px 3px rgba(15,23,42,.06), 0 1px 2px rgba(15,23,42,.04);
+            --shadow-md: 0 4px 12px rgba(15,23,42,.08), 0 1px 3px rgba(15,23,42,.05);
+            --shadow-lg: 0 10px 30px rgba(15,23,42,.10), 0 2px 6px rgba(15,23,42,.06);
+}
+
+        html, body { height: 100%; }
+        body {
+            font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            font-size: 14px;
+            line-height: 1.5;
+            min-height: 100vh;
+        }
+
+        .leaflet-marker-pane img.leaflet-marker-icon { display: none !important; }
+        .x-marker { background: transparent !important; border: none !important; box-shadow: none !important; }
+
+        /* ── TOP NAV ── */
+        .dash-nav {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 0 24px;
+            height: 58px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 200;
+            box-shadow: var(--shadow-sm);
+        }
+        .nav-brand { display: flex; align-items: center; gap: 10px; }
+        .nav-brand-icon {
+            width: 34px; height: 34px;
+            background: linear-gradient(135deg, #2563EB, #4F46E5);
+            border-radius: 9px;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+            color: #fff; font-weight: 700; font-size: 15px;
+        }
+        .nav-brand-text { font-size: 15px; font-weight: 600; color: var(--text); letter-spacing: -.01em; }
+        .nav-brand-sub { font-size: 11px; color: var(--muted); }
+        .nav-right { display: flex; align-items: center; gap: 10px; }
+        .nav-live-badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            background: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 999px;
+            padding: 5px 12px; font-size: 12px; font-weight: 600; color: var(--at-customer);
+        }
+        .nav-live-dot {
+            width: 7px; height: 7px; border-radius: 50%;
+            background: var(--moving); animation: pulse-dot 1.8s infinite;
+        }
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50%       { opacity: .6; transform: scale(.8); }
+        }
+        .nav-role-badge {
+            display: inline-flex; align-items: center; gap: 5px;
+            background: var(--surface2); border: 1px solid var(--border); border-radius: 999px;
+            padding: 5px 12px; font-size: 12px; font-weight: 500; color: var(--text2);
+        }
+        .nav-refresh-btn {
+            width: 34px; height: 34px; border-radius: var(--radius-md);
+            border: 1px solid var(--border); background: var(--surface);
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; color: var(--muted); text-decoration: none;
+            transition: background .15s, color .15s;
+        }
+        .nav-refresh-btn:hover { background: var(--surface2); color: var(--text2); }
+
+        /* ── PAGE LAYOUT ── */
+        .dash-shell { max-width: 1440px; margin: 0 auto; padding: 20px 20px 40px; display: flex; flex-direction: column; gap: 18px; }
+        .dash-header { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+        .dash-title { font-size: 20px; font-weight: 700; letter-spacing: -.02em; }
+        .dash-date { font-size: 13px; color: var(--muted); }
+
+        /* ── PERIOD TABS + FILTER ── */
+        .dash-controls {
+            display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+        }
+        .period-tabs {
+            display: inline-flex; background: var(--surface2); border: 1px solid var(--border);
+            border-radius: var(--radius-md); padding: 3px;
+        }
+        .period-tab {
+            padding: 7px 16px; font-size: 13px; font-weight: 600; color: var(--muted);
+            text-decoration: none; border-radius: 8px; transition: background .15s, color .15s;
+        }
+        .period-tab.active { background: var(--surface); color: var(--blue); box-shadow: var(--shadow-sm); }
+        .period-tab:not(.active):hover { color: var(--text2); }
+
+        .salesman-filter {
+            font-family: inherit; font-size: 13px; font-weight: 500; color: var(--text2);
+            background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md);
+            padding: 8px 12px; cursor: pointer; min-width: 200px;
+        }
+
+        /* ── DATE RANGE PICKER ── */
+        .date-range-form {
+            display: inline-flex; align-items: center; gap: 6px;
+            background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-md);
+            padding: 4px 6px;
+        }
+        .date-range-input {
+            font-family: inherit; font-size: 12px; font-weight: 500; color: var(--text2);
+            background: var(--surface); border: 1px solid var(--border); border-radius: 7px;
+            padding: 5px 8px;
+        }
+        .date-range-sep { color: var(--faint); font-size: 12px; }
+        .date-range-apply {
+            font-family: inherit; font-size: 12px; font-weight: 600; color: #fff;
+            background: var(--blue); border: none; border-radius: 7px; padding: 6px 12px; cursor: pointer;
+        }
+        .date-range-apply:hover { background: var(--indigo); }
+
+        /* ── SEARCHABLE SALESMAN DROPDOWN ── */
+        .salesman-search { position: relative; min-width: 220px; }
+        .salesman-search-input {
+            width: 100%; font-family: inherit; font-size: 13px; font-weight: 500; color: var(--text2);
+            background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md);
+            padding: 8px 12px; cursor: text;
+        }
+        .salesman-search-input:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px var(--blue-bg); }
+        .salesman-search-list {
+            display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 50;
+            background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md);
+            box-shadow: var(--shadow-lg); max-height: 240px; overflow-y: auto;
+        }
+        .salesman-search-list.open { display: block; }
+        .salesman-search-option {
+            padding: 8px 12px; font-size: 13px; color: var(--text2); cursor: pointer;
+        }
+        .salesman-search-option:hover, .salesman-search-option.highlighted { background: var(--surface2); color: var(--text); }
+        .salesman-search-option.hidden { display: none; }
+
+        /* ── STAT CARDS ── */
+        .stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+        .stat-card {
+            background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-xl);
+            padding: 18px 20px; box-shadow: var(--shadow-sm);
+            display: flex; flex-direction: column; gap: 6px;
+        }
+        .stat-label { font-size: 12px; color: var(--muted); font-weight: 500; }
+        .stat-value { font-size: 26px; font-weight: 700; letter-spacing: -.02em; }
+        .stat-sub { font-size: 12px; color: var(--faint); }
+        .stat-value.blue { color: var(--blue); }
+        .stat-value.green { color: var(--at-customer); }
+        .stat-value.amber { color: var(--idle); }
+        .stat-value.rose { color: var(--offline); }
+
+        /* ── MAP CARD ── */
+        .map-card {
+            background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-sm); overflow: hidden;
+     }
+        .map-card-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--border); }
+        .map-card-title { font-size: 14px; font-weight: 700; }
+        .map-legend { display: flex; gap: 14px; font-size: 12px; color: var(--text2); flex-wrap: wrap; }
+        .map-legend span { display: inline-flex; align-items: center; gap: 6px; }
+        .legend-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+        #live-map { height: 460px; width: 100%; }
+
+        .map-pin {
+            display: flex; flex-direction: column; align-items: center;
+      }
+        .map-pin-label {
+            background: var(--text); color: #fff; font-size: 11px; font-weight: 600;
+            padding: 2px 7px; border-radius: 5px; margin-bottom: 3px; white-space: nowrap;
+            box-shadow: var(--shadow-sm);
+        }
+        .map-pin-dot {
+            width: 16px; height: 16px; border-radius: 50%; border: 2.5px solid #fff;
+            box-shadow: 0 1px 4px rgba(0,0,0,.35);
+     }
+        .map-pin-dot.pulse { animation: pulse-dot 1.8s infinite; }
+        .cust-pin { width: 11px; height: 11px; border-radius: 50%; background: var(--blue); border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.3); }
+
+        /* ── TABLE CARD ── */
+        .table-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-xl); box-shadow: var(--shadow-sm); overflow: hidden; }
+        .table-card-head { padding: 14px 18px; border-bottom: 1px solid var(--border); font-size: 14px; font-weight: 700; }
+        table.dash-table { width: 100%; border-collapse: collapse; }
+        table.dash-table th {
+            text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .04em;
+            color: var(--muted); font-weight: 600; padding: 10px 18px; border-bottom: 1px solid var(--border);
+            background: var(--surface2);
+     }
+        table.dash-table td { padding: 12px 18px; border-bottom: 1px solid var(--border); font-size: 13px; vertical-align: middle; }
+        table.dash-table tr:last-child td { border-bottom: none; }
+        table.dash-table tr:hover td { background: var(--surface2); }
+
+        .rep-cell { display: flex; align-items: center; gap: 10px; }
+        .rep-avatar {
+            width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            color: #fff; font-size: 11px; font-weight: 700; flex-shrink: 0;
+        }
+        .rep-name { font-weight: 600; color: var(--text); }
+
+        .status-pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+        .visit-rate-bar { display: flex; align-items: center; gap: 8px; }
+        .vr-track { width: 60px; height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; }
+        .vr-fill { height: 100%; background: linear-gradient(90deg, var(--blue), var(--indigo)); }
+
+        .view-link {
+            display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600;
+            color: var(--blue); text-decoration: none; padding: 5px 10px; border-radius: 7px;
+            border: 1px solid var(--blue-bdr); background: var(--blue-bg);
+    }
+        .view-link:hover { background: #DBEAFE; }
+
+        .empty-state { padding: 60px 20px; text-align: center; color: var(--muted); }
+
+        @media (max-width: 900px) {
+            .stat-row { grid-template-columns: repeat(2, 1fr); }
+            #live-map { height: 320px; }
+    }

@@ -1,0 +1,291 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <template id="live_tracking_page" name="ZenCore Live Tracking Page">
+        <html lang="en">
+            <head>
+                <meta charset="utf-8"/>
+                <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no"/>
+                <title>Live GPS Tracking — <t t-out="tracker.user_id.name or user.name"/></title>
+
+                <!-- Leaflet CSS -->
+                <link rel="stylesheet"
+                      href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"/>
+
+                <!-- Custom CSS -->
+                <link rel="stylesheet"
+                      type="text/css"
+                      href="/zencore_salesperson_tracking/static/src/css/templates_view.css"/>
+
+                <!-- Leaflet JS -->
+                <script defer="defer"
+                        src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+
+                <!-- Tracking JS -->
+                <script defer="defer"
+                        src="/zencore_salesperson_tracking/static/src/js/templates.js"></script>
+            </head>
+            <body class="live-tracking-page">
+                <div id="trackingRoot" 
+                     t-att-data-user-id="user.id" 
+                     t-att-data-tracker-id="tracker.id" 
+                     t-att-data-distance="'%.1f' % total_distance_km" 
+                     t-att-data-is-tracking="'1' if tracker.is_tracking else '0'"
+                     t-att-data-is-owner="'1' if is_owner else '0'"
+                     t-att-data-has-push-token="'1' if has_push_token else '0'"
+                     t-att-data-customers="live_customers_b64"
+                     style="display:none"/>
+
+                <div class="tracking-container">
+                    <div class="app-header">
+                        <h1>Live GPS Tracking</h1>
+                        <div class="app-header-sub"><t t-out="tracker.user_id.name or user.name"/></div>
+                    </div>
+
+                    <div class="stats-grid">
+                        <div class="stats-row">
+                            <div class="stat-item">
+                                <div class="stat-label">LOCATION</div>
+                                <div class="stat-value" id="locationNameValue"><t t-out="tracker.location_name or '—'"/></div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label">LAST UPDATE</div>
+                                <div class="stat-value" id="lastSeenValue"><t t-out="last_seen_display or 'Not tracked'"/></div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label">ACCURACY</div>
+                                <div class="stat-value" id="accuracyValue">—</div>
+                            </div>
+                        </div>
+                        <div class="stats-row">
+                            <div class="stat-item">
+                                <div class="stat-label">LATITUDE</div>
+                                <div class="stat-value" id="latitudeValue"><t t-out="'%.6f' % tracker.last_latitude if tracker.last_latitude else '—'"/></div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label">LONGITUDE</div>
+                                <div class="stat-value" id="longitudeValue"><t t-out="'%.6f' % tracker.last_longitude if tracker.last_longitude else '—'"/></div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label">TRACKING TIME</div>
+                                <div class="stat-value" id="takingTimeValue">00:00</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="kpi-row">
+                        <div class="kpi-item">
+                            <div class="kpi-number planned" id="kpiPlan"><t t-out="today_plan_count"/></div>
+                            <div class="kpi-label">PLANNED</div>
+                        </div>
+                        <div class="kpi-item">
+                            <div class="kpi-number visited" id="kpiCovered"><t t-out="today_visited_count"/></div>
+                            <div class="kpi-label">VISITED</div>
+                        </div>
+                        <div class="kpi-item">
+                            <div class="kpi-number rate" id="kpiRate"><t t-out="today_rate"/>%</div>
+                            <div class="kpi-label">RATE</div>
+                        </div>
+                        <div class="kpi-item">
+                            <div class="kpi-number distance" id="kpiDistance"><t t-out="'%.1f' % total_distance_km"/></div>
+                            <div class="kpi-label">KM TODAY</div>
+                        </div>
+                    </div>
+
+                    <div class="map-container">
+                        <div id="liveMap"></div>
+                        <div class="map-attribution">Leaflet | © OpenStreetMap contributors</div>
+                    </div>
+
+                    <div class="action-buttons">
+                        <t t-if="is_owner">
+                            <button id="startButton" class="btn btn-start">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <polygon points="10 8 16 12 10 16 10 8"/>
+                                </svg>
+                                Start
+                            </button>
+                            <button id="stopButton" class="btn btn-stop">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <rect x="9" y="9" width="6" height="6"/>
+                                </svg>
+                                Stop
+                            </button>
+                            <button id="openCameraBtn" class="btn btn-camera">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                                    <circle cx="12" cy="13" r="4"/>
+                                </svg>
+                                Camera
+                            </button>
+                        </t>
+                        <t t-else="">
+                            <div class="readonly-badge">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                    <circle cx="12" cy="12" r="3"/>
+                                </svg>
+                                Viewing <t t-out="tracker.user_id.name"/>'s live GPS
+                            </div>
+                        </t>
+                        <button id="fullMapBtn" class="btn btn-map" type="button">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 22s8-5.5 8-12a8 8 0 1 0-16 0c0 6.5 8 12 8 12z"/>
+                                <circle cx="12" cy="10" r="3"/>
+                            </svg>
+                            Full Map
+                        </button>
+                    </div>
+
+                    <div class="status-message info" id="statusMessage">
+                        <span class="status-dot" id="statusDot"></span>
+                        <span id="statusText"><t t-if="is_owner">Press Start and allow GPS permission to begin tracking.</t><t t-else="">Viewing <t t-out="tracker.user_id.name"/>'s live location.</t></span>
+                    </div>
+                </div>
+
+                <div class="camera-overlay" id="cameraOverlay">
+                    <video id="selfieVideo" autoplay="autoplay" playsinline="playsinline" muted="muted"></video>
+                    <div class="camera-controls">
+                        <button class="close-camera" id="closeCameraBtn">✕</button>
+                        <button class="shutter-btn" id="captureBtn">
+                            <div class="shutter-inner"></div>
+                        </button>
+                        <button class="switch-camera-btn" id="switchCameraBtn">🔄</button>
+                    </div>
+                </div>
+                <canvas id="selfieCanvas" style="display:none"></canvas>
+                <div class="snap-notification" id="snapNotification">✓ Photo captured</div>
+
+                
+            </body>
+        </html>
+    </template>
+
+    <!-- ══════════════════════════════════════════════════════════════════════════
+         MOVING MAP PAGE - Shows route path with all points
+    ═══════════════════════════════════════════════════════════════════════════ -->
+    <template id="moving_map_page" name="ZenCore Moving Map View">
+        <html lang="en">
+            <head>
+                <meta charset="utf-8"/>
+                <meta name="viewport" content="width=device-width, initial-scale=1"/>
+                <title>Moving Map — <t t-out="tracker.user_id.name"/></title>
+
+                <!-- Leaflet CSS -->
+                <link rel="stylesheet"
+                      href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"/>
+
+                <!-- Custom CSS -->
+                <link rel="stylesheet"
+                      type="text/css"
+                      href="/zencore_salesperson_tracking/static/src/css/templates_view.css"/>
+
+                <!-- Leaflet JS -->
+                <script defer="defer"
+                        src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+
+                <!-- Moving Map JS -->
+                <script defer="defer"
+                        src="/zencore_salesperson_tracking/static/src/js/templates.js"></script>
+            </head>
+            <body class="moving-map-page">
+                <div id="mapRoot" t-att-data-points="points_b64" t-att-data-customers="customers_b64" t-att-data-status="tracking_status" t-att-data-tracker-id="tracker_id" style="display:none"/>
+
+                <div class="top-bar">
+                    <div class="top-bar-left">
+                        <div>
+                            <h1>
+                                <t t-out="tracker.user_id.name"/>
+ — Movement Map</h1>
+                            <div style="font-size:12px;color:#64748b;">
+                                <t t-out="tracker.sale_team_id.name or 'No team'"/>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="meta-pills">
+                        <div id="statusBadge" t-attf-class="status-pill {tracking_status}">
+                            <span t-attf-class="status-dot {tracking_status}"/>
+                            <span id="statusLabel">
+                                <t t-out="tracker.tracking_status_label"/>
+                            </span>
+                        </div>
+                        <div class="meta-pill">Logs: <b id="logCount">
+                            <t t-out="total_logs"/>
+                        </b>
+                    </div>
+                    <div class="meta-pill">Last seen: <b>
+                        <t t-out="last_seen_display or '—'"/>
+                    </b>
+                </div>
+            </div>
+        </div>
+
+        <div class="map-wrapper">
+            <div id="map"></div>
+            <div class="route-info" id="routeInfo">
+                <div class="route-stat">
+                    <span class="route-stat-val" id="distanceVal">— km</span>
+                    <span class="route-stat-lbl">Distance</span>
+                </div>
+                <div class="route-stat">
+                    <span class="route-stat-val" id="pointsVal">0</span>
+                    <span class="route-stat-lbl">Points</span>
+                </div>
+            </div>
+            <div class="legend">
+                <div class="legend-row">
+                    <span class="legend-line" style="background:#3b82f6;"/>
+GPS path</div>
+                <div class="legend-row">
+                    <span class="legend-line" style="background:none;border-top:2px dashed #6366f1;"/>
+Reconnect (OSRM)</div>
+                <div class="legend-row">
+                    <span class="legend-dot" style="background:#22c55e;"/>
+ Current pos (live)</div>
+                <div class="legend-row">
+                    <span class="legend-dot" style="background:#ef4444;"/>
+ Last pos (offline)</div>
+                <div class="legend-row">
+                    <span class="legend-dot" style="background:#3b82f6;"/>
+ Planned customer</div>
+                <div class="legend-row">
+                    <span class="legend-dot" style="background:#15803d;"/>
+ Visited customer</div>
+            </div>
+        </div>
+
+      
+    </body>
+</html>
+</template>
+    <!-- ══════════════════════════════════════════════════════════════════════════
+         NO ACTIVE PLAN PAGE - shown at /live when no approved plan exists today
+    ═══════════════════════════════════════════════════════════════════════════ -->
+    <template id="no_active_plan_page" name="ZenCore No Active Plan">
+        <html lang="en">
+            <head>
+                <meta charset="utf-8"/>
+                <meta name="viewport" content="width=device-width, initial-scale=1"/>
+                <title>Live Tracking</title>
+                <link rel="stylesheet"
+                      type="text/css"
+                      href="/zencore_salesperson_tracking/static/src/css/templates_view.css"/>
+            </head>
+            <body class="no-active-plan-page">
+                <div class="card">
+                    <div class="icon">📋</div>
+                    <h1>No Active Visit Plan Today</h1>
+                    <p>
+                        Hi <t t-esc="user.name"/>, there's no approved visit plan for today, so
+                        live tracking hasn't started. Ask your manager to approve a plan, or
+                        create one to get going.
+                    </p>
+                    <a class="btn" href="/odoo">Go to Visit Plans</a>
+                </div>
+            </body>
+        </html>
+    </template>
+
+</odoo>

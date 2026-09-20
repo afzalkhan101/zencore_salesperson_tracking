@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Form View -->
+    <record id="view_salesperson_visit_plan_form" model="ir.ui.view">
+        <field name="name">salesperson.visit.plan.form</field>
+        <field name="model">salesperson.visit.plan</field>
+        <field name="arch" type="xml">
+            <form string="Visit Plan">
+                <header>
+                    <button name="action_submit" string="Submit" type="object" class="btn-primary" invisible="state != 'draft'"/>
+                    <button name="action_approve" string="Approve" type="object" class="btn-success" invisible="state != 'submitted'" groups="zencore_salesperson_tracking.group_salesperson_manager"/>
+                    <button name="action_reject" string="Reject" type="object" class="btn-danger" invisible="state != 'submitted'" groups="zencore_salesperson_tracking.group_salesperson_manager"/>
+                    <!-- Reset to Draft: blocked once an approved plan's visit_date has
+                         arrived (today) — that day's plan is already actionable/live,
+                         so pulling it back to draft would orphan a tracker mid-flow.
+                         Still allowed for a future-dated approved plan (nothing started
+                         yet). Re-drafting always requires going through
+                         Draft -> Submit -> Approve again, unchanged. -->
+                    <button name="action_reset_draft" string="Reset to Draft" type="object" invisible="state in ('draft','cancelled') or (state == 'approved' and not is_future_visit) or state in ('in_progress','completed')"/>
+                    <button name="action_print_visit_plan" string="Print" type="object" class="btn-secondary"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,submitted,approved,in_progress,completed"/>
+                    <field name="can_start_tracking" invisible="1"/>
+                    <field name="is_future_visit" invisible="1"/>
+                </header>
+                <sheet>
+                    <!-- On Track: replaces the old "Start Tracking" header button.
+                         Salesman-role only (groups attr) and only for the plan's own
+                         assigned salesman, only once approved, and only once the
+                         visit date has actually arrived — a future-dated approved plan
+                         has nothing to track yet, so it's intentionally not clickable
+                         until that day (is_future_visit flips off automatically). -->
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_on_track" type="object" class="oe_stat_button" icon="fa-bullseye"
+                                invisible="state != 'approved' or not can_start_tracking or is_future_visit"
+                                groups="zencore_salesperson_tracking.group_salesperson_salesman">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">On Track</span>
+                            </div>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name"/>
+                        </h1>
+                    </div>
+
+                    <group string="Basic Information">
+                        <group>
+                            <field name="user_id" required="1"/>
+                            <field name="visit_date" required="1"/>
+                            <field name="purpose" required="1"/>
+                        </group>
+                        <group>
+                            <field name="priority"/>
+                            <field name="total_visits" readonly="1"/>
+                        </group>
+                    </group>
+
+                    <group string="Expenses Claim" col="4">
+                        <field name="transport_cost" string="Transport"/>
+                        <field name="food_cost" string="Food"/>
+                        <field name="other_cost" string="Other"/>
+                        <field name="total_cost" string="Total" readonly="1"/>
+                    </group>
+
+                    <notebook>
+                        <page string="Target Lines">
+                            <field name="target_line_ids" nolabel="1">
+                                <list editable="bottom" string="Target Lines">
+                                    <field name="expected_time_minutes" string="Time(min)"/>
+                                    <field name="employee_ids" widget="many2many_tags"/>
+                                    <field name="from_location" placeholder="From"/>
+                                    <field name="to_location" placeholder="To"/>
+                                    <field name="expected_km" string="KM"/>
+                                    <field name="customer_ids" widget="many2many_tags" placeholder="Customers"/>
+                                    <field name="notes"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Notes">
+                            <group>
+                                <field name="manager_notes" placeholder="Manager notes..."/>
+                                <field name="internal_notes" widget="html" nolabel="1"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <!-- List View -->
+    <record id="view_salesperson_visit_plan_list" model="ir.ui.view">
+        <field name="name">salesperson.visit.plan.list</field>
+        <field name="model">salesperson.visit.plan</field>
+        <field name="arch" type="xml">
+            <list string="Visit Plans" multi_edit="1">
+                <field name="name"/>
+                <field name="user_id"/>
+                <field name="visit_date"/>
+                <field name="purpose"/>
+                <field name="total_visits"/>
+                <field name="total_cost"/>
+                <field name="state" widget="badge"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Actions -->
+    <record id="action_salesperson_visit_plan" model="ir.actions.act_window">
+        <field name="name">Visit Plans</field>
+        <field name="res_model">salesperson.visit.plan</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_sm">Click to create a new visit plan</p>
+        </field>
+    </record>
+
+    <record id="action_salesperson_visit_plan_my" model="ir.actions.act_window">
+        <field name="name">My Visit Plans</field>
+        <field name="res_model">salesperson.visit.plan</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('user_id', '=', uid)]</field>
+        <field name="context">{'default_user_id': uid}</field>
+    </record>
+
+</odoo>

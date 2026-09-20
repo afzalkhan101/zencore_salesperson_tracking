@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+<template id="salesperson_dashboard" name="Salesperson Live Tracking Dashboard">
+<html lang="en">
+    <head>
+        <meta charset="utf-8"/>
+        <title>Dashboard — Salesperson Tracking</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+        <link rel="preconnect" href="https://fonts.googleapis.com"/>
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""/>
+        <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&amp;family=DM+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+        <link rel="stylesheet" type="text/css" href="/zencore_salesperson_tracking/static/src/css/dashboard_view.css"/>
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    </head>
+    <body>
+
+    <div id="dash-config" style="display:none" t-att-data-period="period" t-att-data-is-live="'1' if is_live else '0'" t-att-data-salesman-id="selected_salesman_id or ''" t-att-data-date-from="date_from_str" t-att-data-date-to="date_to_str"></div>
+
+    <div class="dash-nav">
+        <div class="nav-brand">
+            <div class="nav-brand-icon">S</div>
+            <div>
+                <div class="nav-brand-text">Salesperson Tracking</div>
+                <div class="nav-brand-sub">Manager Dashboard</div>
+            </div>
+        </div>
+        <div class="nav-right">
+            <t t-if="is_live">
+                <span class="nav-live-badge"><span class="nav-live-dot"/> Live</span>
+            </t>
+            <span class="nav-role-badge" t-esc="'Manager' if is_manager else 'Salesman'"/>
+            <t t-if="period == 'custom'">
+                <a class="nav-refresh-btn" title="Refresh" t-attf-href="/salesperson/dashboard?date_from=#{date_from_str}&amp;date_to=#{date_to_str}#{'&amp;salesman_id=%s' % selected_salesman_id if selected_salesman_id else ''}">&#8635;</a>
+            </t>
+            <t t-else="">
+                <a class="nav-refresh-btn" title="Refresh" t-attf-href="/salesperson/dashboard?period=#{period}#{'&amp;salesman_id=%s' % selected_salesman_id if selected_salesman_id else ''}">&#8635;</a>
+            </t>
+        </div>
+    </div>
+
+    <div class="dash-shell">
+        <div class="dash-header">
+            <div>
+                <div class="dash-title">Team Overview</div>
+                <div class="dash-date" t-esc="period_label"/>
+            </div>
+        </div>
+
+        <div class="dash-controls">
+            <div class="period-tabs">
+                <a t-attf-href="/salesperson/dashboard?period=today#{'&amp;salesman_id=%s' % selected_salesman_id if selected_salesman_id else ''}"
+                   t-attf-class="period-tab #{'active' if period == 'today' else ''}">Today</a>
+                <a t-attf-href="/salesperson/dashboard?period=weekly#{'&amp;salesman_id=%s' % selected_salesman_id if selected_salesman_id else ''}"
+                   t-attf-class="period-tab #{'active' if period == 'weekly' else ''}">Weekly</a>
+                <a t-attf-href="/salesperson/dashboard?period=monthly#{'&amp;salesman_id=%s' % selected_salesman_id if selected_salesman_id else ''}"
+                   t-attf-class="period-tab #{'active' if period == 'monthly' else ''}">Monthly</a>
+            </div>
+
+            <form class="date-range-form" method="get" action="/salesperson/dashboard">
+                <input type="hidden" name="salesman_id" t-att-value="selected_salesman_id or ''"/>
+                <input type="date" class="date-range-input" name="date_from" t-att-value="date_from_str"/>
+                <span class="date-range-sep">–</span>
+                <input type="date" class="date-range-input" name="date_to" t-att-value="date_to_str"/>
+                <button type="submit" class="date-range-apply">Apply</button>
+            </form>
+
+            <div class="salesman-search" id="salesman-search">
+                <input type="text" class="salesman-search-input" id="salesman-search-input"
+                       placeholder="Search salesman..." autocomplete="off"
+                       t-att-value="([s['name'] for s in salesmen if s['id'] == selected_salesman_id] or ['All Salesmen'])[0]"/>
+                <div class="salesman-search-list" id="salesman-search-list">
+                    <div class="salesman-search-option" data-id="">All Salesmen</div>
+                    <t t-foreach="salesmen" t-as="s">
+                        <div class="salesman-search-option" t-att-data-id="s['id']" t-esc="s['name']"/>
+                    </t>
+                </div>
+            </div>
+        </div>
+
+        <div class="stat-row">
+            <div class="stat-card">
+                <div class="stat-label">Salesmen</div>
+                <div class="stat-value blue" t-esc="total_reps"/>
+                <div class="stat-sub" t-esc="period_label"/>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Visit Rate</div>
+                <div class="stat-value green" t-esc="str(kpi_pct) + '%'"/>
+                <div class="stat-sub" t-esc="'%s of %s visited' % (total_covered, total_planned)"/>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Missed Visits</div>
+                <div class="stat-value rose" t-esc="kpi_missed"/>
+                <div class="stat-sub">across selected period</div>
+            </div>
+            <t t-if="is_live">
+                <div class="stat-card">
+                    <div class="stat-label">Currently Active</div>
+                    <div class="stat-value amber" t-esc="live_count + idle_count"/>
+                    <div class="stat-sub" t-esc="'%s offline' % offline_count"/>
+                </div>
+            </t>
+            <t t-else="">
+                <div class="stat-card">
+                    <div class="stat-label">Total Distance</div>
+                    <div class="stat-value blue" t-esc="('%.1f' % sum(float(r['distance'].split()[0]) for r in rows) if rows else '0.0') + ' km'"/>
+                    <div class="stat-sub" t-esc="period_label"/>
+                </div>
+            </t>
+        </div>
+
+        <t t-if="is_live">
+        <div class="map-card">
+            <div class="map-card-head">
+                <div class="map-card-title">Live Map</div>
+                <div class="map-legend">
+                    <span><i class="legend-dot" style="background:#065F46"></i> At Customer</span>
+                    <span><i class="legend-dot" style="background:#34D399"></i> Moving</span>
+                    <span><i class="legend-dot" style="background:#EAB308"></i> Idle</span>
+                    <span><i class="legend-dot" style="background:#DC2626"></i> Offline</span>
+                    <span><i class="legend-dot" style="background:#2563EB"></i> Customer</span>
+                </div>
+            </div>
+            <div id="live-map"></div>
+        </div>
+        </t>
+
+        <div class="table-card">
+            <div class="table-card-head">Salesman Performance</div>
+            <t t-if="not rows">
+                <div class="empty-state">No records for this period.</div>
+            </t>
+            <t t-else="">
+            <table class="dash-table">
+                <thead>
+                    <tr>
+                        <th>Salesman</th>
+                        <th>Visited</th>
+                        <th>Missed</th>
+                        <th>Visit Rate</th>
+                        <th>Distance</th>
+                        <t t-if="is_live"><th>Status</th></t>
+                        <th>View</th>
+                    </tr>
+                </thead>
+                <tbody t-attf-id="rep-table-body">
+                    <t t-foreach="rows" t-as="r">
+                    <tr t-att-data-tracker-id="r['id']">
+                        <td>
+                            <div class="rep-cell">
+                                <div class="rep-avatar" t-attf-style="background:#{r['gradient']}" t-esc="r['initials']"/>
+                                <span class="rep-name" t-esc="r['name']"/>
+                            </div>
+                        </td>
+                        <td t-esc="r['covered']"/>
+                        <td t-esc="r['missed']"/>
+                        <td>
+                            <div class="visit-rate-bar">
+                                <div class="vr-track"><div class="vr-fill" t-attf-style="width:#{r['pct']}%"></div></div>
+                                <span t-esc="str(r['pct']) + '%'"/>
+                            </div>
+                        </td>
+                        <td t-esc="r['distance']"/>
+                        <t t-if="is_live">
+                        <td>
+                            <span class="status-pill rep-status-cell">
+                                <i class="status-dot" t-attf-style="background:#{r['status_color']}"></i>
+                                <span t-esc="r['status_label']"/>
+                            </span>
+                        </td>
+                        </t>
+                        <td>
+                            <a class="view-link" href="#" t-att-onclick="'openTracker(%s); return false;' % r['id']">View →</a>
+                        </td>
+                    </tr>
+                    </t>
+                </tbody>
+            </table>
+            </t>
+        </div>
+    </div>
+
+    <script src="/zencore_salesperson_tracking/static/src/js/dashboard_live_map.js"></script>
+    </body>
+</html>
+</template>
+</odoo>

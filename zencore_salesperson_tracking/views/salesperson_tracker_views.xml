@@ -1,0 +1,342 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ── Form View ─────────────────────────────────────────────────────── -->
+    <record id="view_salesperson_tracker_form" model="ir.ui.view">
+        <field name="name">salesperson.tracker.form</field>
+        <field name="model">salesperson.tracker</field>
+        <field name="arch" type="xml">
+            <form string="Tracking Report">
+                <header>
+                    <button name="action_print_tracking_report" string="Print Report" type="object" class="btn-secondary"/>
+                    <button name="action_open_live_tracking_page" string="Live Page" type="object" class="btn-primary" invisible="not is_own_tracker"/>
+                    <button name="action_view_moving_map" string="Map" type="object" class="btn-secondary"/>
+                    <field name="state" widget="statusbar" statusbar_visible="planned,offline,live,completed"/>
+                    <field name="is_own_tracker" invisible="1"/>
+                </header>
+                <sheet>
+                    <div class="oe_title"><h1><field name="name"/></h1></div>
+                    <group string="Basic Information">
+                        <group>
+                            <field name="user_id" readonly="1"/>
+                            <field name="visit_date" readonly="1"/>
+                            <field name="purpose" readonly="1"/>
+                            <field name="priority" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="total_visits" readonly="1"/>
+                            <field name="total_visited" readonly="1"/>
+                            <field name="skipped_visits" readonly="1" decoration-danger="skipped_visits > 0"/>
+                        </group>
+                    </group>
+                    <group string="Expenses">
+                        <group string="Claimed">
+                            <field name="transport_cost"/>
+                            <field name="food_cost"/>
+                            <field name="other_cost"/>
+                            <field name="total_cost" readonly="1"/>
+                        </group>
+                        <group string="Actual">
+                            <field name="actual_transport_cost"/>
+                            <field name="actual_food_cost"/>
+                            <field name="actual_other_cost"/>
+                            <field name="actual_total_cost" readonly="1"/>
+                        </group>
+                    </group>
+                    <group string="Timing">
+                        <group>
+                            <field name="checkin_time" readonly="1"/>
+                            <field name="checkout_time" readonly="1"/>
+                            <field name="duration_minutes" string="Duration (Min)" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="total_distance_km" string="Total Distance (KM)" readonly="1"/>
+                            <field name="total_tracking_time_minutes" string="Total Tracking Time (min)" readonly="1"/>
+                            <field name="traveling_time_minutes" string="Traveling Time (min)" readonly="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Target Lines" name="target_lines">
+                            <field name="target_line_ids">
+                                <list>
+                                    <field name="expected_time_minutes" string="Time"/>
+                                    <field name="employee_ids" widget="many2many_tags"/>
+                                    <field name="from_location"/>
+                                    <field name="to_location"/>
+                                    <field name="expected_km"/>
+                                    <!-- customer_ids kept editable for Add-a-line/reassignment,
+                                         but hidden from view — customers_visited_html shows the
+                                         same set as colored chips (dark green once actually
+                                         visited, grey while pending) instead of the plain,
+                                         visit-status-blind many2many_tags widget. -->
+                                    <field name="customer_ids" widget="many2many_tags" column_invisible="1"/>
+                                    <field name="customers_visited_html" widget="html" string="Customers"/>
+                                    <field name="notes"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Visited Lines" name="visited_lines">
+                            <field name="visited_line_ids">
+                                <list string="Visited Customers" decoration-success="time_spent_minutes > 0">
+                                    <field name="partner_id"/>
+                                    <field name="checkin_time" string="In"/>
+                                    <field name="checkout_time" string="Exit"/>
+                                    <field name="time_spent_minutes" string="Time Spent (min)"/>
+                                    <field name="rating"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Tracking Sessions" name="sessions">
+                            <field name="session_ids">
+                                <list>
+                                    <field name="start_time"/>
+                                    <field name="end_time"/>
+                                    <field name="duration_display"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Idle Time" name="idle_time">
+                            <div class="oe_button_box" style="margin-bottom: 8px;">
+                                <button name="action_recompute_idle_time" string="Recompute Idle Time" type="object" class="btn-secondary"/>
+                            </div>
+                            <field name="idle_line_ids">
+                                <list editable="bottom" decoration-warning="duration_minutes > 30">
+                                    <field name="location_name" string="Location Name" readonly="1"/>
+                                    <field name="duration_minutes" string="Total Time Spent (min)" readonly="1"/>
+                                    <field name="start_time" string="Idle Since" readonly="1" optional="hide"/>
+                                    <field name="end_time" string="Idle Until" readonly="1" optional="hide"/>
+                                    <field name="remarks" string="Remarks"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Related Notes" name="notes">
+                            <field name="related_notes" widget="html"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <!-- ── Kanban View ───────────────────────────────────────────────────── -->
+    <!--
+        Rules:
+        - Top-right corner: status badge (Live green pulse / Idle amber / Offline grey)
+        - Live Page button: routes per-record via action_open_live_tracking_page — own
+          today's tracker opens /live (Start/Stop controls); anything else (someone
+          else's card, or an older day of your own) opens read-only /moving_map/<id>.
+        - Map button: always /moving_map/<id> for the clicked record, for everyone
+        - Status colour uses `state` (stored) for the header stripe
+        - Status badge uses `is_tracking` (stored bool) to derive Live/Offline safely
+    -->
+    <record id="view_salesperson_tracker_kanban" model="ir.ui.view">
+        <field name="name">salesperson.tracker.kanban</field>
+        <field name="model">salesperson.tracker</field>
+        <field name="arch" type="xml">
+            <kanban create="true">
+                <field name="id"/>
+                <field name="name"/>
+                <field name="user_id"/>
+                <field name="visit_date"/>
+                <field name="duration_hours"/>
+                <field name="total_distance_km"/>
+                <field name="total_visits"/>
+                <field name="total_visited"/>
+                <field name="state"/>
+                <field name="is_tracking"/>
+                <field name="is_own_tracker"/>
+                <templates>
+                    <t t-name="card">
+
+                        <!-- ── Top colour stripe + status badge ── -->
+                        <div t-attf-style="
+                            background: #{record.state.raw_value == 'live' ? '#059669' : record.state.raw_value == 'offline' ? '#DC2626' : record.state.raw_value == 'planned' ? '#D97706' : '#94A3B8'};
+                            padding:6px 14px;
+                            border-radius:8px 8px 0 0;
+                            display:flex;
+                            align-items:center;
+                            justify-content:space-between;">
+
+                            <!-- Date left -->
+                            <span style="color:rgba(255,255,255,.85);font-size:11px;font-weight:600;">
+                                <t t-esc="record.visit_date.value"/>
+                            </span>
+
+                            <!-- Status badge top-right -->
+                            <span t-attf-style="
+                                display:inline-flex;align-items:center;gap:5px;
+                                padding:3px 10px;border-radius:999px;font-size:10px;font-weight:700;
+                                background:rgba(255,255,255,0.22);color:#fff;letter-spacing:.04em;">
+                                <!-- Pulsing dot for live, static for others -->
+                                <span t-attf-style="
+                                    width:7px;height:7px;border-radius:50%;flex-shrink:0;
+                                    background:#{record.is_tracking.raw_value ? '#4ade80' : '#e5e7eb'};
+                                    #{record.is_tracking.raw_value ? 'animation:kbPulse 1.4s infinite;' : ''}"/>
+                                <t t-if="record.is_tracking.raw_value">Live</t>
+                                <t t-else="">
+                                    <t t-esc="record.state.value"/>
+                                </t>
+                            </span>
+                        </div>
+
+                        <!-- ── Card body ── -->
+                        <div style="padding:12px 14px 6px;">
+
+                            <!-- Salesman avatar + name -->
+                            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+                                <div style="width:36px;height:36px;border-radius:50%;
+                                            background:linear-gradient(135deg,#2563EB,#4F46E5);
+                                            display:flex;align-items:center;justify-content:center;
+                                            color:#fff;font-size:13px;font-weight:700;flex-shrink:0;">
+                                    <t t-esc="record.user_id.value ? record.user_id.value[0] : 'U'"/>
+                                </div>
+                                <div>
+                                    <div style="font-size:13px;font-weight:600;color:#0F172A;">
+                                        <t t-esc="record.user_id.value"/>
+                                    </div>
+                                    <div style="font-size:11px;color:#64748B;">
+                                        <t t-esc="record.name.value"/>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Stats grid -->
+                            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;
+                                        background:#F8FAFC;border-radius:8px;padding:8px;margin-bottom:4px;">
+                                <div style="text-align:center;">
+                                    <div style="font-size:15px;font-weight:700;color:#0F172A;">
+                                        <t t-esc="record.total_visits.value"/>
+                                    </div>
+                                    <div style="font-size:9px;color:#64748B;text-transform:uppercase;">Visits</div>
+                                </div>
+                                <div style="text-align:center;">
+                                    <div style="font-size:15px;font-weight:700;color:#059669;">
+                                        <t t-esc="record.total_visited.value"/>
+                                    </div>
+                                    <div style="font-size:9px;color:#64748B;text-transform:uppercase;">Done</div>
+                                </div>
+                                <div style="text-align:center;">
+                                    <div style="font-size:15px;font-weight:700;color:#2563EB;">
+                                        <t t-esc="record.duration_hours.value"/>h
+                                    </div>
+                                    <div style="font-size:9px;color:#64748B;text-transform:uppercase;">Duration</div>
+                                </div>
+                                <div style="text-align:center;">
+                                    <div style="font-size:15px;font-weight:700;color:#7C3AED;">
+                                        <t t-esc="record.total_distance_km.value"/>km
+                                    </div>
+                                    <div style="font-size:9px;color:#64748B;text-transform:uppercase;">Dist</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ── Action buttons ── -->
+                        <div style="display:flex;gap:6px;padding:8px 14px 12px;border-top:1px solid #E2E8F0;"
+                             onclick="event.stopPropagation()">
+
+                            <!-- Live Page — only the assigned salesman may open the
+                                 interactive Start/Stop page. Everyone else (including
+                                 managers) gets read-only Map only. -->
+                            <t t-if="record.is_own_tracker.raw_value">
+                                <button type="object" name="action_open_live_tracking_page"
+                                   style="flex:1;display:inline-flex;align-items:center;justify-content:center;
+                                          gap:5px;padding:7px 10px;border-radius:8px;font-size:11px;font-weight:600;
+                                          background:linear-gradient(135deg,#2563EB,#4F46E5);
+                                          color:#fff;text-decoration:none;border:none;cursor:pointer;">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;">
+                                        <circle cx="12" cy="12" r="2"/>
+                                        <path d="M16.24 7.76a6 6 0 0 1 0 8.49"/>
+                                        <path d="M7.76 7.76a6 6 0 0 0 0 8.49"/>
+                                    </svg>
+                                    Live Page
+                                </button>
+                            </t>
+
+                            <!-- Map: always visible -->
+                            <a t-attf-href="/salesperson_tracking/moving_map/#{record.id.raw_value}"
+                               target="_blank"
+                               style="flex:1;display:inline-flex;align-items:center;justify-content:center;
+                                      gap:5px;padding:7px 10px;border-radius:8px;font-size:11px;font-weight:600;
+                                      background:#059669;color:#fff;text-decoration:none;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;">
+                                    <path d="M12 22s8-5.5 8-12a8 8 0 1 0-16 0c0 6.5 8 12 8 12z"/>
+                                    <circle cx="12" cy="10" r="3"/>
+                                </svg>
+                                Map
+                            </a>
+                        </div>
+
+                        <!-- Inline keyframe for live pulse dot -->
+                        <style>
+                            @keyframes kbPulse {
+                                0%,100%{opacity:1;transform:scale(1)}
+                                50%{opacity:.5;transform:scale(.75)}
+                            }
+                        </style>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- ── List View ─────────────────────────────────────────────────────── -->
+    <record id="view_salesperson_tracker_list" model="ir.ui.view">
+        <field name="name">salesperson.tracker.list</field>
+        <field name="model">salesperson.tracker</field>
+        <field name="arch" type="xml">
+            <list string="Tracking Reports"
+                  decoration-success="state=='completed'"
+                  decoration-primary="state=='live'"
+                  decoration-danger="state=='offline'"
+                  decoration-muted="state=='planned'">
+                <field name="name"/>
+                <field name="user_id"/>
+                <field name="visit_date"/>
+                <field name="state" widget="badge"/>
+                <field name="is_tracking" widget="boolean"/>
+                <field name="total_visits"/>
+                <field name="total_visited"/>
+                <field name="total_distance_km"/>
+                <field name="duration_hours"/>
+                <field name="is_own_tracker" column_invisible="1"/>
+                <button type="object" name="action_open_live_tracking_page" string="Live Page" icon="fa-video-camera" invisible="not is_own_tracker"/>
+                <button type="object" name="action_view_moving_map" string="Map" icon="fa-map-marker"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- ── Actions ───────────────────────────────────────────────────────── -->
+    <record id="action_salesperson_tracker_kanban" model="ir.actions.act_window">
+        <field name="name">Live Tracking</field>
+        <field name="res_model">salesperson.tracker</field>
+        <field name="view_mode">kanban,list,form</field>
+        <!-- No date domain: all records (past/today/future) are visible here now.
+             "Traceability" (Start/Stop, /live page access) is still restricted to
+             today's own record at the action_open_live_tracking_page level — a
+             past or future record just opens the read-only Map instead. -->
+    </record>
+
+    <record id="action_salesperson_tracker_my_kanban" model="ir.actions.act_window">
+        <field name="name">My Tracking</field>
+        <field name="res_model">salesperson.tracker</field>
+        <field name="view_mode">kanban,list,form</field>
+        <field name="domain">[('user_id', '=', uid)]</field>
+        <field name="context">{'default_user_id': uid}</field>
+    </record>
+
+    <record id="action_salesperson_tracker" model="ir.actions.act_window">
+        <field name="name">Tracking Reports</field>
+        <field name="res_model">salesperson.tracker</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="action_salesperson_tracker_my" model="ir.actions.act_window">
+        <field name="name">My Tracking</field>
+        <field name="res_model">salesperson.tracker</field>
+        <field name="view_mode">form</field>
+        <field name="domain">[('user_id', '=', uid)]</field>
+        <field name="context">{'default_user_id': uid}</field>
+    </record>
+
+</odoo>

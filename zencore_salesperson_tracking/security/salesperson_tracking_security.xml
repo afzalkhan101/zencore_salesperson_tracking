@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Tracker Record Rules -->
+    <record id="rule_tracker_salesman_own" model="ir.rule">
+        <field name="name">Tracker: Own Only</field>
+        <field name="model_id" ref="model_salesperson_tracker"/>
+        <field name="groups" eval="[(4, ref('zencore_salesperson_tracking.group_salesperson_salesman'))]"/>
+        <field name="domain_force">[('user_id', '=', user.id)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <record id="rule_tracker_manager_all" model="ir.rule">
+        <field name="name">Tracker: Manager All</field>
+        <field name="model_id" ref="model_salesperson_tracker"/>
+        <field name="groups" eval="[(4, ref('zencore_salesperson_tracking.group_salesperson_manager'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <!-- Visit Plan Record Rules -->
+    <record id="rule_visit_plan_salesman_own" model="ir.rule">
+        <field name="name">Visit Plan: Own Only</field>
+        <field name="model_id" ref="model_salesperson_visit_plan"/>
+        <field name="groups" eval="[(4, ref('zencore_salesperson_tracking.group_salesperson_salesman'))]"/>
+        <field name="domain_force">[('user_id', '=', user.id)]</field>
+    </record>
+
+    <record id="rule_visit_plan_manager_all" model="ir.rule">
+        <field name="name">Visit Plan: Manager All</field>
+        <field name="model_id" ref="model_salesperson_visit_plan"/>
+        <field name="groups" eval="[(4, ref('zencore_salesperson_tracking.group_salesperson_manager'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+    </record>
+
+    <!-- Check-in Record Rules -->
+    <record id="rule_checkin_salesman_own" model="ir.rule">
+        <field name="name">Check-In: Own Only</field>
+        <field name="model_id" ref="model_salesperson_checkin"/>
+        <field name="groups" eval="[(4, ref('zencore_salesperson_tracking.group_salesperson_salesman'))]"/>
+        <field name="domain_force">[('user_id', '=', user.id)]</field>
+    </record>
+
+    <record id="rule_checkin_manager_all" model="ir.rule">
+        <field name="name">Check-In: Manager All</field>
+        <field name="model_id" ref="model_salesperson_checkin"/>
+        <field name="groups" eval="[(4, ref('zencore_salesperson_tracking.group_salesperson_manager'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+    </record>
+
+</odoo>

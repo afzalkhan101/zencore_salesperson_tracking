@@ -1,0 +1,216 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="action_report_visit_plan" model="ir.actions.report">
+        <field name="name">Visit Plan Report</field>
+        <field name="model">salesperson.visit.plan</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">zencore_salesperson_tracking.report_visit_plan</field>
+        <field name="binding_model_id" ref="model_salesperson_visit_plan"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="report_visit_plan">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="plan">
+                <t t-call="web.external_layout">
+                    <div class="page">
+
+                        <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; font-size: 12px; color: #111; }
+    .rpt-header { border-bottom: 2px solid #15803d; padding-bottom: 10px; margin-bottom: 16px; }
+    .rpt-title { font-size: 16px; font-weight: bold; color: #15803d; }
+    .rpt-subtitle { font-size: 10px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; }
+    .rpt-ref { border: 1px solid #15803d; border-radius: 4px; padding: 2px 8px; font-size: 10px; font-weight: bold; color: #15803d; display: inline-block; }
+    .rpt-meta-row { display: flex; gap: 24px; margin-top: 8px; }
+    .rpt-meta-item label { font-size: 9px; text-transform: uppercase; color: #888; display: block; }
+    .rpt-meta-item span { font-size: 12px; font-weight: bold; }
+    .kpi-row { display: flex; gap: 8px; margin-bottom: 16px; }
+    .kpi-card { flex: 1; border: 1px solid #ccc; border-radius: 4px; padding: 10px; text-align: center; }
+    .kpi-num { font-size: 20px; font-weight: bold; }
+    .kpi-lbl { font-size: 9px; color: #666; text-transform: uppercase; margin-top: 2px; }
+    .kpi-card.green .kpi-num { color: #16a34a; }
+    .kpi-card.blue .kpi-num { color: #2563eb; }
+    .kpi-card.amber .kpi-num { color: #d97706; }
+    .kpi-card.slate .kpi-num { color: #475569; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 14px; font-size: 11px; }
+    th { background: #f3f4f6; border: 1px solid #d1d5db; padding: 6px 8px; text-align: left; font-weight: bold; font-size: 10px; text-transform: uppercase; color: #374151; }
+    td { border: 1px solid #e5e7eb; padding: 5px 8px; vertical-align: top; }
+    tr:nth-child(even) td { background: #f9fafb; }
+    .section-title { font-size: 13px; font-weight: bold; color: #15803d; border-bottom: 1px solid #bbf7d0; padding-bottom: 4px; margin: 14px 0 8px; }
+    .badge-approved { color: #059669; font-weight: bold; }
+    .badge-draft { color: #9ca3af; }
+    .badge-submitted { color: #d97706; font-weight: bold; }
+    .badge-rejected { color: #dc2626; font-weight: bold; }
+    .text-muted { color: #9ca3af; font-style: italic; }
+    .priority-high { color: #d97706; font-weight: bold; }
+    .priority-urgent { color: #dc2626; font-weight: bold; }
+    .page-break { page-break-after: always; }
+</style>
+
+                        <!-- ══ HEADER BANNER ══ -->
+                        <div class="rpt-header">
+                            <div class="rpt-header-top">
+                                <div>
+                                    <div class="rpt-title">Visit Plan Report</div>
+                                    <div class="rpt-subtitle">ZenCore Salesperson Tracking</div>
+                                </div>
+                                <div class="rpt-ref"><t t-esc="plan.name"/></div>
+                            </div>
+                            <div class="rpt-meta-row">
+                                <div class="rpt-meta-item">
+                                    <label>Salesperson</label>
+                                    <span><t t-esc="plan.user_id.name"/></span>
+                                </div>
+                                <div class="rpt-meta-item">
+                                    <label>Visit Date</label>
+                                    <span><t t-esc="plan.visit_date"/></span>
+                                </div>
+                                <div class="rpt-meta-item">
+                                    <label>Total Stops</label>
+                                    <span><t t-esc="plan.total_visits"/></span>
+                                </div>
+                                <div class="rpt-meta-item">
+                                    <label>Total Budget</label>
+                                    <span><t t-esc="plan.total_cost"/></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ══ PURPOSE ══ -->
+                        <t t-if="plan.purpose">
+                            <div class="purpose-box">
+                                <strong>Purpose</strong>
+                                <t t-esc="plan.purpose"/>
+                            </div>
+                        </t>
+
+                        <!-- ══ KPI SUMMARY ══ -->
+                        <p><strong>Total Stops:</strong> <t t-esc="plan.total_visits"/> &#160;&#160;
+                           <strong>Transport:</strong> <t t-esc="plan.transport_cost"/> &#160;&#160;
+                           <strong>Food:</strong> <t t-esc="plan.food_cost"/> &#160;&#160;
+                           <strong>Other:</strong> <t t-esc="plan.other_cost"/> &#160;&#160;
+                           <strong>Total Budget:</strong> <t t-esc="plan.total_cost"/>
+                        </p>
+
+                        <!-- ══ EXPENSES CLAIM ══ -->
+                        <div class="section-header">
+                            <div class="section-bar"/>
+                            <div class="section-title">Expenses Claim</div>
+                            <div class="section-line"/>
+                        </div>
+
+                        <table class="rpt-table">
+                            <thead>
+                                <tr>
+                                    <th>Category</th>
+                                    <th class="right">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="label">Transport</td>
+                                    <td class="right"><t t-esc="plan.transport_cost"/></td>
+                                </tr>
+                                <tr>
+                                    <td class="label">Food</td>
+                                    <td class="right"><t t-esc="plan.food_cost"/></td>
+                                </tr>
+                                <tr>
+                                    <td class="label">Other</td>
+                                    <td class="right"><t t-esc="plan.other_cost"/></td>
+                                </tr>
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td>Total Claim</td>
+                                    <td class="right"><t t-esc="plan.total_cost"/></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+
+                        <!-- ══ TARGET LINES ══ -->
+                        <div class="section-header">
+                            <div class="section-bar"/>
+                            <div class="section-title">Target Visit Lines</div>
+                            <div class="section-line"/>
+                        </div>
+
+                        <table class="rpt-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Customer(s)</th>
+                                    <th>Route</th>
+                                    <th class="center">Est. Time</th>
+                                    <th class="right">Est. KM</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-foreach="plan.target_line_ids" t-as="line">
+                                    <tr>
+                                        <td style="color:#94a3b8; width:28px;">
+                                            <t t-esc="line_index + 1"/>
+                                        </td>
+                                        <td style="font-weight:600;">
+                                            <t t-esc="', '.join(line.customer_ids.mapped('name'))"/>
+                                        </td>
+                                        <td>
+                                            <span class="route-chip">
+                                                <t t-esc="line.from_location"/>
+                                                <span class="route-arrow">→</span>
+                                                <t t-esc="line.to_location"/>
+                                            </span>
+                                        </td>
+                                        <td class="center">
+                                            <span class="pill amber">
+                                                <t t-esc="line.expected_time_minutes"/> min
+                                            </span>
+                                        </td>
+                                        <td class="right">
+                                            <span class="pill blue">
+                                                <t t-esc="line.expected_km"/> km
+                                            </span>
+                                        </td>
+                                    </tr>
+                                </t>
+                                <t t-if="not plan.target_line_ids">
+                                    <tr>
+                                        <td colspan="5" style="text-align:center; color:#94a3b8; padding:20px;">
+                                            No target lines added yet.
+                                        </td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+
+                        <!-- ══ SIGNATURE BLOCK ══ -->
+                        <div class="sig-row">
+                            <div class="sig-block">
+                                <div class="sig-line"/>
+                                <div class="sig-label">Salesperson Signature</div>
+                            </div>
+                            <div class="sig-block">
+                                <div class="sig-line"/>
+                                <div class="sig-label">Manager Approval</div>
+                            </div>
+                            <div class="sig-block">
+                                <div class="sig-line"/>
+                                <div class="sig-label">Date</div>
+                            </div>
+                        </div>
+
+                        <!-- ══ FOOTER ══ -->
+                        <div class="rpt-footer">
+                            Generated by ZenCore Salesperson Tracking ·
+                            <t t-esc="plan.user_id.company_id.name"/>
+                        </div>
+
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+</odoo>

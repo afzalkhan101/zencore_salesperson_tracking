@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_salesperson_location_log_list" model="ir.ui.view">
+        <field name="name">salesperson.location.log.list</field>
+        <field name="model">salesperson.location.log</field>
+        <field name="arch" type="xml">
+            <list string="Location History">
+                <field name="tracked_at" width="180"/>
+                <field name="user_id" width="150"/>
+                <field name="latitude"/>
+                <field name="longitude"/>
+                <field name="accuracy" optional="hide"/>
+                <field name="speed" optional="hide"/>
+                <field name="location_name"/>
+                <field name="photo" widget="image" string="Photo" optional="show" options="{'size': [50, 50]}"/>
+                <field name="photo_taken_at" optional="hide"/>
+                <field name="openstreetmap_url" widget="url" string="Map"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_salesperson_location_log_form" model="ir.ui.view">
+        <field name="name">salesperson.location.log.form</field>
+        <field name="model">salesperson.location.log</field>
+        <field name="arch" type="xml">
+            <form string="Location Log">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="tracked_at"/>
+                            <field name="user_id"/>
+                            <field name="source"/>
+                        </group>
+                        <group>
+                            <field name="latitude"/>
+                            <field name="longitude"/>
+                            <field name="accuracy"/>
+                            <field name="location_name"/>
+                        </group>
+                    </group>
+                    <group string="Photo" name="photo_group">
+                        <field name="photo" widget="image" options="{'size': [100, 100]}"/>
+                        <field name="photo_filename"/>
+                        <field name="photo_taken_at"/>
+                        <button name="action_download_photo" type="object" string="Download Photo" 
+                                class="btn-primary" invisible="not photo"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_salesperson_location_log" model="ir.actions.act_window">
+        <field name="name">Location History</field>
+        <field name="res_model">salesperson.location.log</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+</odoo>

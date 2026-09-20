@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="module_category_salesperson_tracking" model="ir.module.category">
+        <field name="name">Salesperson Tracking</field>
+        <field name="description">Manage salesperson visit plans and live GPS tracking</field>
+        <field name="sequence">100</field>
+    </record>
+
+    <record id="group_salesperson_salesman" model="res.groups">
+        <field name="name">Salesman</field>
+        <!-- <field name="category_id" eval="ref('zencore_salesperson_tracking.module_category_salesperson_tracking')"/> -->
+        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+        <field name="comment">Salesman - Can only see their own tracking data</field>
+    </record>
+
+    <record id="group_salesperson_manager" model="res.groups">
+        <field name="name">Manager</field>
+        <!-- <field name="category_id" eval="ref('zencore_salesperson_tracking.module_category_salesperson_tracking')"/> -->
+        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+        <field name="comment">Manager - Full access to all tracking data</field>
+    </record>
+
+</odoo>
