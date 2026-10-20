@@ -325,7 +325,7 @@
                                                         t-att-onclick="'focusSalesman(%s); return false;' % r['id']">Live</button>
                                             </t>
                                             <button type="button" class="action-btn" t-att-onclick="'openMovementMap(%s); return false;' % r['id']">Route</button>
-                                            <button type="button" class="action-btn" t-att-onclick="'openVisitDetails(%s); return false;' % r['user_id']">Details</button>
+                                            <button type="button" t-att-data-tracker-id="r['id']" class="action-btn visit-details-trigger">Details</button>
                                         </div>
                                     </td>
                                 </tr>

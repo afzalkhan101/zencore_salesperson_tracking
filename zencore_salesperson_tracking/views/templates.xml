@@ -195,10 +195,10 @@
 
                 <div class="top-bar">
                     <div class="top-bar-left">
-                        <button type="button" id="mapBackBtn" class="map-back-btn" title="Back" aria-label="Back">
-                            <span class="map-back-icon">&#8592;</span>
-                            <span class="map-back-text">Back</span>
-                        </button>
+                        <a id="mapBackBtn" class="map-back-btn" t-att-href="tracking_cards_url" title="Return to Live Tracking cards" aria-label="Back to Live Tracking">
+                            <span class="map-back-icon" aria-hidden="true">&#8592;</span>
+                            <span class="map-back-text">Back to Tracking</span>
+                        </a>
                         <div>
                             <h1>
                                 <t t-out="tracker.user_id.name"/>

@@ -935,31 +935,25 @@
         return;
     }
 
-    // Movement Map back navigation. The map is normally rendered inside the
-    // Odoo client iframe, so go back on the parent window history first. If
-    // the page was opened directly/new tab, use its own history and finally
-    // fall back to the Odoo home screen.
+    // Always return to the Live Tracking card action, not browser history.
+    // History may point outside Odoo when the map was opened in a new tab.
     const mapBackBtn = document.getElementById('mapBackBtn');
     if (mapBackBtn) {
-        mapBackBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            try {
-                if (window.parent && window.parent !== window) {
-                    if (window.parent.history.length > 1) {
-                        window.parent.history.back();
-                    } else {
-                        window.parent.location.href = '/odoo';
-                    }
-                    return;
-                }
-            } catch (navError) {
-                warn('Parent back navigation failed:', navError);
+        mapBackBtn.addEventListener('click', function (event) {
+            if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || event.button !== 0) {
+                return; // Preserve normal browser open-in-new-tab behavior.
             }
-
-            if (window.history.length > 1) {
-                window.history.back();
-            } else {
-                window.location.href = '/odoo';
+            event.preventDefault();
+            const targetUrl = mapBackBtn.href;
+            try {
+                // When embedded, navigate the Odoo client instead of the map iframe.
+                if (window.parent && window.parent !== window) {
+                    window.parent.location.assign(targetUrl);
+                } else {
+                    window.location.assign(targetUrl);
+                }
+            } catch (error) {
+                window.location.assign(targetUrl);
             }
         });
     }

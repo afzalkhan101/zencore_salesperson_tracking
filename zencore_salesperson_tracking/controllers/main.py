@@ -115,14 +115,22 @@ class SalespersonTrackingController(http.Controller):
         return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
     def _compute_total_distance(self, logs):
-        total, prev = 0.0, None
-        for log in logs:
-            if not (log.latitude and log.longitude):
-                continue
-            if prev:
-                total += self._haversine_km(prev[0], prev[1], log.latitude, log.longitude)
-            prev = (log.latitude, log.longitude)
-        return round(total, 3)
+        """Use the same validated GPS segments as the Movement Map."""
+        from ..models.verified_gps import verified_distance_km
+        return verified_distance_km([
+            (log.latitude, log.longitude, log.accuracy, log.tracked_at)
+            for log in sorted(logs, key=lambda log: (log.tracked_at or fields.Datetime.now(), log.id))
+        ])
+
+    def _verified_tracker_distance(self, tracker):
+        """Read exact session logs, not legacy accumulated mobile distances."""
+        from ..models.verified_gps import verified_distance_km
+        request.env.cr.execute("""
+            SELECT latitude, longitude, accuracy, tracked_at
+            FROM salesperson_location_log WHERE tracker_id = %s
+            ORDER BY tracked_at ASC, id ASC
+        """, (tracker.id,))
+        return verified_distance_km(request.env.cr.fetchall())
 
     def _json_response(self, data):
         """Return a JSON HTTP response compatible with Odoo 19."""
@@ -381,6 +389,7 @@ class SalespersonTrackingController(http.Controller):
             "last_seen_display": last_seen_display_map,
             "last_known_lat": tracker.last_latitude or 0,
             "last_known_lng": tracker.last_longitude or 0,
+            "tracking_cards_url": "/odoo/action-%s" % request.env.ref("zencore_salesperson_tracking.action_salesperson_tracker_kanban").id,
         }
         return self._no_cache(request.render("zencore_salesperson_tracking.moving_map_page", values))
 
@@ -478,7 +487,7 @@ class SalespersonTrackingController(http.Controller):
             my_tracker = Tracker.search([('user_id', '=', user.id), ('visit_date', '=', today)], limit=1)
             if my_tracker:
                 my_status = my_tracker._compute_dashboard_status()[0]
-                my_dist = f"{my_tracker.total_distance_km:.1f}"
+                my_dist = f"{self._verified_tracker_distance(my_tracker):.1f}"
                 my_covered = my_tracker.total_visited
                 my_total = my_tracker.total_visits
                 my_location = my_tracker.location_name or '—'
@@ -640,8 +649,8 @@ class SalespersonTrackingController(http.Controller):
                 'total': total,
                 'missed': remaining,
                 'pct': int(covered * 100 / total) if total else 0,
-                'distance_km': round(tracker.total_distance_km or 0.0, 1),
-                'distance': f"{tracker.total_distance_km or 0.0:.1f} km",
+                'distance_km': round(self._verified_tracker_distance(tracker), 1),
+                'distance': f"{self._verified_tracker_distance(tracker):.1f} km",
                 'tracking_seconds': tracking_seconds,
                 'tracking_time': self._format_tracking_duration(tracking_seconds),
                 'first_start': _localize_dt(first_start, tz_name)[11:16] if first_start else '—',
@@ -708,7 +717,7 @@ class SalespersonTrackingController(http.Controller):
             })
             agg['covered'] += tracker.total_visited
             agg['total'] += tracker.total_visits
-            agg['distance_km'] += tracker.total_distance_km or 0.0
+            agg['distance_km'] += self._verified_tracker_distance(tracker)
             agg['tracking_seconds'] += tracker.total_tracking_time_seconds or 0
             agg['tracker_id'] = tracker.id
             sessions = tracker.session_ids.sorted('start_time')
@@ -920,19 +929,22 @@ class SalespersonTrackingController(http.Controller):
         """Customer-level visit details for the currently selected salesperson and dates."""
         user = self._check_access()
         try:
-            salesman_id = int(kwargs.get('salesman_id') or 0)
+            tracker_id = int(kwargs.get('tracker_id') or 0)
             date_from = fields.Date.from_string(kwargs.get('date_from'))
             date_to = fields.Date.from_string(kwargs.get('date_to'))
-            if not salesman_id or not date_from or not date_to:
+            if not tracker_id or not date_from or not date_to:
                 raise ValueError('Missing filter')
         except (TypeError, ValueError):
             return self._json_response({'ok': False, 'error': 'Invalid date or salesperson'})
         if date_from > date_to:
             date_from, date_to = date_to, date_from
-        trackers = request.env['salesperson.tracker'].sudo().search([
-            ('user_id', '=', salesman_id), ('visit_date', '>=', date_from),
-            ('visit_date', '<=', date_to),
-        ], order='visit_date, id')
+        tracker = request.env['salesperson.tracker'].sudo().browse(tracker_id).exists()
+        if not tracker or not (date_from <= tracker.visit_date <= date_to):
+            return self._json_response({'ok': False, 'error': 'Tracking session not found for selected dates'})
+        # Respect the dashboard's access scope; non-managers may only view their own records.
+        if not (user.has_group('sales_team.group_sale_manager') or user.has_group('base.group_system')) and tracker.user_id.id != user.id:
+            return self._json_response({'ok': False, 'error': 'Access denied'})
+        trackers = tracker
         tz_name = self._user_tz(user)
         completed, incomplete = [], []
         for tracker in trackers:
