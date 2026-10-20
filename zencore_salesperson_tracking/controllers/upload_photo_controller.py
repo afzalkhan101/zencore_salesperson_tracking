@@ -16,7 +16,6 @@ class SalespersonTrackingController(http.Controller):
         try:
             _logger.info("save_photo: received request with keys: %s", kwargs.keys())
             
-            # Get parameters
             image_data = kwargs.get('image_data', '')
             filename = kwargs.get('filename', '')
             latitude = kwargs.get('latitude')
@@ -27,34 +26,27 @@ class SalespersonTrackingController(http.Controller):
                 _logger.error("save_photo: No image data received")
                 return {"success": False, "error": "No image data received"}
 
-            # Generate filename if not provided
             if not filename:
                 filename = f"photo_{request.env.user.id}_{int(datetime.now().timestamp())}.jpg"
 
-            # Extract base64 data (remove data URL prefix if present)
             if ',' in image_data:
                 image_b64 = image_data.split(',', 1)[1]
             else:
                 image_b64 = image_data
 
             _logger.info("save_photo: image data length: %d chars", len(image_b64))
-
-            # Get tracker
             tracker = request.env["salesperson.tracker"].sudo().search(
                 [("user_id", "=", request.env.uid)], limit=1
             )
             if not tracker:
-                # Create tracker for today
                 tracker = request.env["salesperson.tracker"].sudo().create({
                     "user_id": request.env.uid,
                     "visit_date": fields.Date.today(),
                     "state": "planned",
                 })
                 _logger.info("save_photo: created new tracker id=%s", tracker.id)
-
             taken_at = fields.Datetime.now()
             
-            # Create attachment first
             attachment = request.env["ir.attachment"].sudo().create({
                 "name": filename,
                 "type": "binary",

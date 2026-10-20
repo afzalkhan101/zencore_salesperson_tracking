@@ -29,9 +29,7 @@ class SalespersonLocationLog(models.Model):
 
     @api.depends("latitude", "longitude")
     def _compute_map_url(self):
-        # A record can be unlinked by the retention cron (_backup_old_logs)
-        # between this list being fetched and this compute running for it —
-        # self.exists() keeps that race from ever reading a deleted row.
+        
         existing = self.exists()
         missing = self - existing
         if missing:

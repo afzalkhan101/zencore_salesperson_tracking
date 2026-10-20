@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_salesperson_performance_report_wizard_form" model="ir.ui.view">
+        <field name="name">salesperson.performance.report.wizard.form</field>
+        <field name="model">salesperson.performance.report.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Salesperson Performance Report" create="0" edit="1">
+                <sheet>
+                    <div class="oe_title">
+                        <h1>Salesperson Performance Report</h1>
+                        <p class="text-muted">Monthly, weekly, individual and multiple-salesperson performance analysis.</p>
+                    </div>
+
+                    <group string="Report Type &amp; Filters" col="4">
+                        <field name="report_type" widget="radio" options="{'horizontal': true}"/>
+                        <field name="month_date" invisible="report_type != 'monthly'"/>
+                        <field name="week_start" invisible="report_type != 'weekly'"/>
+                        <field name="period_preset" invisible="report_type not in ('individual', 'multiple')"/>
+                        <field name="date_from" readonly="report_type in ('monthly', 'weekly') or (report_type in ('individual', 'multiple') and period_preset != 'custom')"/>
+                        <field name="date_to" readonly="report_type in ('monthly', 'weekly') or (report_type in ('individual', 'multiple') and period_preset != 'custom')"/>
+                        <field name="individual_user_id" options="{'no_create': True}" invisible="report_type != 'individual'" required="report_type == 'individual'"/>
+                        <field name="user_ids" widget="many2many_tags" options="{'no_create': True}" invisible="report_type == 'individual'"/>
+                        <field name="sale_team_id" options="{'no_create': True}"/>
+                        <field name="partner_id" options="{'no_create': True}"/>
+                        <field name="visit_status"/>
+                        <field name="visit_purpose"/>
+                        <field name="tracking_status"/>
+                    </group>
+
+                    <div class="d-flex gap-2 mb-3">
+                        <button name="action_generate_report" type="object" string="Generate Report" class="btn-primary" icon="fa-search"/>
+                        <button name="action_reset" type="object" string="Reset" class="btn-secondary" icon="fa-refresh"/>
+                        <button name="action_print_pdf" type="object" string="Print PDF" class="btn-success ms-auto" icon="fa-print" invisible="not line_ids"/>
+                        <button name="action_export_excel" type="object" string="Export Excel" class="btn-success" icon="fa-file-excel-o" invisible="not line_ids"/>
+                    </div>
+
+                    <group string="Summary" col="5" invisible="not line_ids">
+                        <field name="total_salespersons" readonly="1"/>
+                        <field name="total_planned_visits" readonly="1"/>
+                        <field name="total_completed_visits" readonly="1"/>
+                        <field name="total_pending_visits" readonly="1"/>
+                        <field name="completion_percent" readonly="1" widget="percentage"/>
+                        <field name="total_distance_km" readonly="1"/>
+                        <field name="total_tracking_minutes" readonly="1"/>
+                        <field name="total_visit_minutes" readonly="1"/>
+                        <field name="total_idle_minutes" readonly="1"/>
+                        <field name="total_expense" readonly="1"/>
+                        <field name="average_rating" readonly="1"/>
+                    </group>
+
+                    <notebook invisible="not line_ids">
+                        <page string="Salesperson Summary">
+                            <field name="line_ids" nolabel="1" readonly="1">
+                                <list create="0" delete="0" edit="0" decoration-success="completion_percent &gt;= 80" decoration-warning="completion_percent &lt; 80 and completion_percent &gt;= 50" decoration-danger="completion_percent &lt; 50">
+                                    <field name="user_id"/>
+                                    <field name="planned_visits"/>
+                                    <field name="completed_visits"/>
+                                    <field name="pending_visits"/>
+                                    <field name="completion_percent" widget="percentage"/>
+                                    <field name="distance_km"/>
+                                    <field name="tracking_minutes"/>
+                                    <field name="visit_minutes"/>
+                                    <field name="idle_minutes"/>
+                                    <field name="expense"/>
+                                    <field name="average_rating"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Day-wise Summary">
+                            <field name="day_line_ids" nolabel="1" readonly="1">
+                                <list create="0" delete="0" edit="0">
+                                    <field name="date"/>
+                                    <field name="planned_visits"/>
+                                    <field name="completed_visits"/>
+                                    <field name="pending_visits"/>
+                                    <field name="distance_km"/>
+                                    <field name="visit_minutes"/>
+                                    <field name="idle_minutes"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Visit Details">
+                            <field name="visit_line_ids" nolabel="1" readonly="1">
+                                <list create="0" delete="0" edit="0" decoration-success="status == 'completed'" decoration-info="status == 'in_progress'">
+                                    <field name="visit_date"/>
+                                    <field name="user_id"/>
+                                    <field name="partner_id"/>
+                                    <field name="purpose"/>
+                                    <field name="checkin_time"/>
+                                    <field name="checkout_time"/>
+                                    <field name="duration_minutes"/>
+                                    <field name="distance_km" optional="hide"/>
+                                    <field name="status" widget="badge"/>
+                                    <field name="outcome"/>
+                                    <field name="rating"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_salesperson_performance_report" model="ir.actions.act_window">
+        <field name="name">Performance Report</field>
+        <field name="res_model">salesperson.performance.report.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">current</field>
+    </record>
+
+    <menuitem id="menu_salesperson_reports_root"
+              name="Reports"
+              parent="menu_salesperson_tracking_root"
+              sequence="34"
+              groups="zencore_salesperson_tracking.group_salesperson_manager"/>
+
+    <menuitem id="menu_salesperson_performance_report"
+              name="Performance Report"
+              parent="menu_salesperson_reports_root"
+              action="action_salesperson_performance_report"
+              sequence="10"
+              groups="zencore_salesperson_tracking.group_salesperson_manager"/>
+</odoo>

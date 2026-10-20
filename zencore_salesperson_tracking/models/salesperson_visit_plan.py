@@ -215,24 +215,3 @@ class SalespersonVisitPlan(models.Model):
 
     def action_print_visit_plan(self):
         return self.env.ref("zencore_salesperson_tracking.action_report_visit_plan").report_action(self)
-
-
-class SalespersonVisitPlanLine(models.Model):
-    _name = "salesperson.visit.plan.line"
-    _description = "Visit Plan Target Line"
-
-    plan_id = fields.Many2one("salesperson.visit.plan", string="Visit Plan", required=True, ondelete="cascade")
-
-    expected_time_minutes = fields.Integer(string="Expected Time (min)")
-    employee_ids = fields.Many2many("hr.employee", string="Accompanies")
-    from_location = fields.Char(string="From Location")
-    to_location = fields.Char(string="To Location")
-    expected_km = fields.Float(string="Expected KM", digits=(16, 2))
-    customer_ids = fields.Many2many("res.partner", string="Customers")
-    customer_count = fields.Integer(string="Customer Count", compute="_compute_customer_count", store=True)
-    notes = fields.Text(string="Notes")
-
-    @api.depends("customer_ids")
-    def _compute_customer_count(self):
-        for line in self:
-            line.customer_count = len(line.customer_ids)

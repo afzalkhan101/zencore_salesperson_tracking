@@ -20,13 +20,6 @@
             <field name="code">model.action_auto_complete_past_trackers()</field>
             <field name="interval_number">1</field>
             <field name="interval_type">days</field>
-            <!-- Runs immediately on install/upgrade (catches up any already-overdue
-                 past records right away), then Odoo auto-advances nextcall by the
-                 interval above after each run — so it settles into a real daily
-                 00:05 cadence from here on. A future-dated nextcall (as this
-                 previously was, +1 day) means the cron does not fire AT ALL until
-                 that moment arrives — that's why past records were never being
-                 completed. -->
             <field name="nextcall" eval="(DateTime.now()).strftime('%Y-%m-%d %H:%M:%S')"/>
             <field name="active" eval="True"/>
         </record>

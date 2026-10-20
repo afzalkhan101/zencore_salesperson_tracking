@@ -1,22 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
-    <!--
-        ROOT — no action.
-        Odoo walks children in sequence order to find the first leaf with an action.
-        Visit Plans (sequence 10) has proper act_window children → that opens first.
-        Dashboard (sequence 5) has act_url target="new" → opens in new tab, NOT as default.
-
-        The key: act_url with target="new" is intentionally skipped by Odoo's
-        "find first auto-open action" walk, so the app click lands on Visit Plans,
-        not the dashboard URL.
-    -->
     <menuitem id="menu_salesperson_tracking_root"
               name="Salesperson Tracking"
               sequence="90"
               groups="zencore_salesperson_tracking.group_salesperson_salesman,zencore_salesperson_tracking.group_salesperson_manager"/>
 
-    <!-- ── Visit Plans — sequence 10, becomes the default on app click ─────── -->
     <menuitem id="menu_salesperson_visit_plan"
               name="Visit Plans"
               parent="menu_salesperson_tracking_root"
@@ -77,21 +66,6 @@
               action="action_salesperson_location_backup"
               sequence="20"/>
 
-    <!-- ── Dashboard — sequence 40, embedded client action ───────────────────── -->
-    <!--
-        ir.actions.client (not act_url) + iframe: this keeps the user inside
-        the Odoo app shell when they click Dashboard — see
-        static/src/js/dashboard_action.js for why the old act_url/target=new
-        setup was popping a separate browser tab.
-
-        IMPORTANT: the external ID action_salesperson_dashboard already
-        exists in every database that installed a previous version of this
-        module, as an ir.actions.act_url record. Odoo's data loader cannot
-        morph an existing record into a different model under the same
-        external ID (that's the ParseError you hit on upgrade) — so the old
-        record must be explicitly deleted first, then the new
-        ir.actions.client record is created under a fresh external ID.
-    -->
     <delete model="ir.actions.act_url" id="action_salesperson_dashboard"/>
 
     <record id="action_salesperson_dashboard_client" model="ir.actions.client">
@@ -106,4 +80,5 @@
               sequence="40"
               groups="zencore_salesperson_tracking.group_salesperson_manager"/>
 
+              
 </odoo>

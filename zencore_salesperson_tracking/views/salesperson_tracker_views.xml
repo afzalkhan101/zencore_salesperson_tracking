@@ -9,7 +9,7 @@
             <form string="Tracking Report">
                 <header>
                     <button name="action_print_tracking_report" string="Print Report" type="object" class="btn-secondary"/>
-                    <button name="action_open_live_tracking_page" string="Live Page" type="object" class="btn-primary" invisible="not is_own_tracker"/>
+                    <button name="action_open_live_tracking_page" string="Live Page" type="object" class="btn-primary" invisible="not is_own_tracker or state == 'completed'"/>
                     <button name="action_view_moving_map" string="Map" type="object" class="btn-secondary"/>
                     <field name="state" widget="statusbar" statusbar_visible="planned,offline,live,completed"/>
                     <field name="is_own_tracker" invisible="1"/>
@@ -238,7 +238,7 @@
                             <!-- Live Page — only the assigned salesman may open the
                                  interactive Start/Stop page. Everyone else (including
                                  managers) gets read-only Map only. -->
-                            <t t-if="record.is_own_tracker.raw_value">
+                            <t t-if="record.is_own_tracker.raw_value and record.state.raw_value != 'completed'">
                                 <button type="object" name="action_open_live_tracking_page"
                                    style="flex:1;display:inline-flex;align-items:center;justify-content:center;
                                           gap:5px;padding:7px 10px;border-radius:8px;font-size:11px;font-weight:600;
@@ -300,7 +300,7 @@
                 <field name="total_distance_km"/>
                 <field name="duration_hours"/>
                 <field name="is_own_tracker" column_invisible="1"/>
-                <button type="object" name="action_open_live_tracking_page" string="Live Page" icon="fa-video-camera" invisible="not is_own_tracker"/>
+                <button type="object" name="action_open_live_tracking_page" string="Live Page" icon="fa-video-camera" invisible="not is_own_tracker or state == 'completed'"/>
                 <button type="object" name="action_view_moving_map" string="Map" icon="fa-map-marker"/>
             </list>
         </field>

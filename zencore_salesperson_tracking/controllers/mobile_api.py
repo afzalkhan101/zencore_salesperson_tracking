@@ -96,8 +96,7 @@ class MobileApiController(http.Controller):
 
             if not customer_ids:
                 return self._json_response({'ok': False, 'message': 'At least one customer required'})
-
-            # Create plan
+            
             plan = request.env['salesperson.visit.plan'].sudo().create({
                 'user_id': user.id,
                 'visit_date': visit_date,
@@ -110,13 +109,10 @@ class MobileApiController(http.Controller):
                 'plan_id': plan.id,
                 'customer_ids': [(6, 0, customer_ids)],
             })
-
             # Auto-submit for approval
             plan.action_submit()
-
             _logger.info('create_plan: user=%s plan=%s date=%s customers=%s',
                          user.name, plan.name, visit_date, customer_ids)
-
             return self._json_response({
                 'ok': True,
                 'plan_id': plan.id,
@@ -126,7 +122,7 @@ class MobileApiController(http.Controller):
         except Exception as e:
             _logger.error('create_plan error: %s', e, exc_info=True)
             return self._json_response({'ok': False, 'message': str(e)})
-
+        
     @http.route('/mobile/api/plans/<int:plan_id>/approve', type='http', auth='user', csrf=False, methods=['POST'])
     def approve_plan(self, plan_id, **kwargs):
         """Manager approves a submitted plan."""
@@ -134,14 +130,12 @@ class MobileApiController(http.Controller):
             user = self._require_user()
             if getattr(user, 'salesperson_role', '') != 'manager':
                 return self._json_response({'ok': False, 'message': 'Only managers can approve plans'})
-
             plan = request.env['salesperson.visit.plan'].sudo().browse(plan_id)
             if not plan.exists():
                 return self._json_response({'ok': False, 'message': 'Plan not found'})
 
             if plan.state != 'submitted':
                 return self._json_response({'ok': False, 'message': f'Plan is {plan.state}, not submitted'})
-
             plan.action_approve()
             return self._json_response({'ok': True, 'state': plan.state})
         except Exception as e:
@@ -156,14 +150,12 @@ class MobileApiController(http.Controller):
             plan = request.env['salesperson.visit.plan'].sudo().browse(plan_id)
             if not plan.exists():
                 return self._json_response({'ok': False, 'message': 'Plan not found'})
-
             # Get tracker for today to determine visited status
             today = fields.Date.today()
             tracker = request.env['salesperson.tracker'].sudo().search([
                 ('user_id', '=', user.id),
                 ('visit_date', '=', today),
             ], limit=1, order='id desc')
-
             visited_ids = set()
             checkin_map = {}
             if tracker:

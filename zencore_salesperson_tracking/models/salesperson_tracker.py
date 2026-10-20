@@ -95,14 +95,6 @@ class SalespersonTracker(models.Model):
     current_session_id = fields.Many2one("salesperson.tracking.session", string="Current Session")
     current_checkin_id = fields.Many2one("salesperson.checkin", string="Current Check-In")
 
-    # State — rearranged per spec: Planned (created via On Track, not yet
-    # started) -> Live/Offline (toggles back and forth every time the
-    # salesperson presses Start/Stop on the /live page, see
-    # action_start_tracking/action_stop_tracking below) -> Completed (once
-    # the day is over, see action_auto_complete_past_trackers cron).
-    # tracking_status/is_tracking below remain the lower-level live/offline
-    # signal used by the live map JS; this `state` is the same idea surfaced
-    # as the one user-facing lifecycle field.
     state = fields.Selection([
         ("planned", "Planned"),
         ("offline", "Offline"),

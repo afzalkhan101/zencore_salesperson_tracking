@@ -1,0 +1,281 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="paperformat_customer_detailed_report" model="report.paperformat">
+        <field name="name">Customer Detailed Visit Report</field>
+        <field name="default" eval="False"/>
+        <field name="format">A4</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">7</field>
+        <field name="margin_bottom">8</field>
+        <field name="margin_left">7</field>
+        <field name="margin_right">7</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">0</field>
+        <field name="dpi">90</field>
+    </record>
+
+    <record id="action_report_customer_detailed" model="ir.actions.report">
+        <field name="name">Customer Detailed Visit Report</field>
+        <field name="model">salesperson.customer.report.wizard</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">zencore_salesperson_tracking.report_customer_detailed_document</field>
+        <field name="report_file">zencore_salesperson_tracking.report_customer_detailed_document</field>
+        <field name="paperformat_id" ref="paperformat_customer_detailed_report"/>
+        <field name="print_report_name">'Customer Detailed Report - %s' % (object.partner_id.name or '')</field>
+    </record>
+
+    <template id="report_customer_detailed_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.basic_layout">
+                    <style>
+                        .cdr-page {font-family: Arial, Helvetica, sans-serif; color:#17345d; font-size:10px; background:#fff;}
+                        .cdr-header {border:1px solid #d8e5f5; border-radius:8px; padding:12px 14px; margin-bottom:10px; background:#f8fbff;}
+                        .cdr-logo {max-width:155px; max-height:58px;}
+                        .cdr-company-name {font-size:20px; font-weight:700; color:#153d72; margin-top:3px;}
+                        .cdr-company-tag {font-size:10px; color:#5f7292; margin-top:1px;}
+                        .cdr-eyebrow {font-size:11px; letter-spacing:4px; color:#215da2; font-weight:700; text-align:center;}
+                        .cdr-title {font-size:28px; line-height:30px; font-weight:700; color:#1260a9; text-align:center; margin:2px 0 3px;}
+                        .cdr-title .accent {color:#7339a8;}
+                        .cdr-track {font-size:13px; color:#164a84; text-align:center; font-weight:600;}
+                        .cdr-track-line {display:inline-block; width:38px; border-top:3px solid #1260a9; margin:0 7px 3px 0;}
+                        .cdr-meta {border-left:1px solid #bdd0e7; padding-left:13px; color:#405d86; font-size:10px; line-height:15px;}
+                        .cdr-meta strong {color:#17345d; font-size:11px;}
+                        .cdr-section {background:#126fb4; color:#fff; border-radius:6px 6px 0 0; padding:8px 11px; font-size:13px; font-weight:700; margin-top:10px;}
+                        .cdr-section-soft {background:#f2eafa; color:#203a67; border-radius:6px 6px 0 0; padding:8px 11px; font-size:13px; font-weight:700; margin-top:10px; border:1px solid #e5d9f2; border-bottom:0;}
+                        .cdr-card {border:1px solid #d8e5f5; border-top:0; border-radius:0 0 6px 6px; padding:9px 11px; background:#fff;}
+                        .cdr-info-row {padding:2px 0; min-height:16px;}
+                        .cdr-icon {display:inline-block; width:18px; color:#1971cf; font-weight:700; font-size:12px;}
+                        .cdr-label {display:inline-block; width:105px; color:#5d7395; font-weight:600;}
+                        .cdr-value {color:#183a67; font-weight:600;}
+                        .cdr-split {border-left:1px solid #dce7f4; padding-left:14px;}
+                        .cdr-kpi-wrap {border:1px solid #eadcf7; border-top:0; padding:8px 6px 9px; border-radius:0 0 6px 6px;}
+                        .cdr-kpi {border-radius:6px; min-height:68px; text-align:center; padding:8px 4px; margin:0 2px; border:1px solid #e1e9f5;}
+                        .cdr-kpi.blue {background:#eef6ff;} .cdr-kpi.green {background:#edf9f1;} .cdr-kpi.orange {background:#fff6ea;}
+                        .cdr-kpi.purple {background:#f5effc;} .cdr-kpi.pink {background:#fff0f5;} .cdr-kpi.teal {background:#eefaf9;}
+                        .cdr-kpi-icon {font-size:18px; color:#1971cf; font-weight:700; line-height:18px;}
+                        .cdr-kpi.green .cdr-kpi-icon {color:#28a565;} .cdr-kpi.orange .cdr-kpi-icon {color:#ef8d22;}
+                        .cdr-kpi.purple .cdr-kpi-icon {color:#7a3fb0;} .cdr-kpi.pink .cdr-kpi-icon {color:#c73779;}
+                        .cdr-kpi.teal .cdr-kpi-icon {color:#13a89e;}
+                        .cdr-kpi-value {font-size:17px; font-weight:700; color:#173f73; margin-top:3px;}
+                        .cdr-kpi-label {font-size:9px; color:#345c8a; margin-top:2px;}
+                        .cdr-table {width:100%; border-collapse:collapse; border:1px solid #cfe0f3;}
+                        .cdr-table th {background:#e7f1fb; color:#203f68; border:1px solid #cfe0f3; padding:5px 4px; font-size:8.5px; text-align:left; font-weight:700;}
+                        .cdr-table td {border:1px solid #dce8f5; padding:5px 4px; font-size:8.5px; vertical-align:top; color:#294b73;}
+                        .cdr-status {display:inline-block; border-radius:10px; padding:2px 7px; font-size:8px; font-weight:700; white-space:nowrap;}
+                        .cdr-status.completed {background:#d9f5e4; color:#177844;} .cdr-status.pending {background:#fff0dd; color:#c46413;}
+                        .cdr-status.progress {background:#e2efff; color:#1c65b5;}
+                        .cdr-stars {color:#f59e0b; font-size:10px; letter-spacing:.5px;}
+                        .cdr-detail {border:1px solid #d7e4f3; border-radius:6px; margin-top:9px; page-break-inside:avoid; overflow:hidden;}
+                        .cdr-detail-head {background:#eef5fc; padding:7px 9px; font-weight:700; color:#173f73; border-bottom:1px solid #d7e4f3;}
+                        .cdr-detail-body {padding:8px 9px;}
+                        .cdr-subbox {border:1px solid #dde7f3; border-radius:5px; padding:7px 8px; background:#fbfdff; min-height:80px;}
+                        .cdr-subtitle {font-weight:700; color:#173f73; margin-bottom:5px; font-size:10px;}
+                        .cdr-photo {max-width:120px; max-height:92px; border:1px solid #cddced; border-radius:4px; padding:2px; background:#fff;}
+                        .cdr-footer {margin-top:10px; border-top:1px solid #7a3fb0; padding-top:6px; color:#52709a; font-size:8.5px;}
+                    </style>
+
+                    <div class="page cdr-page">
+                        <div class="cdr-header">
+                            <div class="row align-items-center">
+                                <div class="col-4">
+                                    <t t-if="env.company.logo">
+                                        <img t-att-src="image_data_uri(env.company.logo)" class="cdr-logo"/>
+                                    </t>
+                                    <t t-else="">
+                                        <div class="cdr-company-name" t-esc="env.company.name"/>
+                                        <div class="cdr-company-tag">Your Business Partner</div>
+                                    </t>
+                                </div>
+                                <div class="col-5">
+                                    <div class="cdr-eyebrow">CUSTOMER</div>
+                                    <div class="cdr-title">Detailed Visit <span class="accent">Report</span></div>
+                                    <div class="cdr-track"><span class="cdr-track-line"></span>Salesperson Tracking</div>
+                                </div>
+                                <div class="col-3">
+                                    <div class="cdr-meta">
+                                        <strong t-esc="env.company.name"/>
+                                        <div t-if="env.company.partner_id.contact_address" t-esc="env.company.partner_id.contact_address"/>
+                                        <div style="margin-top:7px;"><strong>Generated on</strong></div>
+                                        <div t-esc="time.strftime('%d %b %Y %I:%M %p')"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="cdr-section">Customer Information</div>
+                        <div class="cdr-card">
+                            <div class="row">
+                                <div class="col-6">
+                                    <div class="cdr-info-row"><span class="cdr-icon">●</span><span class="cdr-label">Customer</span><span class="cdr-value" t-esc="doc.partner_id.name"/></div>
+                                    <div class="cdr-info-row"><span class="cdr-icon">◆</span><span class="cdr-label">Address</span><span class="cdr-value" t-esc="doc.partner_id.contact_address or '-'"/></div>
+                                    <div class="cdr-info-row"><span class="cdr-icon">☎</span><span class="cdr-label">Phone</span><span class="cdr-value" t-esc="doc.partner_id.phone or (doc.partner_id.mobile if 'mobile' in doc.partner_id._fields else False) or '-'"/></div>
+                                    <div class="cdr-info-row"><span class="cdr-icon">✉</span><span class="cdr-label">Email</span><span class="cdr-value" t-esc="doc.partner_id.email or '-'"/></div>
+                                </div>
+                                <div class="col-6 cdr-split">
+                                    <div class="cdr-info-row"><span class="cdr-icon">▣</span><span class="cdr-label">From Date</span><span class="cdr-value" t-field="doc.date_from"/></div>
+                                    <div class="cdr-info-row"><span class="cdr-icon">▣</span><span class="cdr-label">To Date</span><span class="cdr-value" t-field="doc.date_to"/></div>
+                                    <div class="cdr-info-row"><span class="cdr-icon">●</span><span class="cdr-label">Salesperson</span><span class="cdr-value" t-esc="doc.user_id.name if doc.user_id else 'All Salespersons'"/></div>
+                                    <div class="cdr-info-row"><span class="cdr-icon">◆</span><span class="cdr-label">Visit Status</span><span class="cdr-value" t-esc="dict(doc._fields['visit_status'].selection).get(doc.visit_status)"/></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="cdr-section-soft">Summary <span style="float:right;font-size:9px;font-weight:400;color:#5b6f90;">Key highlights from the selected period</span></div>
+                        <div class="cdr-kpi-wrap">
+                            <div class="row" style="margin:0 -2px;">
+                                <div class="col" style="padding:2px;"><div class="cdr-kpi blue"><div class="cdr-kpi-icon">●●●</div><div class="cdr-kpi-value" t-esc="doc.total_visits"/><div class="cdr-kpi-label">Total Visits</div></div></div>
+                                <div class="col" style="padding:2px;"><div class="cdr-kpi green"><div class="cdr-kpi-icon">✓</div><div class="cdr-kpi-value" t-esc="doc.completed_visits"/><div class="cdr-kpi-label">Completed</div></div></div>
+                                <div class="col" style="padding:2px;"><div class="cdr-kpi orange"><div class="cdr-kpi-icon">◷</div><div class="cdr-kpi-value" t-esc="doc.pending_visits"/><div class="cdr-kpi-label">Pending</div></div></div>
+                                <div class="col" style="padding:2px;"><div class="cdr-kpi purple"><div class="cdr-kpi-icon">◆</div><div class="cdr-kpi-value"><span t-esc="'%.1f' % doc.total_distance_km"/> km</div><div class="cdr-kpi-label">Route Distance</div></div></div>
+                                <div class="col" style="padding:2px;"><div class="cdr-kpi pink"><div class="cdr-kpi-icon">◷</div><div class="cdr-kpi-value"><span t-esc="'%dh %02dm' % (int(doc.total_visit_minutes // 60), int(doc.total_visit_minutes % 60))"/></div><div class="cdr-kpi-label">Visit Time</div></div></div>
+                                <div class="col" style="padding:2px;"><div class="cdr-kpi teal"><div class="cdr-kpi-icon">≋</div><div class="cdr-kpi-value"><span t-esc="'%.2f' % doc.total_expense"/></div><div class="cdr-kpi-label">Actual Expense (<span t-esc="env.company.currency_id.name"/>)</div></div></div>
+                                <div class="col" style="padding:2px;"><div class="cdr-kpi purple"><div class="cdr-kpi-icon">★</div><div class="cdr-kpi-value"><span t-esc="'%.1f' % doc.average_rating"/></div><div class="cdr-kpi-label">Average Rating</div></div></div>
+                            </div>
+                        </div>
+
+                        <div class="cdr-section">Visit Summary</div>
+                        <table class="cdr-table">
+                            <thead>
+                                <tr>
+                                    <th style="width:3%;">#</th>
+                                    <th style="width:10%;">Date</th>
+                                    <th style="width:14%;">Visit Plan</th>
+                                    <th style="width:14%;">Salesperson</th>
+                                    <th style="width:14%;">Purpose</th>
+                                    <th style="width:10%;">Check In</th>
+                                    <th style="width:10%;">Check Out</th>
+                                    <th style="width:9%;">Duration</th>
+                                    <th style="width:9%;">Status</th>
+                                    <th style="width:7%;">Rating</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-if="not doc.line_ids">
+                                    <tr><td colspan="10" class="text-center">No visit data found for the selected filters.</td></tr>
+                                </t>
+                                <t t-foreach="doc.line_ids" t-as="line">
+                                    <tr>
+                                        <td t-esc="line_index + 1"/>
+                                        <td><span t-field="line.visit_date"/></td>
+                                        <td><span t-esc="line.visit_plan_ref or '-'"/></td>
+                                        <td><span t-esc="line.user_id.name or '-'"/></td>
+                                        <td><span t-esc="dict(line._fields['purpose'].selection).get(line.purpose, '-')"/></td>
+                                        <td><span t-esc="context_timestamp(line.checkin_time).strftime('%I:%M %p') if line.checkin_time else '-'"/></td>
+                                        <td><span t-esc="context_timestamp(line.checkout_time).strftime('%I:%M %p') if line.checkout_time else '-'"/></td>
+                                        <td><span t-esc="('%dh %02dm' % (int(line.duration_minutes // 60), int(line.duration_minutes % 60))) if line.duration_minutes else '-'"/></td>
+                                        <td>
+                                            <span t-if="line.status == 'completed'" class="cdr-status completed">Completed</span>
+                                            <span t-elif="line.status == 'pending'" class="cdr-status pending">Pending</span>
+                                            <span t-else="" class="cdr-status progress">In Progress</span>
+                                        </td>
+                                        <td><span t-if="line.rating" class="cdr-stars" t-esc="'★' * int(line.rating)"/><span t-if="not line.rating">-</span></td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+
+                        <div class="cdr-footer">
+                            <span>Customer Detailed Visit Report&#160;&#160;|&#160;&#160;Salesperson Tracking</span>
+                            <span style="float:right;">Page 1</span>
+                        </div>
+                    </div>
+
+                    <t t-if="doc.line_ids">
+                        <div class="page cdr-page">
+                            <div class="cdr-header" style="padding:9px 12px;">
+                                <div class="row align-items-center">
+                                    <div class="col-4">
+                                        <t t-if="env.company.logo"><img t-att-src="image_data_uri(env.company.logo)" class="cdr-logo" style="max-height:45px;"/></t>
+                                        <t t-else=""><div class="cdr-company-name" t-esc="env.company.name"/></t>
+                                    </div>
+                                    <div class="col-5 text-center">
+                                        <div style="font-size:19px;font-weight:700;color:#1260a9;">Detailed Visit Information</div>
+                                        <div style="font-size:10px;color:#5d7395;" t-esc="doc.partner_id.name"/>
+                                    </div>
+                                    <div class="col-3">
+                                        <div class="cdr-meta"><strong>Period</strong><div><span t-field="doc.date_from"/> - <span t-field="doc.date_to"/></div></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <t t-foreach="doc.line_ids" t-as="line">
+                                <div class="cdr-detail">
+                                    <div class="cdr-detail-head">
+                                        <span t-esc="line.visit_plan_ref or (line.tracker_id.name if line.tracker_id else '-')"/>
+                                        <span style="float:right;">
+                                            <span t-if="line.status == 'completed'" class="cdr-status completed">Completed</span>
+                                            <span t-elif="line.status == 'pending'" class="cdr-status pending">Planned / Pending</span>
+                                            <span t-else="" class="cdr-status progress">In Progress</span>
+                                        </span>
+                                    </div>
+                                    <div class="cdr-detail-body">
+                                        <div class="row">
+                                            <div class="col-6">
+                                                <div class="cdr-info-row"><span class="cdr-label">Visit Date</span><span class="cdr-value" t-field="line.visit_date"/></div>
+                                                <div class="cdr-info-row"><span class="cdr-label">Salesperson</span><span class="cdr-value" t-esc="line.user_id.name or '-'"/></div>
+                                                <div class="cdr-info-row"><span class="cdr-label">Purpose</span><span class="cdr-value" t-esc="dict(line._fields['purpose'].selection).get(line.purpose, '-')"/></div>
+                                                <div class="cdr-info-row"><span class="cdr-label">Route Distance</span><span class="cdr-value" t-esc="'%.2f KM' % line.distance_km"/></div>
+                                            </div>
+                                            <div class="col-6 cdr-split">
+                                                <div class="cdr-info-row"><span class="cdr-label">Check In</span><span class="cdr-value" t-esc="context_timestamp(line.checkin_time).strftime('%d %b %Y %I:%M %p') if line.checkin_time else '-'"/></div>
+                                                <div class="cdr-info-row"><span class="cdr-label">Check Out</span><span class="cdr-value" t-esc="context_timestamp(line.checkout_time).strftime('%d %b %Y %I:%M %p') if line.checkout_time else '-'"/></div>
+                                                <div class="cdr-info-row"><span class="cdr-label">Visit Duration</span><span class="cdr-value" t-esc="('%dh %02dm' % (int(line.duration_minutes // 60), int(line.duration_minutes % 60))) if line.duration_minutes else '-'"/></div>
+                                                <div class="cdr-info-row"><span class="cdr-label">Tracking Time</span><span class="cdr-value" t-esc="('%dh %02dm' % (int(line.tracker_id.total_tracking_time_minutes // 60), int(line.tracker_id.total_tracking_time_minutes % 60))) if line.tracker_id else '-'"/></div>
+                                            </div>
+                                        </div>
+
+                                        <t t-if="line.checkin_id">
+                                            <div class="row" style="margin-top:7px;">
+                                                <div class="col-7">
+                                                    <div class="cdr-subbox">
+                                                        <div class="cdr-subtitle">Customer Feedback</div>
+                                                        <div><span class="cdr-label">Outcome</span><span t-esc="dict(line.checkin_id._fields['meeting_outcome'].selection).get(line.checkin_id.meeting_outcome, '-')"/></div>
+                                                        <div><span class="cdr-label">Rating</span><span class="cdr-stars" t-esc="('★' * int(line.rating)) if line.rating else '-'"/></div>
+                                                        <div><span class="cdr-label">Feedback</span><span t-esc="line.checkin_id.customer_feedback or '-'"/></div>
+                                                        <div><span class="cdr-label">Notes</span><span t-esc="line.checkin_id.notes or '-'"/></div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-5">
+                                                    <div class="cdr-subbox">
+                                                        <div class="cdr-subtitle">Expense Details (<span t-esc="env.company.currency_id.name"/>)</div>
+                                                        <div><span class="cdr-label">Transport</span><span t-esc="'%.2f' % (line.tracker_id.actual_transport_cost if line.tracker_id else 0.0)"/></div>
+                                                        <div><span class="cdr-label">Food</span><span t-esc="'%.2f' % (line.tracker_id.actual_food_cost if line.tracker_id else 0.0)"/></div>
+                                                        <div><span class="cdr-label">Other</span><span t-esc="'%.2f' % (line.tracker_id.actual_other_cost if line.tracker_id else 0.0)"/></div>
+                                                        <div><span class="cdr-label"><strong>Total</strong></span><strong t-esc="'%.2f' % (line.tracker_id.actual_total_cost if line.tracker_id else 0.0)"/></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="row" style="margin-top:7px;">
+                                                <div t-att-class="'col-8' if line.checkin_id.selfie_image else 'col-12'">
+                                                    <div class="cdr-subbox" style="min-height:72px;">
+                                                        <div class="cdr-subtitle">Check-In Location</div>
+                                                        <div><span class="cdr-label">Location</span><span t-esc="line.checkin_id.location_name or '-'"/></div>
+                                                        <div><span class="cdr-label">Latitude</span><span t-esc="line.checkin_id.checkin_latitude or '-'"/></div>
+                                                        <div><span class="cdr-label">Longitude</span><span t-esc="line.checkin_id.checkin_longitude or '-'"/></div>
+                                                        <div t-if="line.checkin_id.checkout_latitude or line.checkin_id.checkout_longitude"><span class="cdr-label">Checkout GPS</span><span t-esc="'%s, %s' % (line.checkin_id.checkout_latitude or '-', line.checkin_id.checkout_longitude or '-')"/></div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-4" t-if="line.checkin_id.selfie_image">
+                                                    <div class="cdr-subbox" style="text-align:center;min-height:72px;">
+                                                        <div class="cdr-subtitle">Check-In Photo</div>
+                                                        <img t-att-src="image_data_uri(line.checkin_id.selfie_image)" class="cdr-photo"/>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </t>
+                                    </div>
+                                </div>
+                            </t>
+
+                            <div class="cdr-footer">
+                                <span>Customer Detailed Visit Report&#160;&#160;|&#160;&#160;Salesperson Tracking</span>
+                                <span style="float:right;">Detailed Visits</span>
+                            </div>
+                        </div>
+                    </t>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

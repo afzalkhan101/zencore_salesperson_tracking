@@ -31,6 +31,23 @@ def _localize_dt(dt, tz_name=None):
     return dt_utc.strftime('%Y-%m-%d %H:%M:%S')
 
 
+def _epoch_ms(dt):
+    """Convert an Odoo UTC datetime (naive) to Unix epoch milliseconds."""
+    if not dt:
+        return 0
+    if isinstance(dt, str):
+        try:
+            dt = datetime.strptime(dt, '%Y-%m-%d %H:%M:%S')
+        except ValueError:
+            return 0
+    try:
+        if dt.tzinfo is None:
+            dt = utc.localize(dt)
+        return int(dt.timestamp() * 1000)
+    except Exception:
+        return 0
+
+
 class SalespersonTrackingController(http.Controller):
 
     def _check_access(self):
@@ -354,31 +371,28 @@ class SalespersonTrackingController(http.Controller):
 
     @http.route("/salesperson/dashboard", type="http", auth="user", website=False)
     def salesperson_dashboard(self, **kwargs):
-        """Manager dashboard — Today (live map) / Weekly / Monthly / custom date range (reports only unless the range is exactly today)."""
+        """Manager dashboard with live map, KPI cards, activity feed and alerts."""
         user = self._check_access()
         tz_name = self._user_tz(user)
         is_manager = getattr(user, 'salesperson_role', '') == 'manager'
 
-        period = kwargs.get('period') if kwargs.get('period') in ('today', 'weekly', 'monthly') else 'today'
-        salesman_id = int(kwargs['salesman_id']) if kwargs.get('salesman_id') else None
+        allowed_periods = ('today', 'yesterday', 'weekly', 'monthly')
+        period = kwargs.get('period') if kwargs.get('period') in allowed_periods else 'today'
+        try:
+            salesman_id = int(kwargs['salesman_id']) if kwargs.get('salesman_id') else None
+        except (TypeError, ValueError):
+            salesman_id = None
 
         today = fields.Date.today()
         Tracker = request.env["salesperson.tracker"].sudo()
 
-        # Salesman filter dropdown — every user who has at least one tracker
-        # (i.e. has actually been tracked at some point), not every res.users.
+        # Salesman filter contains only users who have tracking records.
         all_trackers_ever = Tracker.search([])
         salesmen = sorted(
             {(t.user_id.id, t.user_id.name) for t in all_trackers_ever if t.user_id},
             key=lambda p: p[1] or '',
         )
 
-        # Custom date range (date_from/date_to) takes priority over the
-        # Today/Weekly/Monthly quick tabs when both are supplied — this is
-        # what the date-range picker in the header submits. It falls back
-        # to the period tabs' own computed range when absent, so the picker
-        # always shows a sensible pre-filled range matching whichever tab
-        # is currently active.
         custom_range = bool(kwargs.get('date_from') and kwargs.get('date_to'))
         if custom_range:
             try:
@@ -386,6 +400,7 @@ class SalespersonTrackingController(http.Controller):
                 date_to = fields.Date.from_string(kwargs['date_to'])
             except Exception:
                 custom_range = False
+
         if custom_range:
             if date_from > date_to:
                 date_from, date_to = date_to, date_from
@@ -394,53 +409,46 @@ class SalespersonTrackingController(http.Controller):
                 period_label = date_from.strftime('%d %B %Y')
             else:
                 period_label = f"{date_from.strftime('%d %b')} – {date_to.strftime('%d %b %Y')}"
-            # A custom single-day range that happens to be today behaves
-            # exactly like the "Today" tab (live map); anything else — a
-            # past day, or any multi-day span — is report-only, same as
-            # Weekly/Monthly.
             is_live = (date_from == date_to == today)
         else:
             date_domain, period_label = self._dashboard_period_domain(period, today)
             date_from, date_to = self._dashboard_period_range(period, today)
             is_live = (period == 'today')
 
-        domain = date_domain
+        domain = list(date_domain)
         if salesman_id:
-            domain = domain + [("user_id", "=", salesman_id)]
+            domain.append(("user_id", "=", salesman_id))
         trackers = Tracker.search(domain)
 
         if is_live:
-            rows, map_salesmen, map_customers = self._dashboard_today_rows(trackers)
+            live_payload = self._dashboard_live_payload(trackers, tz_name)
+            rows = live_payload['rows']
+            map_salesmen = live_payload['trackers']
+            map_customers = live_payload['customers']
+            summary = live_payload['summary']
+            activity_feed = live_payload['activities']
+            dashboard_alerts = live_payload['alerts']
         else:
-            rows = self._dashboard_period_rows(trackers)
+            rows = self._dashboard_period_rows(trackers, tz_name)
             map_salesmen, map_customers = [], []
-
-        total_planned = sum(r['total'] for r in rows)
-        total_covered = sum(r['covered'] for r in rows)
-        kpi_pct = int(total_covered * 100 / total_planned) if total_planned else 0
-        missed_count = sum(r['missed'] for r in rows)
-
-        live_count = sum(1 for r in rows if r.get('status') in ('moving', 'at_customer'))
-        idle_count = sum(1 for r in rows if r.get('status') == 'idle')
-        offline_count = sum(1 for r in rows if r.get('status') == 'offline')
-
-        # Activity feed only makes sense for the live view (recent GPS pings)
-        activity_feed = []
-        if is_live:
-            log_domain = [("tracked_at", ">=", fields.Datetime.to_datetime(today))]
-            if salesman_id:
-                log_domain.append(("tracker_id.user_id", "=", salesman_id))
-            logs = request.env["salesperson.location.log"].sudo().search(
-                log_domain, order="tracked_at desc", limit=20
-            )
-            for log in logs:
-                status = log.tracker_id._compute_dashboard_status()[0] if log.tracker_id else 'offline'
-                activity_feed.append({
-                    'name': log.tracker_id.user_id.name if log.tracker_id and log.tracker_id.user_id else '—',
-                    'desc': log.location_name or f"{log.latitude:.4f}, {log.longitude:.4f}",
-                    'time': _localize_dt(log.tracked_at, tz_name)[11:16] if log.tracked_at else '—',
-                    'dot_color': Tracker.DASHBOARD_STATUS_COLORS.get(status, '#DC2626'),
-                })
+            total_planned = sum(r['total'] for r in rows)
+            total_covered = sum(r['covered'] for r in rows)
+            total_distance = round(sum(r['distance_km'] for r in rows), 1)
+            summary = {
+                'total_reps': len(rows),
+                'active_count': 0,
+                'at_customer_count': 0,
+                'moving_count': 0,
+                'idle_count': 0,
+                'offline_count': 0,
+                'total_planned': total_planned,
+                'total_covered': total_covered,
+                'missed_count': max(total_planned - total_covered, 0),
+                'visit_rate': int(total_covered * 100 / total_planned) if total_planned else 0,
+                'total_distance': total_distance,
+            }
+            activity_feed = []
+            dashboard_alerts = []
 
         my_tracker = None
         my_status = 'offline'
@@ -473,17 +481,20 @@ class SalespersonTrackingController(http.Controller):
             "rows": rows,
             "map_salesmen": map_salesmen,
             "map_customers": map_customers,
-            "live_count": live_count,
-            "idle_count": idle_count,
-            "offline_count": offline_count,
-            "total_reps": len(rows),
-            "total_planned": total_planned,
-            "total_covered": total_covered,
+            "summary": summary,
             "activity_feed": activity_feed,
-            "kpi_pct": kpi_pct,
-            "kpi_covered": total_covered,
-            "kpi_in_progress": live_count + idle_count,
-            "kpi_missed": missed_count,
+            "dashboard_alerts": dashboard_alerts,
+            # Backward-compatible names used by older custom snippets.
+            "live_count": summary['moving_count'] + summary['at_customer_count'],
+            "idle_count": summary['idle_count'],
+            "offline_count": summary['offline_count'],
+            "total_reps": summary['total_reps'],
+            "total_planned": summary['total_planned'],
+            "total_covered": summary['total_covered'],
+            "kpi_pct": summary['visit_rate'],
+            "kpi_covered": summary['total_covered'],
+            "kpi_in_progress": summary['active_count'],
+            "kpi_missed": summary['missed_count'],
             "my_tracker": my_tracker,
             "my_status": my_status,
             "my_dist": my_dist,
@@ -495,7 +506,10 @@ class SalespersonTrackingController(http.Controller):
         return self._no_cache(request.render("zencore_salesperson_tracking.salesperson_dashboard", values))
 
     def _dashboard_period_range(self, period, today):
-        """(date_from, date_to) for a quick-tab period — used to pre-fill the date-range picker."""
+        """Return (date_from, date_to) for a quick-tab period."""
+        if period == 'yesterday':
+            yesterday = today - timedelta(days=1)
+            return yesterday, yesterday
         if period == 'weekly':
             start = today - timedelta(days=today.weekday())
             return start, start + timedelta(days=6)
@@ -506,23 +520,73 @@ class SalespersonTrackingController(http.Controller):
         return today, today
 
     def _dashboard_period_domain(self, period, today):
-        """Date domain + human label for the 3 dashboard tabs."""
+        """Date domain + human label for dashboard quick tabs."""
+        if period == 'yesterday':
+            yesterday = today - timedelta(days=1)
+            return [("visit_date", "=", yesterday)], yesterday.strftime('%A, %d %B %Y')
         if period == 'weekly':
-            start = today - timedelta(days=today.weekday())  # Monday
+            start = today - timedelta(days=today.weekday())
             end = start + timedelta(days=6)
-            label = f"{start.strftime('%d %b')} – {end.strftime('%d %b %Y')}"
-            return [("visit_date", ">=", start), ("visit_date", "<=", end)], label
+            return [("visit_date", ">=", start), ("visit_date", "<=", end)], f"{start.strftime('%d %b')} – {end.strftime('%d %b %Y')}"
         if period == 'monthly':
             start = today.replace(day=1)
             next_month = (start.replace(day=28) + timedelta(days=4)).replace(day=1)
             end = next_month - timedelta(days=1)
-            label = today.strftime('%B %Y')
-            return [("visit_date", ">=", start), ("visit_date", "<=", end)], label
-        # today
+            return [("visit_date", ">=", start), ("visit_date", "<=", end)], today.strftime('%B %Y')
         return [("visit_date", "=", today)], today.strftime('%A, %d %B %Y')
 
-    def _dashboard_today_rows(self, trackers):
-        """Per-salesman live row + live map marker lists (Today tab only)."""
+    def _format_tracking_duration(self, seconds):
+        seconds = max(int(seconds or 0), 0)
+        hours, rem = divmod(seconds, 3600)
+        minutes = rem // 60
+        if hours:
+            return f"{hours}h {minutes:02d}m"
+        return f"{minutes}m"
+
+    def _tracker_tracking_seconds(self, tracker, now=None):
+        """Stored stopped-session total + currently running session time."""
+        now = now or fields.Datetime.now()
+        total = int(tracker.total_tracking_time_seconds or 0)
+        session = tracker.current_session_id
+        if session and session.state == 'active' and session.start_time:
+            total += max(int((now - session.start_time).total_seconds()), 0)
+        return total
+
+    def _tracker_speed_kmh(self, tracker):
+        """Best-effort current speed from the two latest GPS points."""
+        logs = request.env['salesperson.location.log'].sudo().search(
+            [('tracker_id', '=', tracker.id)], order='tracked_at desc', limit=2
+        )
+        if not logs:
+            return 0.0
+        if logs[0].speed and logs[0].speed > 0:
+            return round(logs[0].speed * 3.6, 1)
+        if len(logs) < 2 or not logs[0].tracked_at or not logs[1].tracked_at:
+            return 0.0
+        delta_s = (logs[0].tracked_at - logs[1].tracked_at).total_seconds()
+        if delta_s <= 0:
+            return 0.0
+        km = self._haversine_km(
+            logs[0].latitude, logs[0].longitude,
+            logs[1].latitude, logs[1].longitude,
+        )
+        speed = (km / delta_s) * 3600.0
+        # Filter obvious GPS jumps; they should not appear as real vehicle speed.
+        return round(speed, 1) if 0 <= speed <= 180 else 0.0
+
+    def _gps_health(self, tracker, now=None):
+        now = now or fields.Datetime.now()
+        if not tracker.last_seen:
+            return 'No GPS', '#DC2626', 999999
+        age = max(int((now - tracker.last_seen).total_seconds()), 0)
+        if age <= 120:
+            return 'Good', '#059669', age
+        if age <= 900:
+            return 'Stale', '#D97706', age
+        return 'GPS Lost', '#DC2626', age
+
+    def _dashboard_today_rows(self, trackers, tz_name=None):
+        """Build detailed Today rows used by table and map."""
         COLORS = [
             'linear-gradient(135deg,#2563EB,#4F46E5)',
             'linear-gradient(135deg,#059669,#10B981)',
@@ -530,40 +594,79 @@ class SalespersonTrackingController(http.Controller):
             'linear-gradient(135deg,#DC2626,#E11D48)',
             'linear-gradient(135deg,#7C3AED,#A78BFA)',
         ]
+        now = fields.Datetime.now()
         rows, map_salesmen, map_customers = [], [], []
         seen_customer_ids = set()
-        for i, t in enumerate(trackers):
-            status, color, label = t._compute_dashboard_status()
-            name = t.user_id.name or 'Unknown'
-            initials = ''.join(p[0].upper() for p in name.split()[:2])
-            rows.append({
-                'id': t.id, 'name': name, 'initials': initials,
-                'status': status, 'status_label': label, 'status_color': color,
-                'covered': t.total_visited, 'total': t.total_visits,
-                'missed': max(t.total_visits - t.total_visited, 0),
-                'pct': int(t.total_visited * 100 / t.total_visits) if t.total_visits else 0,
-                'distance': f"{t.total_distance_km:.1f} km",
+
+        for i, tracker in enumerate(trackers):
+            status, color, label = tracker._compute_dashboard_status()
+            name = tracker.user_id.name or 'Unknown'
+            initials = ''.join(p[0].upper() for p in name.split()[:2]) or '?'
+            total = tracker.total_visits
+            covered = tracker.total_visited
+            remaining = max(total - covered, 0)
+            tracking_seconds = self._tracker_tracking_seconds(tracker, now)
+            first_session = tracker.session_ids.sorted('start_time')[:1]
+            first_start = first_session.start_time if first_session else tracker.checkin_time
+            gps_label, gps_color, gps_age = self._gps_health(tracker, now)
+            speed_kmh = self._tracker_speed_kmh(tracker) if tracker.is_tracking else 0.0
+
+            row = {
+                'id': tracker.id,
+                'user_id': tracker.user_id.id,
+                'name': name,
+                'initials': initials,
+                'status': status,
+                'status_label': label,
+                'status_color': color,
+                'covered': covered,
+                'total': total,
+                'missed': remaining,
+                'pct': int(covered * 100 / total) if total else 0,
+                'distance_km': round(tracker.total_distance_km or 0.0, 1),
+                'distance': f"{tracker.total_distance_km or 0.0:.1f} km",
+                'tracking_seconds': tracking_seconds,
+                'tracking_time': self._format_tracking_duration(tracking_seconds),
+                'first_start': _localize_dt(first_start, tz_name)[11:16] if first_start else '—',
+                'last_update': _localize_dt(tracker.last_seen, tz_name)[11:19] if tracker.last_seen else '—',
+                'last_seen_epoch': _epoch_ms(tracker.last_seen),
+                'last_seen_age': gps_age,
+                'gps_health': gps_label,
+                'gps_health_color': gps_color,
+                'accuracy': round(tracker.last_accuracy or 0.0, 1),
+                'speed_kmh': speed_kmh,
+                'location': tracker.location_name or '—',
                 'gradient': COLORS[i % len(COLORS)],
-            })
-            if t.last_latitude and t.last_longitude:
+                'state': tracker.state,
+            }
+            rows.append(row)
+
+            if tracker.last_latitude and tracker.last_longitude:
                 map_salesmen.append({
-                    'id': t.id, 'name': name, 'initials': initials,
-                    'lat': t.last_latitude, 'lng': t.last_longitude,
-                    'status': status, 'status_label': label, 'status_color': color,
+                    **row,
+                    'lat': tracker.last_latitude,
+                    'lng': tracker.last_longitude,
                 })
-            for customer in t.target_line_ids.mapped('customer_ids'):
+
+            visited_ids = set(tracker.visited_line_ids.mapped('partner_id').ids)
+            for customer in tracker.target_line_ids.mapped('customer_ids'):
                 if customer.id in seen_customer_ids:
                     continue
                 if customer.partner_latitude and customer.partner_longitude:
                     seen_customer_ids.add(customer.id)
                     map_customers.append({
-                        'id': customer.id, 'name': customer.name,
-                        'lat': customer.partner_latitude, 'lng': customer.partner_longitude,
+                        'id': customer.id,
+                        'name': customer.name,
+                        'lat': customer.partner_latitude,
+                        'lng': customer.partner_longitude,
+                        'visited': customer.id in visited_ids,
                     })
+
+        rows.sort(key=lambda r: r['name'] or '')
         return rows, map_salesmen, map_customers
 
-    def _dashboard_period_rows(self, trackers):
-        """Aggregated per-salesman totals across a date range (Weekly/Monthly — no live status)."""
+    def _dashboard_period_rows(self, trackers, tz_name=None):
+        """Aggregate per-salesman totals across a historical date range."""
         COLORS = [
             'linear-gradient(135deg,#2563EB,#4F46E5)',
             'linear-gradient(135deg,#059669,#10B981)',
@@ -572,69 +675,236 @@ class SalespersonTrackingController(http.Controller):
             'linear-gradient(135deg,#7C3AED,#A78BFA)',
         ]
         by_user = {}
-        for t in trackers:
-            if not t.user_id:
+        for tracker in trackers:
+            if not tracker.user_id:
                 continue
-            agg = by_user.setdefault(t.user_id.id, {
-                'id': t.user_id.id, 'name': t.user_id.name, 'covered': 0, 'total': 0, 'distance_km': 0.0,
+            agg = by_user.setdefault(tracker.user_id.id, {
+                'id': tracker.user_id.id,
+                'name': tracker.user_id.name,
+                'covered': 0,
+                'total': 0,
+                'distance_km': 0.0,
+                'tracking_seconds': 0,
+                'first_start_dt': None,
+                'last_seen_dt': None,
+                'tracker_id': tracker.id,
             })
-            agg['covered'] += t.total_visited
-            agg['total'] += t.total_visits
-            agg['distance_km'] += t.total_distance_km
+            agg['covered'] += tracker.total_visited
+            agg['total'] += tracker.total_visits
+            agg['distance_km'] += tracker.total_distance_km or 0.0
+            agg['tracking_seconds'] += tracker.total_tracking_time_seconds or 0
+            agg['tracker_id'] = tracker.id
+            sessions = tracker.session_ids.sorted('start_time')
+            if sessions:
+                start_dt = sessions[0].start_time
+                if start_dt and (not agg['first_start_dt'] or start_dt < agg['first_start_dt']):
+                    agg['first_start_dt'] = start_dt
+            if tracker.last_seen and (not agg['last_seen_dt'] or tracker.last_seen > agg['last_seen_dt']):
+                agg['last_seen_dt'] = tracker.last_seen
+
         rows = []
-        for i, agg in enumerate(by_user.values()):
-            initials = ''.join(p[0].upper() for p in agg['name'].split()[:2]) if agg['name'] else '?'
+        for i, agg in enumerate(sorted(by_user.values(), key=lambda x: x['name'] or '')):
+            initials = ''.join(p[0].upper() for p in (agg['name'] or '').split()[:2]) or '?'
+            remaining = max(agg['total'] - agg['covered'], 0)
             rows.append({
-                'id': agg['id'], 'name': agg['name'], 'initials': initials,
-                'status': None, 'status_label': '—', 'status_color': '#94A3B8',
-                'covered': agg['covered'], 'total': agg['total'],
-                'missed': max(agg['total'] - agg['covered'], 0),
+                'id': agg['tracker_id'],
+                'user_id': agg['id'],
+                'name': agg['name'],
+                'initials': initials,
+                'status': None,
+                'status_label': '—',
+                'status_color': '#94A3B8',
+                'covered': agg['covered'],
+                'total': agg['total'],
+                'missed': remaining,
                 'pct': int(agg['covered'] * 100 / agg['total']) if agg['total'] else 0,
+                'distance_km': round(agg['distance_km'], 1),
                 'distance': f"{agg['distance_km']:.1f} km",
+                'tracking_seconds': agg['tracking_seconds'],
+                'tracking_time': self._format_tracking_duration(agg['tracking_seconds']),
+                'first_start': _localize_dt(agg['first_start_dt'], tz_name)[11:16] if agg['first_start_dt'] else '—',
+                'last_update': _localize_dt(agg['last_seen_dt'], tz_name)[11:19] if agg['last_seen_dt'] else '—',
+                'last_seen_epoch': _epoch_ms(agg['last_seen_dt']),
+                'last_seen_age': 0,
+                'gps_health': '—',
+                'gps_health_color': '#94A3B8',
+                'accuracy': 0.0,
+                'speed_kmh': 0.0,
+                'location': '—',
                 'gradient': COLORS[i % len(COLORS)],
+                'state': 'completed',
             })
-        rows.sort(key=lambda r: r['name'] or '')
         return rows
 
-    # ── Dashboard data API (for map AJAX — Today tab live polling) ─────────────
+    def _dashboard_activities(self, trackers, tz_name, limit=8):
+        tracker_ids = trackers.ids
+        if not tracker_ids:
+            return []
+        events = []
+
+        sessions = request.env['salesperson.tracking.session'].sudo().search(
+            [('tracker_id', 'in', tracker_ids)], order='start_time desc', limit=20
+        )
+        for session in sessions:
+            name = session.tracker_id.user_id.name or 'Salesperson'
+            if session.start_time:
+                events.append({
+                    'dt': session.start_time,
+                    'kind': 'start',
+                    'color': '#2563EB',
+                    'icon': '▶',
+                    'text': f"{name} started tracking",
+                })
+            if session.end_time:
+                events.append({
+                    'dt': session.end_time,
+                    'kind': 'stop',
+                    'color': '#64748B',
+                    'icon': '■',
+                    'text': f"{name} stopped tracking",
+                })
+
+        checkins = request.env['salesperson.checkin'].sudo().search(
+            [('tracker_id', 'in', tracker_ids)], order='checkin_time desc', limit=20
+        )
+        for checkin in checkins:
+            name = checkin.user_id.name or 'Salesperson'
+            customer = checkin.partner_id.name or 'customer'
+            if checkin.checkin_time:
+                events.append({
+                    'dt': checkin.checkin_time,
+                    'kind': 'arrival',
+                    'color': '#7C3AED',
+                    'icon': '●',
+                    'text': f"{name} arrived at {customer}",
+                })
+            if checkin.checkout_time:
+                events.append({
+                    'dt': checkin.checkout_time,
+                    'kind': 'completed',
+                    'color': '#059669',
+                    'icon': '✓',
+                    'text': f"{name} completed visit at {customer}",
+                })
+
+        # Add a lightweight current-state event for actively moving users.
+        for tracker in trackers:
+            status, _, _ = tracker._compute_dashboard_status()
+            if tracker.last_seen and status in ('moving', 'at_customer'):
+                speed = self._tracker_speed_kmh(tracker) if status == 'moving' else 0.0
+                if status == 'moving':
+                    suffix = f" ({speed:.0f} km/h)" if speed >= 1 else ''
+                    text = f"{tracker.user_id.name} is moving{suffix}"
+                    color, icon = '#2563EB', '➜'
+                else:
+                    text = f"{tracker.user_id.name} is at a customer location"
+                    color, icon = '#059669', '●'
+                events.append({
+                    'dt': tracker.last_seen,
+                    'kind': status,
+                    'color': color,
+                    'icon': icon,
+                    'text': text,
+                })
+
+        events.sort(key=lambda e: e['dt'] or datetime.min, reverse=True)
+        out = []
+        for event in events[:limit]:
+            local = _localize_dt(event['dt'], tz_name)
+            out.append({
+                'kind': event['kind'],
+                'color': event['color'],
+                'icon': event['icon'],
+                'text': event['text'],
+                'time': local[11:16] if local else '—',
+                'epoch': _epoch_ms(event['dt']),
+            })
+        return out
+
+    def _dashboard_alerts(self, trackers):
+        now = fields.Datetime.now()
+        alerts = []
+        stale = [t for t in trackers if t.is_tracking and (not t.last_seen or (now - t.last_seen) > timedelta(minutes=15))]
+        not_started = [t for t in trackers if t.state == 'planned']
+        remaining = sum(max(t.total_visits - t.total_visited, 0) for t in trackers)
+
+        if stale:
+            alerts.append({
+                'level': 'warning',
+                'icon': '!',
+                'text': f"{len(stale)} salesperson{'s' if len(stale) != 1 else ''} have not sent GPS for 15 minutes",
+                'detail': 'Check location permission, network or background tracking.',
+            })
+        if not_started:
+            alerts.append({
+                'level': 'info',
+                'icon': 'i',
+                'text': f"{len(not_started)} salesperson{'s' if len(not_started) != 1 else ''} have not started tracking yet",
+                'detail': 'They are still in Planned state.',
+            })
+        if remaining:
+            alerts.append({
+                'level': 'danger',
+                'icon': '!',
+                'text': f"{remaining} planned visit{'s' if remaining != 1 else ''} remaining today",
+                'detail': 'Remaining means planned but not yet completed.',
+            })
+        return alerts[:5]
+
+    def _dashboard_live_payload(self, trackers, tz_name):
+        rows, map_salesmen, map_customers = self._dashboard_today_rows(trackers, tz_name)
+        status_counts = {
+            'at_customer': sum(1 for r in rows if r['status'] == 'at_customer'),
+            'moving': sum(1 for r in rows if r['status'] == 'moving'),
+            'idle': sum(1 for r in rows if r['status'] == 'idle'),
+            'offline': sum(1 for r in rows if r['status'] == 'offline'),
+        }
+        total_planned = sum(r['total'] for r in rows)
+        total_covered = sum(r['covered'] for r in rows)
+        total_distance = round(sum(r['distance_km'] for r in rows), 1)
+        summary = {
+            'total_reps': len(rows),
+            'active_count': status_counts['at_customer'] + status_counts['moving'] + status_counts['idle'],
+            'at_customer_count': status_counts['at_customer'],
+            'moving_count': status_counts['moving'],
+            'idle_count': status_counts['idle'],
+            'offline_count': status_counts['offline'],
+            'total_planned': total_planned,
+            'total_covered': total_covered,
+            'missed_count': max(total_planned - total_covered, 0),
+            'visit_rate': int(total_covered * 100 / total_planned) if total_planned else 0,
+            'total_distance': total_distance,
+        }
+        return {
+            'rows': rows,
+            'trackers': map_salesmen,
+            'customers': map_customers,
+            'summary': summary,
+            'activities': self._dashboard_activities(trackers, tz_name),
+            'alerts': self._dashboard_alerts(trackers),
+        }
+
+    # ── Dashboard data API (Today tab live polling) ───────────────────────────
 
     @http.route("/salesperson/dashboard/data", type="http", auth="user", methods=["GET"], csrf=False)
     def dashboard_data(self, **kwargs):
-        """JSON endpoint the Today tab polls every few seconds to move markers
-        and update statuses without a full page reload."""
-        self._check_access()
+        """Live JSON payload for map, KPI cards, activity feed and row statuses."""
+        user = self._check_access()
+        tz_name = self._user_tz(user)
         today = fields.Date.today()
         Tracker = request.env["salesperson.tracker"].sudo()
         domain = [("visit_date", "=", today)]
-        salesman_id = int(kwargs['salesman_id']) if kwargs.get('salesman_id') else None
+        try:
+            salesman_id = int(kwargs['salesman_id']) if kwargs.get('salesman_id') else None
+        except (TypeError, ValueError):
+            salesman_id = None
         if salesman_id:
             domain.append(("user_id", "=", salesman_id))
         trackers = Tracker.search(domain)
-
-        salesmen_out, customers_out = [], []
-        seen_customer_ids = set()
-        for t in trackers:
-            status, color, label = t._compute_dashboard_status()
-            name = t.user_id.name or ''
-            initials = ''.join(p[0].upper() for p in name.split()[:2])
-            salesmen_out.append({
-                "id": t.id, "name": name, "initials": initials,
-                "status": status, "status_label": label, "status_color": color,
-                "lat": t.last_latitude or 0, "lng": t.last_longitude or 0,
-                "location": t.location_name or '',
-                "covered": t.total_visited, "total": t.total_visits,
-            })
-            for customer in t.target_line_ids.mapped('customer_ids'):
-                if customer.id in seen_customer_ids:
-                    continue
-                if customer.partner_latitude and customer.partner_longitude:
-                    seen_customer_ids.add(customer.id)
-                    customers_out.append({
-                        "id": customer.id, "name": customer.name,
-                        "lat": customer.partner_latitude, "lng": customer.partner_longitude,
-                    })
-
-        return self._json_response({"ok": True, "trackers": salesmen_out, "customers": customers_out})
+        payload = self._dashboard_live_payload(trackers, tz_name)
+        payload['ok'] = True
+        payload['server_time'] = _epoch_ms(fields.Datetime.now())
+        return self._json_response(payload)
 
     # ── JSON API ──────────────────────────────────────────────────────────────
 
@@ -1066,16 +1336,21 @@ class SalespersonTrackingController(http.Controller):
         # a stale ORM cache for is_tracking after our raw SQL writes.
         request.env.cr.execute(
             """
-            SELECT is_tracking, last_latitude, last_longitude, last_seen,
-                   checkin_time, checkout_time, location_name
-              FROM salesperson_tracker WHERE id = %s
+            SELECT t.is_tracking, t.last_latitude, t.last_longitude, t.last_seen,
+                   t.checkin_time, t.checkout_time, t.location_name,
+                   (
+                       SELECT MAX(l.tracked_at)
+                         FROM salesperson_location_log l
+                        WHERE l.tracker_id = t.id AND l.source = 'mobile'
+                   ) AS last_mobile_seen
+              FROM salesperson_tracker t WHERE t.id = %s
             """,
             (tracker_id,),
         )
         row = request.env.cr.fetchone()
         if not row:
             return self._json_response({"ok": False, "error": "Tracker not found"})
-        is_tracking_db, lat, lng, last_seen, checkin, checkout, loc = row
+        is_tracking_db, lat, lng, last_seen, checkin, checkout, loc, last_mobile_seen = row
 
         tz_name = self._user_tz(user)
         _logger.debug(
@@ -1113,6 +1388,8 @@ class SalespersonTrackingController(http.Controller):
             "last_lat": lat or 0,
             "last_lng": lng or 0,
             "last_seen": _localize_dt(last_seen, tz_name) if last_seen else "",
+            "last_seen_epoch_ms": _epoch_ms(last_seen),
+            "last_mobile_seen_epoch_ms": _epoch_ms(last_mobile_seen),
             "checkin_time": _localize_dt(checkin, tz_name) if checkin else "",
             "checkout_time": _localize_dt(checkout, tz_name) if checkout else "",
             "location_name": loc or "",

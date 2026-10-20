@@ -36,14 +36,6 @@ class ResConfigSettings(models.TransientModel):
                 "zencore_salesperson_tracking.geofence_radius",
                 record.geofence_radius_meters
             )
-            # NOTE: there is no in-memory "live" copy of this value to
-            # update — salesperson.tracker._get_geofence_radius() always
-            # reads straight from ir.config_parameter (set just above) on
-            # every call, so the new radius takes effect immediately for
-            # all subsequent geofence checks. There used to be a stray
-            # line here trying to set a GEOFENCE_RADIUS_METERS class
-            # attribute that doesn't exist on the model — that's what was
-            # throwing the AttributeError on Save.
 
     def get_values(self):
         res = super().get_values()

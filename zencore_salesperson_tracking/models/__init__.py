@@ -7,3 +7,7 @@ from . import salesperson_checkin
 from . import salesperson_tracking_session
 from . import salesperson_location_backup
 from . import res_config_settings
+
+from . import customer_report_wizard
+
+from . import performance_report_wizard

@@ -10,12 +10,18 @@
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""/>
         <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&amp;family=DM+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-        <link rel="stylesheet" type="text/css" href="/zencore_salesperson_tracking/static/src/css/dashboard_view.css"/>
+        <link rel="stylesheet" type="text/css" href="/zencore_salesperson_tracking/static/src/css/dashboard_view.css?v=19.0.4.1.0"/>
         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     </head>
     <body>
 
-    <div id="dash-config" style="display:none" t-att-data-period="period" t-att-data-is-live="'1' if is_live else '0'" t-att-data-salesman-id="selected_salesman_id or ''" t-att-data-date-from="date_from_str" t-att-data-date-to="date_to_str"></div>
+    <div id="dash-config"
+         style="display:none"
+         t-att-data-period="period"
+         t-att-data-is-live="'1' if is_live else '0'"
+         t-att-data-salesman-id="selected_salesman_id or ''"
+         t-att-data-date-from="date_from_str"
+         t-att-data-date-to="date_to_str"></div>
 
     <div class="dash-nav">
         <div class="nav-brand">
@@ -26,157 +32,307 @@
             </div>
         </div>
         <div class="nav-right">
+            <div class="refresh-meta" t-if="is_live">
+                <span class="refresh-dot"></span>
+                <div>
+                    <div id="last-refresh-text" class="refresh-title">Live data</div>
+                    <div class="refresh-sub">Auto refresh: 10 seconds</div>
+                </div>
+            </div>
             <t t-if="is_live">
-                <span class="nav-live-badge"><span class="nav-live-dot"/> Live</span>
+                <span class="nav-live-badge"><span class="nav-live-dot"></span> Live</span>
             </t>
             <span class="nav-role-badge" t-esc="'Manager' if is_manager else 'Salesman'"/>
             <t t-if="period == 'custom'">
-                <a class="nav-refresh-btn" title="Refresh" t-attf-href="/salesperson/dashboard?date_from=#{date_from_str}&amp;date_to=#{date_to_str}#{'&amp;salesman_id=%s' % selected_salesman_id if selected_salesman_id else ''}">&#8635;</a>
+                <a class="nav-refresh-btn" title="Refresh"
+                   t-attf-href="/salesperson/dashboard?date_from=#{date_from_str}&amp;date_to=#{date_to_str}#{'&amp;salesman_id=%s' % selected_salesman_id if selected_salesman_id else ''}">&#8635;</a>
             </t>
             <t t-else="">
-                <a class="nav-refresh-btn" title="Refresh" t-attf-href="/salesperson/dashboard?period=#{period}#{'&amp;salesman_id=%s' % selected_salesman_id if selected_salesman_id else ''}">&#8635;</a>
+                <a class="nav-refresh-btn" title="Refresh"
+                   t-attf-href="/salesperson/dashboard?period=#{period}#{'&amp;salesman_id=%s' % selected_salesman_id if selected_salesman_id else ''}">&#8635;</a>
             </t>
         </div>
     </div>
 
     <div class="dash-shell">
-        <div class="dash-header">
+        <div class="dash-heading-row">
             <div>
-                <div class="dash-title">Team Overview</div>
+                <div class="dash-title">Salesperson Tracking</div>
                 <div class="dash-date" t-esc="period_label"/>
             </div>
-        </div>
 
-        <div class="dash-controls">
-            <div class="period-tabs">
-                <a t-attf-href="/salesperson/dashboard?period=today#{'&amp;salesman_id=%s' % selected_salesman_id if selected_salesman_id else ''}"
-                   t-attf-class="period-tab #{'active' if period == 'today' else ''}">Today</a>
-                <a t-attf-href="/salesperson/dashboard?period=weekly#{'&amp;salesman_id=%s' % selected_salesman_id if selected_salesman_id else ''}"
-                   t-attf-class="period-tab #{'active' if period == 'weekly' else ''}">Weekly</a>
-                <a t-attf-href="/salesperson/dashboard?period=monthly#{'&amp;salesman_id=%s' % selected_salesman_id if selected_salesman_id else ''}"
-                   t-attf-class="period-tab #{'active' if period == 'monthly' else ''}">Monthly</a>
-            </div>
+            <div class="dash-controls">
+                <div class="period-tabs">
+                    <a t-attf-href="/salesperson/dashboard?period=today#{'&amp;salesman_id=%s' % selected_salesman_id if selected_salesman_id else ''}"
+                       t-attf-class="period-tab #{'active' if period == 'today' else ''}">Today</a>
+                    <a t-attf-href="/salesperson/dashboard?period=yesterday#{'&amp;salesman_id=%s' % selected_salesman_id if selected_salesman_id else ''}"
+                       t-attf-class="period-tab #{'active' if period == 'yesterday' else ''}">Yesterday</a>
+                    <a t-attf-href="/salesperson/dashboard?period=weekly#{'&amp;salesman_id=%s' % selected_salesman_id if selected_salesman_id else ''}"
+                       t-attf-class="period-tab #{'active' if period == 'weekly' else ''}">This Week</a>
+                    <a t-attf-href="/salesperson/dashboard?period=monthly#{'&amp;salesman_id=%s' % selected_salesman_id if selected_salesman_id else ''}"
+                       t-attf-class="period-tab #{'active' if period == 'monthly' else ''}">This Month</a>
+                </div>
 
-            <form class="date-range-form" method="get" action="/salesperson/dashboard">
-                <input type="hidden" name="salesman_id" t-att-value="selected_salesman_id or ''"/>
-                <input type="date" class="date-range-input" name="date_from" t-att-value="date_from_str"/>
-                <span class="date-range-sep">–</span>
-                <input type="date" class="date-range-input" name="date_to" t-att-value="date_to_str"/>
-                <button type="submit" class="date-range-apply">Apply</button>
-            </form>
+                <form class="date-range-form" method="get" action="/salesperson/dashboard">
+                    <input type="hidden" name="salesman_id" t-att-value="selected_salesman_id or ''"/>
+                    <input type="date" class="date-range-input" name="date_from" t-att-value="date_from_str"/>
+                    <span class="date-range-sep">–</span>
+                    <input type="date" class="date-range-input" name="date_to" t-att-value="date_to_str"/>
+                    <button type="submit" class="date-range-apply">Apply</button>
+                </form>
 
-            <div class="salesman-search" id="salesman-search">
-                <input type="text" class="salesman-search-input" id="salesman-search-input"
-                       placeholder="Search salesman..." autocomplete="off"
-                       t-att-value="([s['name'] for s in salesmen if s['id'] == selected_salesman_id] or ['All Salesmen'])[0]"/>
-                <div class="salesman-search-list" id="salesman-search-list">
-                    <div class="salesman-search-option" data-id="">All Salesmen</div>
-                    <t t-foreach="salesmen" t-as="s">
-                        <div class="salesman-search-option" t-att-data-id="s['id']" t-esc="s['name']"/>
-                    </t>
+                <div class="salesman-search" id="salesman-search">
+                    <input type="text" class="salesman-search-input" id="salesman-search-input"
+                           placeholder="Search salesman..." autocomplete="off"
+                           t-att-value="([s['name'] for s in salesmen if s['id'] == selected_salesman_id] or ['All Salesmen'])[0]"/>
+                    <div class="salesman-search-list" id="salesman-search-list">
+                        <div class="salesman-search-option" data-id="">All Salesmen</div>
+                        <t t-foreach="salesmen" t-as="s">
+                            <div class="salesman-search-option" t-att-data-id="s['id']" t-esc="s['name']"/>
+                        </t>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="stat-row">
-            <div class="stat-card">
-                <div class="stat-label">Salesmen</div>
-                <div class="stat-value blue" t-esc="total_reps"/>
-                <div class="stat-sub" t-esc="period_label"/>
+        <div t-attf-class="kpi-grid #{'is-live' if is_live else 'is-report'}">
+            <div class="kpi-card kpi-blue">
+                <div class="kpi-icon">👥</div>
+                <div class="kpi-body">
+                    <div class="kpi-label">Total Salesmen</div>
+                    <div class="kpi-value" id="kpi-total-reps" t-esc="summary['total_reps']"/>
+                    <div class="kpi-sub">Active team members</div>
+                </div>
             </div>
-            <div class="stat-card">
-                <div class="stat-label">Visit Rate</div>
-                <div class="stat-value green" t-esc="str(kpi_pct) + '%'"/>
-                <div class="stat-sub" t-esc="'%s of %s visited' % (total_covered, total_planned)"/>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Missed Visits</div>
-                <div class="stat-value rose" t-esc="kpi_missed"/>
-                <div class="stat-sub">across selected period</div>
-            </div>
+
             <t t-if="is_live">
-                <div class="stat-card">
-                    <div class="stat-label">Currently Active</div>
-                    <div class="stat-value amber" t-esc="live_count + idle_count"/>
-                    <div class="stat-sub" t-esc="'%s offline' % offline_count"/>
+                <div class="kpi-card kpi-green">
+                    <div class="kpi-icon">●</div>
+                    <div class="kpi-body">
+                        <div class="kpi-label">Currently Active</div>
+                        <div class="kpi-value" id="kpi-active" t-esc="summary['active_count']"/>
+                        <div class="kpi-sub">Tracking now</div>
+                    </div>
+                </div>
+                <div class="kpi-card kpi-violet">
+                    <div class="kpi-icon">⌖</div>
+                    <div class="kpi-body">
+                        <div class="kpi-label">At Customer</div>
+                        <div class="kpi-value" id="kpi-at-customer" t-esc="summary['at_customer_count']"/>
+                        <div class="kpi-sub">On customer location</div>
+                    </div>
+                </div>
+                <div class="kpi-card kpi-cyan">
+                    <div class="kpi-icon">➜</div>
+                    <div class="kpi-body">
+                        <div class="kpi-label">Moving</div>
+                        <div class="kpi-value" id="kpi-moving" t-esc="summary['moving_count']"/>
+                        <div class="kpi-sub">In transit</div>
+                    </div>
+                </div>
+                <div class="kpi-card kpi-amber">
+                    <div class="kpi-icon">Ⅱ</div>
+                    <div class="kpi-body">
+                        <div class="kpi-label">Idle</div>
+                        <div class="kpi-value" id="kpi-idle" t-esc="summary['idle_count']"/>
+                        <div class="kpi-sub">Stationary</div>
+                    </div>
+                </div>
+                <div class="kpi-card kpi-red">
+                    <div class="kpi-icon">●</div>
+                    <div class="kpi-body">
+                        <div class="kpi-label">Offline</div>
+                        <div class="kpi-value" id="kpi-offline" t-esc="summary['offline_count']"/>
+                        <div class="kpi-sub">Not tracking</div>
+                    </div>
                 </div>
             </t>
-            <t t-else="">
-                <div class="stat-card">
-                    <div class="stat-label">Total Distance</div>
-                    <div class="stat-value blue" t-esc="('%.1f' % sum(float(r['distance'].split()[0]) for r in rows) if rows else '0.0') + ' km'"/>
-                    <div class="stat-sub" t-esc="period_label"/>
+
+            <div class="kpi-card kpi-mint">
+                <div class="kpi-icon">⚑</div>
+                <div class="kpi-body">
+                    <div class="kpi-label">Total Visits</div>
+                    <div class="kpi-value" id="kpi-total-visits" t-esc="summary['total_planned']"/>
+                    <div class="kpi-sub" t-esc="period_label"/>
                 </div>
-            </t>
+            </div>
+            <div class="kpi-card kpi-green">
+                <div class="kpi-icon">✓</div>
+                <div class="kpi-body">
+                    <div class="kpi-label">Completed Visits</div>
+                    <div class="kpi-value" id="kpi-completed" t-esc="summary['total_covered']"/>
+                    <div class="kpi-sub"><span id="kpi-visit-rate" t-esc="summary['visit_rate']"/>% visit rate</div>
+                </div>
+            </div>
+            <div class="kpi-card kpi-red">
+                <div class="kpi-icon">×</div>
+                <div class="kpi-body">
+                    <div class="kpi-label" t-esc="'Remaining Visits' if is_live else 'Missed Visits'"/>
+                    <div class="kpi-value" id="kpi-missed" t-esc="summary['missed_count']"/>
+                    <div class="kpi-sub" t-esc="'Planned but not completed' if is_live else 'Across selected period'"/>
+                </div>
+            </div>
+            <div class="kpi-card kpi-purple">
+                <div class="kpi-icon">⌁</div>
+                <div class="kpi-body">
+                    <div class="kpi-label">Total Distance</div>
+                    <div class="kpi-value"><span id="kpi-distance" t-esc="('%.1f' % summary['total_distance'])"/> <small>km</small></div>
+                    <div class="kpi-sub" t-esc="period_label"/>
+                </div>
+            </div>
         </div>
 
         <t t-if="is_live">
-        <div class="map-card">
-            <div class="map-card-head">
-                <div class="map-card-title">Live Map</div>
-                <div class="map-legend">
-                    <span><i class="legend-dot" style="background:#065F46"></i> At Customer</span>
-                    <span><i class="legend-dot" style="background:#34D399"></i> Moving</span>
-                    <span><i class="legend-dot" style="background:#EAB308"></i> Idle</span>
-                    <span><i class="legend-dot" style="background:#DC2626"></i> Offline</span>
-                    <span><i class="legend-dot" style="background:#2563EB"></i> Customer</span>
+            <div class="dashboard-live-grid">
+                <div class="map-card">
+                    <div class="panel-head">
+                        <div class="panel-title-wrap">
+                            <div class="panel-title">Live Map</div>
+                            <span class="panel-badge"><span id="map-active-count" t-esc="summary['active_count']"/> active</span>
+                        </div>
+                        <div class="map-location-label">⌾ Dhaka, Bangladesh</div>
+                    </div>
+                    <div id="live-map"></div>
+                </div>
+
+                <div class="side-stack">
+                    <div class="side-card activity-card">
+                        <div class="panel-head compact">
+                            <div class="panel-title">Recent Activities</div>
+                            <span class="panel-muted">Today</span>
+                        </div>
+                        <div class="activity-list" id="activity-list">
+                            <t t-if="not activity_feed">
+                                <div class="side-empty">No recent activities yet.</div>
+                            </t>
+                            <t t-foreach="activity_feed" t-as="a">
+                                <div class="activity-item">
+                                    <div class="activity-icon" t-attf-style="background:#{a['color']}" t-esc="a['icon']"/>
+                                    <div class="activity-time" t-esc="a['time']"/>
+                                    <div class="activity-text" t-esc="a['text']"/>
+                                </div>
+                            </t>
+                        </div>
+                    </div>
+
+                    <div class="side-card alert-card">
+                        <div class="panel-head compact">
+                            <div class="panel-title">Alerts &amp; Notifications</div>
+                            <span class="panel-muted">Today</span>
+                        </div>
+                        <div class="alert-list" id="alert-list">
+                            <t t-if="not dashboard_alerts">
+                                <div class="alert-item success">
+                                    <span class="alert-icon">✓</span>
+                                    <div><strong>No tracking alerts</strong><small>Everything looks normal right now.</small></div>
+                                </div>
+                            </t>
+                            <t t-foreach="dashboard_alerts" t-as="a">
+                                <div t-attf-class="alert-item #{a['level']}">
+                                    <span class="alert-icon" t-esc="a['icon']"/>
+                                    <div>
+                                        <strong t-esc="a['text']"/>
+                                        <small t-esc="a['detail']"/>
+                                    </div>
+                                </div>
+                            </t>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div id="live-map"></div>
-        </div>
         </t>
 
         <div class="table-card">
-            <div class="table-card-head">Salesman Performance</div>
+            <div class="panel-head table-panel-head">
+                <div>
+                    <div class="panel-title">Salesman Performance</div>
+                    <div class="panel-sub">Visits, distance, tracking time and GPS health</div>
+                </div>
+                <div class="table-head-actions">
+                    <span class="table-count"><span id="table-row-count" t-esc="summary['total_reps']"/> salesmen</span>
+                </div>
+            </div>
+
             <t t-if="not rows">
-                <div class="empty-state">No records for this period.</div>
+                <div class="empty-state">No tracking records for this period.</div>
             </t>
             <t t-else="">
-            <table class="dash-table">
-                <thead>
-                    <tr>
-                        <th>Salesman</th>
-                        <th>Visited</th>
-                        <th>Missed</th>
-                        <th>Visit Rate</th>
-                        <th>Distance</th>
-                        <t t-if="is_live"><th>Status</th></t>
-                        <th>View</th>
-                    </tr>
-                </thead>
-                <tbody t-attf-id="rep-table-body">
-                    <t t-foreach="rows" t-as="r">
-                    <tr t-att-data-tracker-id="r['id']">
-                        <td>
-                            <div class="rep-cell">
-                                <div class="rep-avatar" t-attf-style="background:#{r['gradient']}" t-esc="r['initials']"/>
-                                <span class="rep-name" t-esc="r['name']"/>
-                            </div>
-                        </td>
-                        <td t-esc="r['covered']"/>
-                        <td t-esc="r['missed']"/>
-                        <td>
-                            <div class="visit-rate-bar">
-                                <div class="vr-track"><div class="vr-fill" t-attf-style="width:#{r['pct']}%"></div></div>
-                                <span t-esc="str(r['pct']) + '%'"/>
-                            </div>
-                        </td>
-                        <td t-esc="r['distance']"/>
-                        <t t-if="is_live">
-                        <td>
-                            <span class="status-pill rep-status-cell">
-                                <i class="status-dot" t-attf-style="background:#{r['status_color']}"></i>
-                                <span t-esc="r['status_label']"/>
-                            </span>
-                        </td>
-                        </t>
-                        <td>
-                            <a class="view-link" href="#" t-att-onclick="'openTracker(%s); return false;' % r['id']">View →</a>
-                        </td>
-                    </tr>
-                    </t>
-                </tbody>
-            </table>
+                <div class="table-scroll">
+                    <table class="dash-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Salesman</th>
+                                <th>Planned</th>
+                                <th>Visited</th>
+                                <th t-esc="'Remaining' if is_live else 'Missed'"/>
+                                <th>Visit Rate</th>
+                                <th>Distance</th>
+                                <th>Tracking Time</th>
+                                <th>First Start</th>
+                                <th>Last Update</th>
+                                <t t-if="is_live"><th>GPS Health</th></t>
+                                <t t-if="is_live"><th>Status</th></t>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rep-table-body">
+                            <t t-foreach="rows" t-as="r">
+                                <tr t-att-data-tracker-id="r['id']">
+                                    <td class="row-number" t-esc="r_index + 1"/>
+                                    <td>
+                                        <div class="rep-cell">
+                                            <div class="rep-avatar" t-attf-style="background:#{r['gradient']}" t-esc="r['initials']"/>
+                                            <div>
+                                                <div class="rep-name" t-esc="r['name']"/>
+                                                <t t-if="is_live"><div class="rep-location" t-esc="r['location']"/></t>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="cell-planned" t-esc="r['total']"/>
+                                    <td class="cell-visited positive" t-esc="r['covered']"/>
+                                    <td class="cell-missed negative" t-esc="r['missed']"/>
+                                    <td>
+                                        <div class="visit-rate-bar">
+                                            <span class="cell-pct" t-esc="str(r['pct']) + '%'"/>
+                                            <div class="vr-track"><div class="vr-fill" t-attf-style="width:#{r['pct']}%"></div></div>
+                                        </div>
+                                    </td>
+                                    <td class="cell-distance" t-esc="r['distance']"/>
+                                    <td class="cell-tracking-time" t-esc="r['tracking_time']"/>
+                                    <td class="cell-first-start" t-esc="r['first_start']"/>
+                                    <td>
+                                        <span class="cell-last-update" t-att-data-epoch="r['last_seen_epoch']" t-esc="r['last_update']"/>
+                                    </td>
+                                    <t t-if="is_live">
+                                        <td>
+                                            <span class="gps-health-pill" t-attf-style="--gps-color:#{r['gps_health_color']}">
+                                                <i></i><span class="gps-health-text" t-esc="r['gps_health']"/>
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="status-pill rep-status-cell">
+                                                <i class="status-dot" t-attf-style="background:#{r['status_color']}"></i>
+                                                <span t-esc="r['status_label']"/>
+                                            </span>
+                                        </td>
+                                    </t>
+                                    <td>
+                                        <div class="row-actions">
+                                            <t t-if="is_live">
+                                                <button type="button" class="action-btn primary"
+                                                        t-att-disabled="'disabled' if r['status'] == 'offline' else None"
+                                                        t-att-onclick="'focusSalesman(%s); return false;' % r['id']">Live</button>
+                                            </t>
+                                            <button type="button" class="action-btn" t-att-onclick="'openMovementMap(%s); return false;' % r['id']">Route</button>
+                                            <button type="button" class="action-btn" t-att-onclick="'openTracker(%s); return false;' % r['id']">Details</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </t>
+                        </tbody>
+                    </table>
+                </div>
             </t>
         </div>
     </div>

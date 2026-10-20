@@ -59,6 +59,10 @@
         totalDistance: parseFloat(root.dataset.distance || '0'),
         userMovedMap: false,
         mapInitialised: false,
+        tickInFlight: false,
+        browserFallbackActive: false,
+        trackingSessionStartMs: 0,
+        nativeWatchdogId: null,
     };
 
     // Position provider with GPS + IP fallback
@@ -228,7 +232,9 @@
         setTimeout(() => liveMap.invalidateSize(), 100);
     }
 
-    // Send position to server
+    // Send position to server. A location only counts as a successful fix
+    // after the server has accepted it. This prevents the UI/timer from saying
+    // "Tracking Active" while no GPS row was actually saved.
     async function sendPosition(position, firstFix) {
         const lat = position.coords.latitude;
         const lng = position.coords.longitude;
@@ -238,15 +244,22 @@
         if (state.lastLat !== null) {
             delta = haversine(state.lastLat, state.lastLng, lat, lng);
         }
-        state.totalDistance += delta;
-        state.lastLat = lat;
-        state.lastLng = lng;
 
         try {
             const res = await postJson('/salesperson_tracking/update', {
                 latitude: lat, longitude: lng, accuracy: acc,
                 distance: delta, tracker_id: trackerId,
             });
+            if (!res || res.ok === false) {
+                throw new Error((res && res.error) || 'Server rejected location update');
+            }
+
+            // Only advance the local GPS/distance state after the server confirms
+            // the point was stored. Otherwise a failed request could make the next
+            // point calculate distance from a location that never reached Odoo.
+            state.totalDistance += delta;
+            state.lastLat = lat;
+            state.lastLng = lng;
 
             const updateEl = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
             updateEl('latitudeValue', lat.toFixed(6));
@@ -258,24 +271,30 @@
             if (res.visited_rate != null) updateEl('kpiRate', res.visited_rate + '%');
             if (res.planned_count != null) updateEl('kpiPlan', res.planned_count);
             if (res.location_name && document.getElementById('locationNameValue'))
-            document.getElementById('locationNameValue').textContent = res.location_name;
+                document.getElementById('locationNameValue').textContent = res.location_name;
 
             updateMap(lat, lng, firstFix, res.near_customer || null);
             updateStatus('Tracking Active', 'info');
+            return res;
         } catch (e) {
             console.error('Send failed:', e);
-            updateStatus('Network error - retrying', 'error');
+            updateStatus('Location send failed - retrying', 'error');
+            throw e;
         }
     }
 
-    // Main tracking loop
+    // Main tracking loop. Guard against overlapping GPS requests: getCurrentPosition
+    // can take up to 10 seconds, while the loop runs every 2 seconds.
     async function doTick() {
-        if (!state.tracking || !isOwner) return;
+        if (!state.tracking || !isOwner || state.tickInFlight) return;
+        state.tickInFlight = true;
         try {
             const pos = await provider.getPosition();
             await sendPosition(pos, state.lastLat === null);
         } catch (e) {
-            updateStatus(`Location error: ${e.message}`, 'error');
+            updateStatus(`Location error: ${e.message || e}`, 'error');
+        } finally {
+            state.tickInFlight = false;
         }
     }
 
@@ -290,6 +309,82 @@
             clearInterval(state.sendIntervalId);
             state.sendIntervalId = null;
         }
+        state.tickInFlight = false;
+    }
+
+    const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+    async function fetchTrackerStatus() {
+        const res = await fetch(`/salesperson_tracking/status/${trackerId}`, {
+            credentials: 'same-origin',
+            cache: 'no-store',
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (!data || !data.ok) throw new Error((data && data.error) || 'Status unavailable');
+        return data;
+    }
+
+    async function waitForFreshNativeFix(startedAtMs, timeoutMs = 8000) {
+        const deadline = Date.now() + timeoutMs;
+        while (Date.now() < deadline) {
+            try {
+                const data = await fetchTrackerStatus();
+                if ((data.last_mobile_seen_epoch_ms || 0) >= (startedAtMs - 1000)) {
+                    if (data.last_lat && data.last_lng) {
+                        const firstFix = state.lastLat === null;
+                        state.lastLat = data.last_lat;
+                        state.lastLng = data.last_lng;
+                        updateMap(data.last_lat, data.last_lng, firstFix, null);
+                        const latEl = document.getElementById('latitudeValue');
+                        const lngEl = document.getElementById('longitudeValue');
+                        const seenEl = document.getElementById('lastSeenValue');
+                        if (latEl) latEl.textContent = Number(data.last_lat).toFixed(6);
+                        if (lngEl) lngEl.textContent = Number(data.last_lng).toFixed(6);
+                        if (seenEl && data.last_seen) seenEl.textContent = data.last_seen;
+                    }
+                    return data;
+                }
+            } catch (e) {
+                console.warn('[Tracking] Native status check failed:', e.message);
+            }
+            await sleep(1000);
+        }
+        throw new Error('Native GPS did not respond');
+    }
+
+    function stopNativeWatchdog() {
+        if (state.nativeWatchdogId) {
+            clearInterval(state.nativeWatchdogId);
+            state.nativeWatchdogId = null;
+        }
+    }
+
+    // If a stale Expo token exists, the server may believe the native app will
+    // track even though the app/service is not actually running. When browser
+    // fallback is active, watch for a genuine mobile GPS row and hand tracking
+    // back to the app as soon as it appears, avoiding duplicate browser+mobile logs.
+    function startNativeTakeoverWatch() {
+        stopNativeWatchdog();
+        if (!hasPushToken || !state.browserFallbackActive) return;
+        state.nativeWatchdogId = setInterval(async () => {
+            if (!state.tracking || !state.browserFallbackActive) {
+                stopNativeWatchdog();
+                return;
+            }
+            try {
+                const data = await fetchTrackerStatus();
+                if ((data.last_mobile_seen_epoch_ms || 0) >= (state.trackingSessionStartMs - 1000)) {
+                    console.log('[Tracking] Native GPS is active; stopping browser fallback loop.');
+                    stopLoop();
+                    state.browserFallbackActive = false;
+                    stopNativeWatchdog();
+                    updateStatus('Tracking Active', 'info');
+                }
+            } catch (e) {
+                // Keep browser fallback alive; next watchdog cycle will retry.
+            }
+        }, 5000);
     }
 
     // ── Background / Page Visibility handling ────────────────
@@ -329,7 +424,7 @@
             // Skip if the phone app has push registered — GPS duty
             // belongs to it, and restarting the browser loop too
             // would double-count.
-            if (!hasPushToken && !state.sendIntervalId) {
+            if ((!hasPushToken || state.browserFallbackActive) && !state.sendIntervalId) {
                 startLoop();
             }
         }
@@ -368,63 +463,99 @@
         const stopBtn = document.getElementById('stopButton');
 
         if (startBtn) startBtn.disabled = true;
-
-        // Show starting message
+        if (stopBtn) stopBtn.disabled = true;
         if (statusMsg) statusMsg.textContent = 'Starting tracking...';
 
+        let serverStarted = false;
         try {
             const result = await postJson('/salesperson_tracking/start', { tracker_id: trackerId });
-
             if (!result.ok) {
                 throw new Error(result.error || 'Failed to start tracking');
             }
 
-            // Success - update state
+            serverStarted = true;
             state.tracking = true;
-            state.trackingStart = Date.now();
+            state.trackingSessionStartMs = Date.now();
+            state.browserFallbackActive = false;
+            stopNativeWatchdog();
 
-            if (!state.timerIntervalId) {
-                state.timerIntervalId = setInterval(tickTimer, 1000);
+            // IMPORTANT: do not start the timer yet. First prove that at least
+            // one real location reaches Odoo. This fixes the old behaviour where
+            // time counted while LAT/LNG/LAST UPDATE stayed blank.
+            updateStatus('Waiting for GPS location...', 'info');
+
+            let firstFixSource = null;
+
+            if (hasPushToken) {
+                // Give the installed app a short chance to answer the silent push.
+                // A stale token / killed background service is common on Android,
+                // so browser GPS becomes the automatic fallback if it stays silent.
+                try {
+                    await waitForFreshNativeFix(state.trackingSessionStartMs, 8000);
+                    firstFixSource = 'mobile';
+                } catch (nativeError) {
+                    console.warn('[Tracking] Native GPS unavailable; using browser fallback:', nativeError.message);
+                    const pos = await provider.getPosition();
+                    await sendPosition(pos, state.lastLat === null);
+                    firstFixSource = 'browser';
+                    state.browserFallbackActive = true;
+                    startLoop();
+                    startNativeTakeoverWatch();
+                }
+            } else {
+                const pos = await provider.getPosition();
+                await sendPosition(pos, state.lastLat === null);
+                firstFixSource = 'browser';
+                state.browserFallbackActive = true;
+                startLoop();
             }
 
-            // If the phone app has push registered, action_start_tracking()
-            // (called by postJson above) already sent it a silent push —
-            // the app is never opened, it just starts its background GPS
-            // service on its own. Only fall back to this browser's own
-            // loop when there's no app/push registered for this user.
-            if (!hasPushToken) {
-                startLoop();
+            // Only now is tracking genuinely active.
+            state.trackingStart = Date.now();
+            tickTimer();
+            if (!state.timerIntervalId) {
+                state.timerIntervalId = setInterval(tickTimer, 1000);
             }
             await acquireWakeLock();
 
             if (stopBtn) stopBtn.disabled = false;
             if (statusMsg) statusMsg.textContent = 'Tracking Active';
-
             const statusDiv = document.getElementById('statusMessage');
-            if (statusDiv) {
-                statusDiv.className = 'status-message info';
-            }
+            if (statusDiv) statusDiv.className = 'status-message info';
 
-            console.log('Tracking started successfully:', result);
+            console.log('Tracking started successfully. GPS source:', firstFixSource, result);
 
         } catch (e) {
             console.error('Start tracking error:', e);
 
-            // Only show error if it's not a transient issue
-            if (e.message !== 'Failed to fetch' && !e.message.includes('timeout')) {
-                if (statusMsg) statusMsg.textContent = `Failed: ${e.message}`;
-                const statusDiv = document.getElementById('statusMessage');
-                if (statusDiv) {
-                    statusDiv.className = 'status-message error';
+            // If Odoo already created a live session but no usable GPS fix could
+            // be obtained, roll the session back. The timer therefore never runs
+            // for a false/empty tracking session.
+            if (serverStarted) {
+                try {
+                    await postJson('/salesperson_tracking/stop', { tracker_id: trackerId });
+                } catch (rollbackError) {
+                    console.error('Failed to rollback tracking session:', rollbackError);
                 }
-            } else {
-                // Transient error - retry after delay
-                if (statusMsg) statusMsg.textContent = 'Retrying...';
-                setTimeout(startTracking, 2000);
-                return;
             }
 
+            state.tracking = false;
+            state.trackingStart = null;
+            state.trackingSessionStartMs = 0;
+            state.browserFallbackActive = false;
+            stopLoop();
+            stopNativeWatchdog();
+            if (state.timerIntervalId) clearInterval(state.timerIntervalId);
+            state.timerIntervalId = null;
+            await releaseWakeLock();
+
+            const msg = e && e.message ? e.message : String(e);
+            if (statusMsg) statusMsg.textContent = `GPS not started: ${msg}`;
+            const statusDiv = document.getElementById('statusMessage');
+            if (statusDiv) statusDiv.className = 'status-message error';
+
             if (startBtn) startBtn.disabled = false;
+            if (stopBtn) stopBtn.disabled = true;
         }
     }
 
@@ -438,6 +569,9 @@
             if (state.timerIntervalId) clearInterval(state.timerIntervalId);
             state.timerIntervalId = null;
             state.trackingStart = null;
+            state.trackingSessionStartMs = 0;
+            state.browserFallbackActive = false;
+            stopNativeWatchdog();
             // stopLoop() is a safe no-op if the browser loop was never
             // started (GPS duty was handed to the phone app via a
             // silent push instead — see action_stop_tracking, called
@@ -467,14 +601,39 @@
                     state.tracking = true;
                     state.trackingStart = Date.now();
                     if (!state.timerIntervalId) state.timerIntervalId = setInterval(tickTimer, 1000);
-                    // Android: GPS duty belongs to the native app, not this tab.
-                    if (!hasPushToken) startLoop();
+                    // If another tab/device started the session, keep browser GPS as
+                    // fallback unless a native app is actually producing fresh pings.
+                    if (!hasPushToken) {
+                        state.browserFallbackActive = true;
+                        startLoop();
+                    } else {
+                        state.trackingSessionStartMs = Date.now();
+                        setTimeout(async () => {
+                            if (!state.tracking || state.sendIntervalId) return;
+                            try {
+                                const status = await fetchTrackerStatus();
+                                const nativeFresh = (status.last_mobile_seen_epoch_ms || 0) >= (Date.now() - 15000);
+                                if (!nativeFresh) {
+                                    state.browserFallbackActive = true;
+                                    startLoop();
+                                    startNativeTakeoverWatch();
+                                }
+                            } catch (e) {
+                                state.browserFallbackActive = true;
+                                startLoop();
+                                startNativeTakeoverWatch();
+                            }
+                        }, 3000);
+                    }
                     document.getElementById('startButton').disabled = true;
                     document.getElementById('stopButton').disabled = false;
                 } else {
                     state.tracking = false;
                     if (state.timerIntervalId) clearInterval(state.timerIntervalId);
                     state.timerIntervalId = null;
+                    state.trackingSessionStartMs = 0;
+                    state.browserFallbackActive = false;
+                    stopNativeWatchdog();
                     stopLoop();
                     document.getElementById('startButton').disabled = false;
                     document.getElementById('stopButton').disabled = true;
@@ -699,10 +858,32 @@
 
     if (state.tracking && isOwner) {
         state.trackingStart = Date.now();
+        state.trackingSessionStartMs = Date.now();
         state.timerIntervalId = setInterval(tickTimer, 1000);
-        // Android: tracking is already running via the native app's
-        // background service; don't also start the browser loop.
-        if (!hasPushToken) startLoop();
+        if (!hasPushToken) {
+            state.browserFallbackActive = true;
+            startLoop();
+        } else {
+            // Page reload while a session is live: do not trust the mere presence
+            // of a push token. If no recent mobile GPS ping exists, restore the
+            // browser loop automatically.
+            setTimeout(async () => {
+                if (!state.tracking || state.sendIntervalId) return;
+                try {
+                    const status = await fetchTrackerStatus();
+                    const nativeFresh = (status.last_mobile_seen_epoch_ms || 0) >= (Date.now() - 15000);
+                    if (!nativeFresh) {
+                        state.browserFallbackActive = true;
+                        startLoop();
+                        startNativeTakeoverWatch();
+                    }
+                } catch (e) {
+                    state.browserFallbackActive = true;
+                    startLoop();
+                    startNativeTakeoverWatch();
+                }
+            }, 3000);
+        }
         document.getElementById('startButton').disabled = true;
         document.getElementById('stopButton').disabled = false;
     } else {
@@ -754,6 +935,35 @@
         return;
     }
 
+    // Movement Map back navigation. The map is normally rendered inside the
+    // Odoo client iframe, so go back on the parent window history first. If
+    // the page was opened directly/new tab, use its own history and finally
+    // fall back to the Odoo home screen.
+    const mapBackBtn = document.getElementById('mapBackBtn');
+    if (mapBackBtn) {
+        mapBackBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            try {
+                if (window.parent && window.parent !== window) {
+                    if (window.parent.history.length > 1) {
+                        window.parent.history.back();
+                    } else {
+                        window.parent.location.href = '/odoo';
+                    }
+                    return;
+                }
+            } catch (navError) {
+                warn('Parent back navigation failed:', navError);
+            }
+
+            if (window.history.length > 1) {
+                window.history.back();
+            } else {
+                window.location.href = '/odoo';
+            }
+        });
+    }
+
     const pointsB64  = mapRoot.getAttribute('data-points')    || '';
     const custB64    = mapRoot.getAttribute('data-customers') || '';
     const initStatus = mapRoot.getAttribute('data-status')    || 'offline';
@@ -800,10 +1010,19 @@
         return d;
     }
 
-    function updateStats(pts) {
-        document.getElementById('distanceVal').textContent = calcDistKm(pts).toFixed(2) + ' km';
-        document.getElementById('pointsVal').textContent   = pts.length;
-        document.getElementById('logCount').textContent    = pts.length;
+    // Route statistics always use the same validated segments as the blue map.
+    // Raw server totals can include GPS jumps and must never replace this value.
+    function updateStats(pts, distanceKm = 0, breakCount = 0, dropped = 0) {
+        document.getElementById('distanceVal').textContent = distanceKm.toFixed(2) + ' km';
+        document.getElementById('pointsVal').textContent = pts.length;
+        document.getElementById('logCount').textContent = pts.length;
+        const note = document.getElementById('distanceQualityNote');
+        if (note) {
+            note.textContent = breakCount
+                ? `${breakCount} GPS gap${breakCount === 1 ? '' : 's'} excluded · ${dropped} filtered`
+                : `${dropped} noisy GPS point${dropped === 1 ? '' : 's'} filtered`;
+            note.title = 'Verified GPS movement only. Unrecorded travel cannot be calculated from missing samples. Road distance is not claimed without a reliable route.';
+        }
     }
 
     // Fix 2: only live / offline — no idle
@@ -829,36 +1048,130 @@
         return isNaN(ms) ? 0 : ms;
     }
 
-    // ── OSRM reconnect route ──────────────────────────────────
-    async function osrmRoute(fromPt, toPt) {
-        try {
-            const url = `https://router.project-osrm.org/route/v1/driving/`
-            + `${fromPt.lng},${fromPt.lat};${toPt.lng},${toPt.lat}`
-            + `?overview=full&geometries=geojson`;
-            const res  = await fetch(url, { signal: AbortSignal.timeout(5000) });
-            const data = await res.json();
-            if (data.code === 'Ok' && data.routes?.[0]) {
-                return data.routes[0].geometry.coordinates.map(([lng, lat]) => ({ lat, lng }));
-            }
-        } catch(e) { warn('OSRM failed, using straight line:', e); }
-        return [fromPt, toPt];
+    // Display-only GPS cleanup. Source logs, totals, APIs and reports are unchanged.
+    // Never invent a route across a network outage or GPS jump.
+    const MAP_MAX_ACCURACY_M = 20;
+    const MAP_GAP_SECONDS = 90;
+    // Urban tracking: reject physically implausible motion and do not draw long
+    // straight links between sparse observations (e.g. app background/network).
+    const MAP_MAX_SPEED_MPS = 18;       // 64.8 km/h
+    const MAP_MAX_DRAW_STEP_M = 180;   // never draw a long blind straight line
+    const MAP_STATIONARY_RADIUS_M = 18;
+    const MAP_REACQUIRE_RADIUS_M = 80;
+
+    function distanceMeters(a, b) {
+        const R = 6371000;
+        const p1 = a.lat * Math.PI / 180, p2 = b.lat * Math.PI / 180;
+        const dp = p2 - p1, dl = (b.lng - a.lng) * Math.PI / 180;
+        const h = Math.sin(dp / 2) ** 2 + Math.cos(p1) * Math.cos(p2) * Math.sin(dl / 2) ** 2;
+        return 2 * R * Math.atan2(Math.sqrt(h), Math.sqrt(Math.max(0, 1 - h)));
     }
 
-    const GAP_SECONDS = 120;
-
-    function splitIntoSegments(pts) {
-        if (!pts.length) return [];
-        const segs = []; let cur = [pts[0]];
-        for (let i = 1; i < pts.length; i++) {
-            const dt = (parseTime(pts[i].time) - parseTime(pts[i-1].time)) / 1000;
-            if (dt > GAP_SECONDS) {
-                log('Gap at [%d→%d]: %.0fs', i-1, i, dt);
-                segs.push({ points: cur, reconnectTo: pts[i] });
-                cur = [pts[i]];
-            } else { cur.push(pts[i]); }
+    function prepareMapSegments(rawPoints) {
+        const segments = [];
+        let segment = [];
+        let pending = null;  // wait for a second nearby fix before adopting a jump
+        let rejected = 0;
+        let previousRawTime = 0;
+        function flush() {
+            if (segment.length) segments.push(segment);
+            segment = [];
         }
-        segs.push({ points: cur, reconnectTo: null });
-        return segs;
+        function addPoint(p) {
+            segment.push(p);
+        }
+        for (const entry of rawPoints) {
+            const p = { ...entry, lat: Number(entry.lat), lng: Number(entry.lng) };
+            const accuracy = Number(p.accuracy || 0);
+            const time = parseTime(p.time);
+            const valid = Number.isFinite(p.lat) && Number.isFinite(p.lng)
+                && Math.abs(p.lat) <= 90 && Math.abs(p.lng) <= 180
+                && !(p.lat === 0 && p.lng === 0)
+                && Number.isFinite(accuracy) && accuracy > 0 && accuracy <= MAP_MAX_ACCURACY_M;
+            if (!valid) { rejected++; continue; }
+            if (previousRawTime && time && time <= previousRawTime) {
+                flush();
+                pending = null;
+            }
+            previousRawTime = time || previousRawTime;
+            if (!segment.length) {
+                if (pending) {
+                    // A GPS jump is only trusted when a subsequent fix confirms
+                    // the new area. Isolated remote points are never displayed.
+                    const pendingDt = (time - pending.timeMs) / 1000;
+                    const pendingDist = distanceMeters(pending.point, p);
+                    if (pendingDt > 0 && pendingDt <= MAP_GAP_SECONDS
+                        && pendingDist <= MAP_REACQUIRE_RADIUS_M
+                        && pendingDist / pendingDt <= MAP_MAX_SPEED_MPS) {
+                        addPoint(pending.point);
+                        if (pendingDist >= MAP_STATIONARY_RADIUS_M) addPoint(p);
+                        pending = null;
+                        continue;
+                    }
+                    rejected++;
+                }
+                pending = { point: p, timeMs: time };
+                continue;
+            }
+            const last = segment[segment.length - 1];
+            const lastTime = parseTime(last.time);
+            const dt = time && lastTime ? (time - lastTime) / 1000 : 0;
+            const meters = distanceMeters(last, p);
+            if (dt <= 0 || dt > MAP_GAP_SECONDS) {
+                flush();
+                pending = { point: p, timeMs: time };
+                continue;
+            }
+            // The effective stationary radius grows with the uncertainty of
+            // both fixes. A device drifting 20 m while standing still must not
+            // add fake travel. Movement can still accumulate against the last
+            // *accepted* anchor, so a slow walker is not permanently ignored.
+            const lastAccuracy = Number(last.accuracy) || MAP_MAX_ACCURACY_M;
+            const accuracyNoiseM = Math.min(35, Math.max(
+                MAP_STATIONARY_RADIUS_M,
+                Math.hypot(lastAccuracy, accuracy) * 1.15
+            ));
+            if (meters < accuracyNoiseM) {
+                pending = null;
+                continue;
+            }
+            if (meters > MAP_MAX_DRAW_STEP_M || meters / dt > MAP_MAX_SPEED_MPS) {
+                // Do not connect an untrusted new position to the prior route.
+                // If the GPS returns to its previous position, this jump simply
+                // disappears. Two consecutive fixes in the new area establish
+                // a separate segment without a fictional bridging line.
+                if (pending) {
+                    const pendingDt = (time - pending.timeMs) / 1000;
+                    const pendingDist = distanceMeters(pending.point, p);
+                    if (pendingDt > 0 && pendingDt <= MAP_GAP_SECONDS
+                        && pendingDist <= MAP_REACQUIRE_RADIUS_M
+                        && pendingDist / pendingDt <= MAP_MAX_SPEED_MPS) {
+                        flush();
+                        addPoint(pending.point);
+                        if (pendingDist >= MAP_STATIONARY_RADIUS_M) addPoint(p);
+                        pending = null;
+                        continue;
+                    }
+                    rejected++;
+                }
+                pending = { point: p, timeMs: time };
+                continue;
+            }
+            pending = null;
+            addPoint(p);
+        }
+        flush();
+        // Preserve a meaningful current marker for a tracker with just one fix.
+        if (!segments.length && rawPoints.length === 1 && pending) segments.push([pending.point]);
+        // A lone uncorroborated jump must not replace an established route.
+        log('Map GPS cleanup: %d source points, %d rejected, %d disconnected segments',
+            rawPoints.length, rejected + (pending ? 1 : 0), segments.length);
+        prepareMapSegments.quality = {
+            raw: rawPoints.length,
+            accepted: segments.reduce((sum, seg) => sum + seg.length, 0),
+            breaks: Math.max(0, segments.length - 1),
+        };
+        return segments;
     }
 
     // ── Fix 3+4: renderPath — correct marker sizes/colors, live path ──
@@ -868,7 +1181,7 @@
     // Visited customer: dark green (#15803d)
     // Planned (not yet visited): blue (#3b82f6)
     // Skipped: yellow (#eab308)
-    async function renderPath(pts, isLive) {
+    function renderPath(pts, isLive) {
         log('renderPath: %d points, isLive=%s', pts.length, isLive);
 
         trackPolylines.forEach(p => map.removeLayer(p));
@@ -880,39 +1193,36 @@
 
         if (!pts.length) { warn('renderPath: no points'); updateStats([]); return; }
 
-        const segs = splitIntoSegments(pts);
-        allLatLngs = pts.map(p => [p.lat, p.lng]);
+        const segs = prepareMapSegments(pts);
+        const clean = segs.flat();
+        allLatLngs = clean.map(p => [p.lat, p.lng]);
 
-        // ── Fix 4: draw path — blue polyline ─────────────────
+        // Draw only actually recorded, reliable continuous paths.
+        // Never run OSRM route() over missing GPS history: it creates a long
+        // fictitious line when the phone loses internet or tracking is off.
         for (const seg of segs) {
-            if (seg.points.length > 1) {
-                const poly = L.polyline(
-                seg.points.map(p => [p.lat, p.lng]),
-                { color: '#3b82f6', weight: 4, opacity: 0.9 }
-                ).addTo(map);
+            if (seg.length > 1) {
+                const poly = L.polyline(seg.map(p => [p.lat, p.lng]), {
+                    color: '#3288ee', weight: 5, opacity: 0.95,
+                    smoothFactor: 1.2, lineCap: 'round', lineJoin: 'round',
+                }).addTo(map);
                 trackPolylines.push(poly);
             }
-            if (seg.reconnectTo) {
-                const fromPt   = seg.points[seg.points.length - 1];
-                const routePts = await osrmRoute(fromPt, seg.reconnectTo);
-                const recoLine = L.polyline(
-                routePts.map(p => [p.lat, p.lng]),
-                { color: '#6366f1', weight: 2, opacity: 0.7, dashArray: '8, 6' }
-                ).addTo(map);
-                recoLine.bindTooltip('Reconnected (OSRM)', { sticky: true });
-                reconnectLines.push(recoLine);
-            }
+        }
+        if (!clean.length) {
+            updateStats([]);
+            return;
         }
 
         // Start marker — small green dot
-        startMarker = L.circleMarker([pts[0].lat, pts[0].lng], {
+        startMarker = L.circleMarker([clean[0].lat, clean[0].lng], {
             radius: 5, color: '#fff', fillColor: '#22c55e', fillOpacity: 1, weight: 2,
             pane: 'markerPane',
         }).bindTooltip('Start').addTo(map);
 
         // ── Fix 3: Current position marker ───────────────────
         // Small (radius 8), green when live, red when offline
-        const last        = pts[pts.length - 1];
+        const last        = clean[clean.length - 1];
         const markerColor = isLive ? '#22c55e' : '#ef4444';
         const tipLabel    = isLive ? '● Live' : '● Last seen';
         const tooltip     = `${tipLabel}${last.time ? '\n' + last.time : ''}${last.accuracy ? '\nAccuracy: ' + last.accuracy.toFixed(0) + ' m' : ''}`;
@@ -926,13 +1236,16 @@
 
         log('renderPath: currentMarker lat=%.6f lng=%.6f color=%s', last.lat, last.lng, markerColor);
 
-        updateStats(pts);
+        // Distance excludes unrecorded gaps (which are deliberately not linked).
+        const visibleDistance = segs.reduce((total, seg) => total + calcDistKm(seg), 0);
+        const quality = prepareMapSegments.quality || {raw: pts.length, accepted: clean.length, breaks: 0};
+        updateStats(clean, visibleDistance, quality.breaks,
+            Math.max(0, quality.raw - quality.accepted));
 
         // Fit bounds only on the FIRST render (initialFitDone=false).
         // After that, never move the map — the user controls zoom/pan freely.
         if (!renderPath.initialFitDone) {
-            const custLL = customers.filter(c => c.lat && c.lng).map(c => [c.lat, c.lng]);
-            const allBounds = [...allLatLngs, ...custLL];
+            const allBounds = [...allLatLngs];
             if (allBounds.length === 1) {
                 map.setView(allBounds[0], 16);
             } else if (allBounds.length > 1) {

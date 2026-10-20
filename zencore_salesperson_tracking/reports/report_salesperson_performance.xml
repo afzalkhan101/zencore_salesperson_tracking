@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="paperformat_salesperson_performance" model="report.paperformat">
+        <field name="name">Salesperson Performance Report</field>
+        <field name="default" eval="False"/>
+        <field name="format">A4</field>
+        <field name="orientation">Landscape</field>
+        <field name="margin_top">8</field>
+        <field name="margin_bottom">8</field>
+        <field name="margin_left">8</field>
+        <field name="margin_right">8</field>
+        <field name="header_line" eval="False"/>
+        <field name="dpi">90</field>
+    </record>
+
+    <record id="action_report_salesperson_performance" model="ir.actions.report">
+        <field name="name">Salesperson Performance Report</field>
+        <field name="model">salesperson.performance.report.wizard</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">zencore_salesperson_tracking.report_salesperson_performance_document</field>
+        <field name="report_file">zencore_salesperson_tracking.report_salesperson_performance_document</field>
+        <field name="paperformat_id" ref="paperformat_salesperson_performance"/>
+        <field name="print_report_name">'Salesperson Performance - %s to %s' % (object.date_from, object.date_to)</field>
+    </record>
+
+    <template id="report_salesperson_performance_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <div class="page" style="font-family:Arial,sans-serif;color:#172033;font-size:11px;">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #714B67;padding:4px 0 10px 0;margin-bottom:12px;">
+                        <div>
+                            <div style="font-size:24px;font-weight:700;color:#1F3B6D;">Salesperson Performance Report</div>
+                            <div style="font-size:12px;color:#667085;margin-top:3px;">Salesperson Tracking</div>
+                        </div>
+                        <div style="text-align:right;">
+                            <div style="font-weight:700;" t-esc="env.company.name"/>
+                            <div><span t-esc="doc.date_from"/> - <span t-esc="doc.date_to"/></div>
+                            <div style="text-transform:capitalize;">Type: <span t-esc="doc.report_type"/></div>
+                        </div>
+                    </div>
+
+                    <table style="width:100%;border-collapse:separate;border-spacing:5px;margin-bottom:12px;">
+                        <tr>
+                            <td style="background:#EEF4FF;padding:10px;text-align:center;border-radius:6px;"><b>Total Salespersons</b><br/><span style="font-size:20px;font-weight:700;" t-esc="doc.total_salespersons"/></td>
+                            <td style="background:#ECFDF3;padding:10px;text-align:center;border-radius:6px;"><b>Completed Visits</b><br/><span style="font-size:20px;font-weight:700;" t-esc="doc.total_completed_visits"/></td>
+                            <td style="background:#FFF7ED;padding:10px;text-align:center;border-radius:6px;"><b>Pending Visits</b><br/><span style="font-size:20px;font-weight:700;" t-esc="doc.total_pending_visits"/></td>
+                            <td style="background:#F4F3FF;padding:10px;text-align:center;border-radius:6px;"><b>Planned Visits</b><br/><span style="font-size:20px;font-weight:700;" t-esc="doc.total_planned_visits"/></td>
+                            <td style="background:#EFF8FF;padding:10px;text-align:center;border-radius:6px;"><b>Total Distance</b><br/><span style="font-size:20px;font-weight:700;" t-esc="'%.2f KM' % doc.total_distance_km"/></td>
+                        </tr>
+                        <tr>
+                            <td style="background:#F0FDF4;padding:10px;text-align:center;border-radius:6px;"><b>Tracking Time</b><br/><span t-esc="'%.1f h' % (doc.total_tracking_minutes/60.0)"/></td>
+                            <td style="background:#FFFBEB;padding:10px;text-align:center;border-radius:6px;"><b>Visit Time</b><br/><span t-esc="'%.1f h' % (doc.total_visit_minutes/60.0)"/></td>
+                            <td style="background:#FFF1F2;padding:10px;text-align:center;border-radius:6px;"><b>Idle Time</b><br/><span t-esc="'%.1f h' % (doc.total_idle_minutes/60.0)"/></td>
+                            <td style="background:#FDF4FF;padding:10px;text-align:center;border-radius:6px;"><b>Total Expense</b><br/><span t-esc="'%.2f' % doc.total_expense"/></td>
+                            <td style="background:#F8FAFC;padding:10px;text-align:center;border-radius:6px;"><b>Completion</b><br/><span t-esc="('%.1f' % doc.completion_percent) + '%'"/></td>
+                        </tr>
+                    </table>
+
+                    <div style="font-size:15px;font-weight:700;background:#714B67;color:white;padding:7px 9px;margin-bottom:0;">Salesperson Performance Summary</div>
+                    <table style="width:100%;border-collapse:collapse;margin-bottom:14px;">
+                        <thead>
+                            <tr style="background:#F2F4F7;">
+                                <th style="padding:6px;border:1px solid #D0D5DD;text-align:left;">Salesperson</th>
+                                <th style="padding:6px;border:1px solid #D0D5DD;">Planned</th>
+                                <th style="padding:6px;border:1px solid #D0D5DD;">Completed</th>
+                                <th style="padding:6px;border:1px solid #D0D5DD;">Pending</th>
+                                <th style="padding:6px;border:1px solid #D0D5DD;">Completion %</th>
+                                <th style="padding:6px;border:1px solid #D0D5DD;">Distance</th>
+                                <th style="padding:6px;border:1px solid #D0D5DD;">Visit Time</th>
+                                <th style="padding:6px;border:1px solid #D0D5DD;">Idle Time</th>
+                                <th style="padding:6px;border:1px solid #D0D5DD;">Expense</th>
+                                <th style="padding:6px;border:1px solid #D0D5DD;">Rating</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr t-foreach="doc.line_ids" t-as="line">
+                                <td style="padding:6px;border:1px solid #EAECF0;" t-esc="line.user_id.name"/>
+                                <td style="padding:6px;border:1px solid #EAECF0;text-align:center;" t-esc="line.planned_visits"/>
+                                <td style="padding:6px;border:1px solid #EAECF0;text-align:center;" t-esc="line.completed_visits"/>
+                                <td style="padding:6px;border:1px solid #EAECF0;text-align:center;" t-esc="line.pending_visits"/>
+                                <td style="padding:6px;border:1px solid #EAECF0;text-align:center;" t-esc="('%.1f' % line.completion_percent) + '%'"/>
+                                <td style="padding:6px;border:1px solid #EAECF0;text-align:right;" t-esc="'%.2f' % line.distance_km"/>
+                                <td style="padding:6px;border:1px solid #EAECF0;text-align:right;" t-esc="'%.1f h' % (line.visit_minutes/60.0)"/>
+                                <td style="padding:6px;border:1px solid #EAECF0;text-align:right;" t-esc="'%.1f h' % (line.idle_minutes/60.0)"/>
+                                <td style="padding:6px;border:1px solid #EAECF0;text-align:right;" t-esc="'%.2f' % line.expense"/>
+                                <td style="padding:6px;border:1px solid #EAECF0;text-align:center;" t-esc="'%.1f' % line.average_rating"/>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <t t-if="doc.day_line_ids">
+                        <div style="font-size:15px;font-weight:700;background:#1F77B4;color:white;padding:7px 9px;">Day-wise Summary</div>
+                        <table style="width:100%;border-collapse:collapse;margin-bottom:14px;">
+                            <thead><tr style="background:#F2F4F7;">
+                                <th style="padding:5px;border:1px solid #D0D5DD;">Date</th><th style="padding:5px;border:1px solid #D0D5DD;">Planned</th><th style="padding:5px;border:1px solid #D0D5DD;">Completed</th><th style="padding:5px;border:1px solid #D0D5DD;">Pending</th><th style="padding:5px;border:1px solid #D0D5DD;">Distance KM</th><th style="padding:5px;border:1px solid #D0D5DD;">Visit Time</th><th style="padding:5px;border:1px solid #D0D5DD;">Idle Time</th>
+                            </tr></thead>
+                            <tbody><tr t-foreach="doc.day_line_ids" t-as="d">
+                                <td style="padding:5px;border:1px solid #EAECF0;" t-esc="d.date"/><td style="padding:5px;border:1px solid #EAECF0;text-align:center;" t-esc="d.planned_visits"/><td style="padding:5px;border:1px solid #EAECF0;text-align:center;" t-esc="d.completed_visits"/><td style="padding:5px;border:1px solid #EAECF0;text-align:center;" t-esc="d.pending_visits"/><td style="padding:5px;border:1px solid #EAECF0;text-align:right;" t-esc="'%.2f' % d.distance_km"/><td style="padding:5px;border:1px solid #EAECF0;text-align:right;" t-esc="'%.1f h' % (d.visit_minutes/60.0)"/><td style="padding:5px;border:1px solid #EAECF0;text-align:right;" t-esc="'%.1f h' % (d.idle_minutes/60.0)"/>
+                            </tr></tbody>
+                        </table>
+                    </t>
+
+                    <t t-if="doc.visit_line_ids">
+                        <div style="page-break-before:always;"></div>
+                        <div style="font-size:15px;font-weight:700;background:#15803D;color:white;padding:7px 9px;">Visit Details</div>
+                        <table style="width:100%;border-collapse:collapse;font-size:9px;">
+                            <thead><tr style="background:#F2F4F7;">
+                                <th style="padding:4px;border:1px solid #D0D5DD;">Date</th><th style="padding:4px;border:1px solid #D0D5DD;">Salesperson</th><th style="padding:4px;border:1px solid #D0D5DD;">Customer</th><th style="padding:4px;border:1px solid #D0D5DD;">Purpose</th><th style="padding:4px;border:1px solid #D0D5DD;">Check In</th><th style="padding:4px;border:1px solid #D0D5DD;">Check Out</th><th style="padding:4px;border:1px solid #D0D5DD;">Duration</th><th style="padding:4px;border:1px solid #D0D5DD;">Status</th><th style="padding:4px;border:1px solid #D0D5DD;">Rating</th>
+                            </tr></thead>
+                            <tbody><tr t-foreach="doc.visit_line_ids" t-as="v">
+                                <td style="padding:4px;border:1px solid #EAECF0;" t-esc="v.visit_date"/><td style="padding:4px;border:1px solid #EAECF0;" t-esc="v.user_id.name"/><td style="padding:4px;border:1px solid #EAECF0;" t-esc="v.partner_id.name"/><td style="padding:4px;border:1px solid #EAECF0;" t-esc="v.purpose or '-'"/><td style="padding:4px;border:1px solid #EAECF0;" t-esc="v.checkin_time or '-'"/><td style="padding:4px;border:1px solid #EAECF0;" t-esc="v.checkout_time or '-'"/><td style="padding:4px;border:1px solid #EAECF0;text-align:right;" t-esc="'%.0f min' % v.duration_minutes"/><td style="padding:4px;border:1px solid #EAECF0;text-align:center;" t-esc="v.status or '-'"/><td style="padding:4px;border:1px solid #EAECF0;text-align:center;" t-esc="'%.1f' % v.rating"/>
+                            </tr></tbody>
+                        </table>
+                    </t>
+                </div>
+            </t>
+        </t>
+    </template>
+</odoo>

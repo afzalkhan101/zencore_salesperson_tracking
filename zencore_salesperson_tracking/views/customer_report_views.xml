@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_salesperson_customer_report_wizard_form" model="ir.ui.view">
+        <field name="name">salesperson.customer.report.wizard.form</field>
+        <field name="model">salesperson.customer.report.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Customer Detailed Report" create="0" edit="1">
+                <sheet>
+                    <div class="oe_title">
+                        <h1>Customer Detailed Report</h1>
+                    </div>
+
+                    <group col="5">
+                        <field name="partner_id" options="{'no_create': True}"/>
+                        <field name="user_id" options="{'no_create': True}"/>
+                        <field name="date_from"/>
+                        <field name="date_to"/>
+                        <field name="visit_status"/>      # Extract base64 data (remove data URL prefix if present)
+                    </group>
+
+                    <div class="d-flex gap-2 mb-3">
+                        <button name="action_generate_report"
+                                type="object"
+                                string="Generate Report"
+                                class="btn-primary"
+                                icon="fa-search"/>
+                        <button name="action_reset"
+                                type="object"
+                                string="Reset"
+                                class="btn-secondary"
+                                icon="fa-refresh"/>
+                        <button name="action_print_pdf"
+                                type="object"
+                                string="Print PDF Report"
+                                class="btn-success ms-auto"
+                                icon="fa-print"
+                                invisible="not partner_id"/>
+                    </div>
+
+                    <group string="Summary" col="7" invisible="not line_ids">
+                        <field name="total_visits" readonly="1"/>
+                        <field name="completed_visits" readonly="1"/>
+                        <field name="pending_visits" readonly="1"/>
+                        <field name="total_distance_km" readonly="1"/>
+                        <field name="total_visit_minutes" readonly="1"/>
+                        <field name="total_expense" readonly="1"/>
+                        <field name="average_rating" readonly="1"/>
+                    </group>
+
+                    <separator string="Report Preview"/>
+                    <field name="line_ids" nolabel="1" readonly="1">
+                        <list create="0" delete="0" edit="0" decoration-success="status == 'completed'" decoration-warning="status == 'pending'">
+                            <field name="visit_date"/>
+                            <field name="visit_plan_ref"/>
+                            <field name="user_id"/>
+                            <field name="purpose" optional="show"/>
+                            <field name="checkin_time"/>
+                            <field name="checkout_time"/>
+                            <field name="duration_minutes"/>
+                            <field name="distance_km"/>
+                            <field name="status" widget="badge"/>
+                            <field name="outcome"/>
+                            <field name="rating"/>
+                        </list>
+                    </field>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_salesperson_customer_report" model="ir.actions.act_window">
+        <field name="name">Customer Detailed Report</field>
+        <field name="res_model">salesperson.customer.report.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">current</field>
+    </record>
+
+    <menuitem id="menu_salesperson_customer_reports"
+              name="Customer Reports"
+              parent="menu_salesperson_tracking_root"
+              sequence="35"
+              groups="zencore_salesperson_tracking.group_salesperson_manager"/>
+
+    <menuitem id="menu_salesperson_customer_detailed_report"
+              name="Customer Detailed Report"
+              parent="menu_salesperson_customer_reports"
+              action="action_salesperson_customer_report"
+              sequence="10"
+              groups="zencore_salesperson_tracking.group_salesperson_manager"/>
+</odoo>
