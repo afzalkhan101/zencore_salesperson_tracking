@@ -37,6 +37,20 @@ class SalespersonVisitPlan(models.Model):
     )
 
     total_visits = fields.Integer(string="Total Visits", compute="_compute_total_visits", store=True)
+    customer_names = fields.Char(
+        string="Customers", compute="_compute_customer_names",
+        help="Unique planned customers across all target lines.",
+    )
+
+    @api.depends("target_line_ids", "target_line_ids.customer_ids", "target_line_ids.customer_ids.name")
+    def _compute_customer_names(self):
+        for plan in self:
+            customers = plan.target_line_ids.mapped("customer_ids")
+            names = list(dict.fromkeys(customers.mapped("display_name")))
+            plan.customer_names = (
+                ", ".join(names[:3]) + (" +%d more" % (len(names) - 3) if len(names) > 3 else "")
+            ) if names else False
+
 
     # Expenses
     transport_cost = fields.Float(string="Transport Cost", tracking=True)

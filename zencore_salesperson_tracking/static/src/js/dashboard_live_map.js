@@ -58,6 +58,57 @@
         marker.openPopup();
     }
 
+    function closeVisitDetails() {
+        document.getElementById('visit-details-overlay').style.display = 'none';
+    }
+    function visitEscape(value) {
+        return String(value == null ? '' : value).replace(/[&<>"']/g, function (c) {
+            return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+        });
+    }
+    function visitTable(title, rows, completed) {
+        var head = '<div style="background:' + (completed ? '#ecfdf5' : '#fff1f2') + ';padding:14px;border-radius:10px 10px 0 0;font-weight:700;color:' + (completed ? '#047857' : '#be123c') + '">' + title + ' (' + rows.length + ')</div>';
+        var content = rows.length ? rows.map(function (v) {
+            return '<div style="padding:12px;border-bottom:1px solid #e2e8f0">' +
+                '<strong>' + visitEscape(v.customer) + '</strong> <small style="color:#64748b">' + visitEscape(v.date) + '</small>' +
+                '<div style="font-size:12px;color:#64748b;margin-top:4px">' + visitEscape(v.address) + '</div>' +
+                (completed ? '<div style="font-size:12px;margin-top:5px">In: ' + visitEscape(v.checkin || '—') + ' | Out: ' + visitEscape(v.checkout || '—') + ' | ' + visitEscape(v.duration) + ' min</div>' : '<div style="font-size:12px;margin-top:5px;color:#be123c">' + visitEscape(v.status) + '</div>') +
+                '</div>';
+        }).join('') : '<p style="padding:15px;color:#64748b">No visits found.</p>';
+        return '<section style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden">' + head + content + '</section>';
+    }
+    async function openVisitDetails(salesmanId) {
+        var overlay = document.getElementById('visit-details-overlay');
+        var content = document.getElementById('visit-details-content');
+        overlay.style.display = 'block';
+        content.textContent = 'Loading visits…';
+        var params = new URLSearchParams(window.location.search);
+        var from = params.get('date_from'), to = params.get('date_to');
+        if (!from || !to) {
+            var now = new Date();
+            var local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+            var today = local.toISOString().slice(0, 10);
+            var period = params.get('period') || 'today';
+            var start = new Date(local);
+            if (period === 'yesterday') start.setDate(start.getDate() - 1);
+            else if (period === 'weekly') start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
+            else if (period === 'monthly') start.setDate(1);
+            from = start.toISOString().slice(0, 10);
+            to = period === 'yesterday' ? from : today;
+        }
+        try {
+            var url = '/salesperson/dashboard/visit_details?' + new URLSearchParams({salesman_id: String(salesmanId), date_from: from, date_to: to});
+            var response = await fetch(url, {credentials:'same-origin'});
+            if (!response.ok) throw new Error('Request failed');
+            var data = await response.json();
+            if (!data.ok) throw new Error(data.error || 'Unable to load visits');
+            document.getElementById('visit-details-heading').textContent = 'Visit Details – ' + (data.salesman || 'Salesperson');
+            document.getElementById('visit-details-summary').textContent = from + ' to ' + to + ' | Planned: ' + data.total + ' | Completed: ' + data.completed.length + ' | Remaining: ' + data.incomplete.length;
+            content.innerHTML = visitTable('Completed Visits', data.completed, true) + visitTable('Pending / Missed Visits', data.incomplete, false);
+        } catch (err) { content.textContent = 'Could not load visit details: ' + err.message; }
+    }
+    window.openVisitDetails = openVisitDetails;
+    window.closeVisitDetails = closeVisitDetails;
     window.openTracker = openTracker;
     window.openMovementMap = openMovementMap;
     window.focusSalesman = focusSalesman;

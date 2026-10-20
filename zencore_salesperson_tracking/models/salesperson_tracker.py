@@ -5,6 +5,7 @@ import time
 from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError
 import requests
+from .verified_gps import verified_distance_km
 
 _logger = logging.getLogger(__name__)
 
@@ -54,6 +55,28 @@ class SalespersonTracker(models.Model):
     actual_food_cost = fields.Float(string="Actual Food")
     actual_other_cost = fields.Float(string="Actual Other")
     actual_total_cost = fields.Float(string="Actual Total", compute="_compute_actual_costs", store=True)
+
+    def _recalculate_verified_distance(self):
+        """Rebuild persisted distance from recorded GPS logs (also repairs historical totals)."""
+        for tracker in self:
+            self.env.cr.execute("""
+                SELECT latitude, longitude, accuracy, tracked_at
+                  FROM salesperson_location_log
+                 WHERE tracker_id = %s
+                 ORDER BY tracked_at ASC, id ASC
+            """, (tracker.id,))
+            value = verified_distance_km(self.env.cr.fetchall())
+            self.env.cr.execute(
+                "UPDATE salesperson_tracker SET total_distance_km = %s WHERE id = %s",
+                (value, tracker.id),
+            )
+            tracker.invalidate_recordset(['total_distance_km'])
+
+    @api.model
+    def cron_recalculate_verified_distances(self):
+        """Optional batch repair for older GPS history; invoke in Odoo shell."""
+        for batch_start in range(0, self.search_count([]), 100):
+            self.search([], order='id', offset=batch_start, limit=100)._recalculate_verified_distance()
 
     # Tracking Stats
     total_distance_km = fields.Float(string="Total Distance Covered (KM)", default=0.0)
@@ -275,7 +298,7 @@ class SalespersonTracker(models.Model):
                        last_latitude      = %s,
                        last_longitude     = %s,
                        last_accuracy      = %s,
-                       total_distance_km  = total_distance_km + %s,
+                       total_distance_km  = total_distance_km,
                        location_name      = %s
                  WHERE id = %s
                 """,
@@ -284,7 +307,6 @@ class SalespersonTracker(models.Model):
                     latitude,
                     longitude,
                     accuracy or 0.0,
-                    distance or 0.0,
                     location_name,
                     self.id,
                 ),
@@ -314,6 +336,7 @@ class SalespersonTracker(models.Model):
                     self.env.uid,
                 ),
             )
+            self._recalculate_verified_distance()
             # Retrieve the new log id for logging
             self.env.cr.execute("SELECT lastval()")
             log_id = self.env.cr.fetchone()[0]

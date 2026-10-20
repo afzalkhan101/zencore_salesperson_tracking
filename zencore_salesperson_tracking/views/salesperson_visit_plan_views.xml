@@ -102,6 +102,7 @@
                 <field name="visit_date"/>
                 <field name="purpose"/>
                 <field name="total_visits"/>
+                <field name="customer_names" string="Customers" readonly="1"/>
                 <field name="total_cost"/>
                 <field name="state" widget="badge"/>
             </list>

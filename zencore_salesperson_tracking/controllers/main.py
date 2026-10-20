@@ -452,7 +452,7 @@ class SalespersonTrackingController(http.Controller):
             total_covered = sum(r['covered'] for r in rows)
             total_distance = round(sum(r['distance_km'] for r in rows), 1)
             summary = {
-                'total_reps': len(rows),
+                'total_reps': self._dashboard_unique_tracking_salesmen(trackers),
                 'active_count': 0,
                 'at_customer_count': 0,
                 'moving_count': 0,
@@ -868,6 +868,18 @@ class SalespersonTrackingController(http.Controller):
             })
         return alerts[:5]
 
+    @staticmethod
+    def _dashboard_unique_tracking_salesmen(trackers):
+        """Count distinct users who actually started tracking in the selected period."""
+        user_ids = set()
+        for tracker in trackers:
+            if not tracker.user_id:
+                continue
+            # A planned visit alone must never count as an active salesperson.
+            if tracker.session_ids or tracker.checkin_time or tracker.last_seen:
+                user_ids.add(tracker.user_id.id)
+        return len(user_ids)
+
     def _dashboard_live_payload(self, trackers, tz_name):
         rows, map_salesmen, map_customers = self._dashboard_today_rows(trackers, tz_name)
         status_counts = {
@@ -880,7 +892,7 @@ class SalespersonTrackingController(http.Controller):
         total_covered = sum(r['covered'] for r in rows)
         total_distance = round(sum(r['distance_km'] for r in rows), 1)
         summary = {
-            'total_reps': len(rows),
+            'total_reps': self._dashboard_unique_tracking_salesmen(trackers),
             'active_count': status_counts['at_customer'] + status_counts['moving'] + status_counts['idle'],
             'at_customer_count': status_counts['at_customer'],
             'moving_count': status_counts['moving'],
@@ -902,6 +914,58 @@ class SalespersonTrackingController(http.Controller):
         }
 
     # ── Dashboard data API (Today tab live polling) ───────────────────────────
+
+    @http.route("/salesperson/dashboard/visit_details", type="http", auth="user", methods=["GET"], csrf=False)
+    def dashboard_visit_details(self, **kwargs):
+        """Customer-level visit details for the currently selected salesperson and dates."""
+        user = self._check_access()
+        try:
+            salesman_id = int(kwargs.get('salesman_id') or 0)
+            date_from = fields.Date.from_string(kwargs.get('date_from'))
+            date_to = fields.Date.from_string(kwargs.get('date_to'))
+            if not salesman_id or not date_from or not date_to:
+                raise ValueError('Missing filter')
+        except (TypeError, ValueError):
+            return self._json_response({'ok': False, 'error': 'Invalid date or salesperson'})
+        if date_from > date_to:
+            date_from, date_to = date_to, date_from
+        trackers = request.env['salesperson.tracker'].sudo().search([
+            ('user_id', '=', salesman_id), ('visit_date', '>=', date_from),
+            ('visit_date', '<=', date_to),
+        ], order='visit_date, id')
+        tz_name = self._user_tz(user)
+        completed, incomplete = [], []
+        for tracker in trackers:
+            visited = {}
+            for line in tracker.visited_line_ids:
+                if line.partner_id and line.checkin_time:
+                    visited.setdefault(line.partner_id.id, line)
+            seen = set()
+            for target in tracker.target_line_ids:
+                for partner in target.customer_ids:
+                    if partner.id in seen:
+                        continue
+                    seen.add(partner.id)
+                    visit = visited.get(partner.id)
+                    item = {
+                        'customer': partner.name or '',
+                        'date': str(tracker.visit_date),
+                        'address': partner.contact_address or '',
+                        'partner_id': partner.id,
+                        'checkin': _localize_dt(visit.checkin_time, tz_name) if visit else '',
+                        'checkout': _localize_dt(visit.checkout_time, tz_name) if visit else '',
+                        'duration': round(visit.time_spent_minutes or 0, 1) if visit else 0,
+                    }
+                    if visit:
+                        completed.append(item)
+                    else:
+                        item['status'] = 'Missed' if tracker.visit_date < fields.Date.today() else 'Pending'
+                        incomplete.append(item)
+        return self._json_response({
+            'ok': True, 'salesman': trackers[:1].user_id.name if trackers else '',
+            'completed': completed, 'incomplete': incomplete,
+            'total': len(completed) + len(incomplete),
+        })
 
     @http.route("/salesperson/dashboard/data", type="http", auth="user", methods=["GET"], csrf=False)
     def dashboard_data(self, **kwargs):

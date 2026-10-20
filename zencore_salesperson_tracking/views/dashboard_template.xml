@@ -101,7 +101,7 @@
                 <div class="kpi-body">
                     <div class="kpi-label">Total Salesmen</div>
                     <div class="kpi-value" id="kpi-total-reps" t-esc="summary['total_reps']"/>
-                    <div class="kpi-sub">Active team members</div>
+                    <div class="kpi-sub">Unique salesmen who tracked in selected period</div>
                 </div>
             </div>
 
@@ -249,7 +249,7 @@
                     <div class="panel-sub">Visits, distance, tracking time and GPS health</div>
                 </div>
                 <div class="table-head-actions">
-                    <span class="table-count"><span id="table-row-count" t-esc="summary['total_reps']"/> salesmen</span>
+                    <span class="table-count"><span id="table-row-count" t-esc="len(rows)"/> salesmen</span>
                 </div>
             </div>
 
@@ -325,7 +325,7 @@
                                                         t-att-onclick="'focusSalesman(%s); return false;' % r['id']">Live</button>
                                             </t>
                                             <button type="button" class="action-btn" t-att-onclick="'openMovementMap(%s); return false;' % r['id']">Route</button>
-                                            <button type="button" class="action-btn" t-att-onclick="'openTracker(%s); return false;' % r['id']">Details</button>
+                                            <button type="button" class="action-btn" t-att-onclick="'openVisitDetails(%s); return false;' % r['user_id']">Details</button>
                                         </div>
                                     </td>
                                 </tr>
@@ -337,6 +337,16 @@
         </div>
     </div>
 
+    <div id="visit-details-overlay" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.48);z-index:9999;overflow:auto;padding:5vh 3vw;" onclick="if(event.target===this)closeVisitDetails()">
+      <div style="background:white;border-radius:14px;max-width:1200px;margin:auto;padding:24px;box-shadow:0 15px 50px #0003;">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+          <h2 id="visit-details-heading" style="margin:0">Visit Details</h2>
+          <button type="button" onclick="closeVisitDetails()" aria-label="Close visit details" style="border:0;background:#f1f5f9;border-radius:8px;padding:8px 14px;cursor:pointer">✕</button>
+        </div>
+        <p id="visit-details-summary" style="color:#64748b;margin:10px 0 20px"></p>
+        <div id="visit-details-content" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:18px"></div>
+      </div>
+    </div>
     <script src="/zencore_salesperson_tracking/static/src/js/dashboard_live_map.js"></script>
     </body>
 </html>
