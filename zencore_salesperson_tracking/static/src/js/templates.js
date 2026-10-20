@@ -1209,6 +1209,22 @@
                 trackPolylines.push(poly);
             }
         }
+        // Visual continuity only: bridge verified segment endpoints after a GPS/network
+        // interruption. Orange is the unknown (unrecorded) portion, not a measured route.
+        // Keep identical weight/opacity to the blue track; do not count it as distance.
+        for (let i = 1; i < segs.length; i++) {
+            const before = segs[i - 1];
+            const after = segs[i];
+            if (!before.length || !after.length) continue;
+            const from = before[before.length - 1];
+            const to = after[0];
+            const bridge = L.polyline([[from.lat, from.lng], [to.lat, to.lng]], {
+                color: '#f59e0b', weight: 5, opacity: 0.95,
+                smoothFactor: 1.2, lineCap: 'round', lineJoin: 'round',
+            }).bindTooltip('GPS/network gap — connecting last and next recorded points; actual route unknown');
+            bridge.addTo(map);
+            reconnectLines.push(bridge);
+        }
         if (!clean.length) {
             updateStats([]);
             return;

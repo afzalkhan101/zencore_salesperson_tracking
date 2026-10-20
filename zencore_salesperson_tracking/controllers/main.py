@@ -48,6 +48,23 @@ def _epoch_ms(dt):
         return 0
 
 
+def _tracker_visited_partner_ids(tracker):
+    """Combine completed visits and actual check-in records for this tracker.
+
+    Some completed check-ins can lack a visited-line row (e.g. older data),
+    so relying on visited_line_ids alone leaves later pins blue.
+    """
+    ids = set(tracker.visited_line_ids.mapped("partner_id").ids)
+    checkins = tracker.env["salesperson.checkin"].sudo().search([
+        ("tracker_id", "=", tracker.id),
+        ("state", "in", ["checked_in", "checked_out"]),
+    ])
+    ids.update(checkins.mapped("partner_id").ids)
+    if tracker.current_checkin_id and tracker.current_checkin_id.partner_id:
+        ids.add(tracker.current_checkin_id.partner_id.id)
+    return ids
+
+
 class SalespersonTrackingController(http.Controller):
 
     def _check_access(self):
@@ -150,7 +167,7 @@ class SalespersonTrackingController(http.Controller):
         # Build customer pins for the live-tracking mini-map (same logic as moving_map)
         live_customers = []
         live_seen_ids = set()
-        live_visited_ids = {v.partner_id.id for v in tracker.visited_line_ids}
+        live_visited_ids = _tracker_visited_partner_ids(tracker)
         # Also mark currently active check-in as visited (salesperson inside geofence now)
         if tracker.current_checkin_id and tracker.current_checkin_id.partner_id:
             live_visited_ids.add(tracker.current_checkin_id.partner_id.id)
@@ -291,7 +308,7 @@ class SalespersonTrackingController(http.Controller):
         # Status: visited > not-yet-visited (planned) > skipped (planned but not visited and not remaining)
         customers = []
         seen_partner_ids = set()
-        visited_ids   = {v.partner_id.id for v in tracker.visited_line_ids}
+        visited_ids   = _tracker_visited_partner_ids(tracker)
         # Also treat currently active check-in as visited (salesperson inside geofence right now)
         if tracker.current_checkin_id and tracker.current_checkin_id.partner_id:
             visited_ids.add(tracker.current_checkin_id.partner_id.id)
@@ -331,7 +348,7 @@ class SalespersonTrackingController(http.Controller):
                 _add_partner(partner)
 
         # Source 2: fallback to plan lines if target_line_ids is empty
-        if not seen_partner_ids and tracker.plan_id:
+        if tracker.plan_id:
             _logger.info(
                 "moving_map: no target_line_ids on tracker — falling back to plan_id=%s lines",
                 tracker.plan_id.id,
@@ -1054,7 +1071,7 @@ class SalespersonTrackingController(http.Controller):
                 if partner_ids:
                     nearest_dist = float("inf")
                     nearest_name = None
-                    visited_ids = {v.partner_id.id for v in tracker_obj.visited_line_ids}
+                    visited_ids = _tracker_visited_partner_ids(tracker_obj)
                     for p in request.env["res.partner"].sudo().browse(partner_ids):
                         if not (p.partner_latitude and p.partner_longitude):
                             continue
@@ -1198,27 +1215,36 @@ class SalespersonTrackingController(http.Controller):
 
         # Build visited_ids set for customer pin coloring on moving map
         # Include both completed visits (visited_line_ids) and currently active check-in
-        visited_ids_set = {v.partner_id.id for v in tracker.visited_line_ids}
+        visited_ids_set = _tracker_visited_partner_ids(tracker)
         if tracker.current_checkin_id and tracker.current_checkin_id.partner_id:
             visited_ids_set.add(tracker.current_checkin_id.partner_id.id)
 
         # Build customers list (for moving map to update pins without page reload)
         customers_live = []
         seen_ids = set()
+        sources = [tracker.target_line_ids]
         if tracker.plan_id:
-            for line in tracker.plan_id.target_line_ids:
+            sources.append(tracker.plan_id.target_line_ids)
+        for lines in sources:
+            for line in lines:
                 for p in line.customer_ids:
-                    if p.id in seen_ids:
+                    if p.id in seen_ids or not (p.partner_latitude and p.partner_longitude):
                         continue
                     seen_ids.add(p.id)
-                    if p.partner_latitude and p.partner_longitude:
-                        customers_live.append({
-                            "id": p.id,
-                            "name": p.display_name,
-                            "lat": p.partner_latitude,
-                            "lng": p.partner_longitude,
-                            "visited": p.id in visited_ids_set,
-                        })
+                    customers_live.append({
+                        "id": p.id, "name": p.display_name,
+                        "lat": p.partner_latitude, "lng": p.partner_longitude,
+                        "visited": p.id in visited_ids_set,
+                    })
+        # Include genuine visits not present in the active plan.
+        for p in tracker.env["res.partner"].sudo().browse(list(visited_ids_set)):
+            if p.id not in seen_ids and p.partner_latitude and p.partner_longitude:
+                seen_ids.add(p.id)
+                customers_live.append({
+                    "id": p.id, "name": p.display_name,
+                    "lat": p.partner_latitude, "lng": p.partner_longitude,
+                    "visited": True,
+                })
 
         return self._json_response({
             "ok": True,
@@ -1360,7 +1386,7 @@ class SalespersonTrackingController(http.Controller):
 
         # Build customers for live-map pin sync
         tracker_obj = request.env["salesperson.tracker"].sudo().browse(tracker_id)
-        visited_ids_set = {v.partner_id.id for v in tracker_obj.visited_line_ids}
+        visited_ids_set = _tracker_visited_partner_ids(tracker_obj)
         # Also mark currently active check-in customer as visited (inside geofence now)
         if tracker_obj.current_checkin_id and tracker_obj.current_checkin_id.partner_id:
             visited_ids_set.add(tracker_obj.current_checkin_id.partner_id.id)
@@ -1377,8 +1403,6 @@ class SalespersonTrackingController(http.Controller):
                         "lat": p.partner_latitude, "lng": p.partner_longitude,
                         "visited": p.id in visited_ids_set,
                     })
-            if seen:
-                break
 
         return self._json_response({
             "ok": True,
