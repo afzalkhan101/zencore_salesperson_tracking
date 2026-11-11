@@ -1,7 +1,7 @@
 {
     "name": "ZenCore Salesperson Tracking",
     "summary": "Complete salesperson tracking with geofencing, visit plans, and KPI reports",
-    "version": "19.0.5.0.0",
+    "version": "19.0.11.0.20",
     "category": "Zencore",
     "author": "ZenCore",
     "website": "",
@@ -28,8 +28,9 @@
         "views/templates.xml",
         "views/dashboard_template.xml",
         "views/menus.xml",
-        "views/customer_report_views.xml",
+        "views/zencore_approval_views.xml",
         "views/performance_report_views.xml",
+        "views/customer_report_views.xml",
         "reports/report_visit_plan.xml",
         "reports/report_tracking_summary.xml",
         "reports/report_customer_detailed.xml",
@@ -38,6 +39,8 @@
         "data/idle_time_cron.xml",
     ],
 
+    "demo": ["demo/hierarchy_demo.xml"],
+
     "images": [
         "static/description/icon.png",
     ],
@@ -45,6 +48,7 @@
     "assets": {
         "web.assets_backend": [
             "zencore_salesperson_tracking/static/src/js/dashboard_action.js",
+            "zencore_salesperson_tracking/static/src/js/role_entry_action.js",
             "zencore_salesperson_tracking/static/src/js/salesperson_iframe_action.js",
         ],
     },

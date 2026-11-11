@@ -13,14 +13,140 @@ class ResUsers(models.Model):
 
     salesperson_role = fields.Selection(
         [
+            ("ceo", "CEO"),
             ("manager", "Manager"),
-            ("salesman", "Salesman"),
+            ("supervisor", "Supervisor"),
+            ("salesman", "Salesperson"),
         ],
         string="Role",
         default="salesman",
         required=True,
         help="Manager: Full access to all tracking data\nSalesman: Own records only",
     )
+
+    @api.model
+    def zc_get_field_landing_action(self):
+        """Select the app landing action using the authenticated server-side role.
+
+        Never trust a role supplied by JavaScript. This mirrors the dashboard
+        controller's permissions and does not grant additional record access.
+        """
+        user = self.env.user
+        if user.has_group('base.group_system') or user.salesperson_role in (
+            'ceo', 'manager', 'supervisor'
+        ):
+            return 'zencore_salesperson_tracking.action_salesperson_dashboard_client'
+        return 'zencore_salesperson_tracking.action_salesperson_visit_plan_my'
+
+    zc_reports_to_id = fields.Many2one(
+        'res.users', string='Reports To', ondelete='restrict', index=True,
+        domain="[('share','=',False)]",
+        help='Direct approver: Salesperson → Supervisor → Manager → CEO.',
+    )
+    zc_approval_override = fields.Selection([
+        ('default','Use Role Policy'),('manual','Manual Approval'),('auto','Auto Approve')
+    ], default='default', string='Approval Override',
+       help='Applies to requests submitted by this user; configured by administrators.')
+    zc_direct_report_ids = fields.One2many(
+        'res.users', 'zc_reports_to_id', string='Direct Reports', readonly=True)
+    zc_chart_visible = fields.Boolean(
+        compute='_compute_zc_chart_visible', search='_search_zc_chart_visible',
+        string='Visible in Organization Chart')
+
+    def _compute_zc_chart_visible(self):
+        permitted = set(self.env.user.sudo().zc_team_user_ids.ids)
+        for record in self:
+            record.zc_chart_visible = record.id in permitted
+
+    def _search_zc_chart_visible(self, operator, value):
+        """Search the current user's reporting subtree in native hierarchy views.
+
+        Odoo 19 optimizes ``('boolean_field', '=', True)`` into an
+        ``in`` domain during ``hierarchy_read``.  The previous implementation
+        rejected this normalized operator, raising a server-side ValueError.
+        Support both original and optimized Boolean-domain operators.
+        """
+        if operator in ('=', '!=', '=?'):
+            # Odoo Boolean values may be normalized to 0/1 during filtering.
+            accepted_values = {True, False, 0, 1}
+            if value not in accepted_values:
+                return [('id', '=', 0)]
+            if operator == '=?' and not value:
+                return []  # Optional equality: false/unset removes the term.
+            wants_visible = bool(value)
+            if operator == '!=':
+                wants_visible = not wants_visible
+        elif operator in ('in', 'not in'):
+            candidates = value if isinstance(value, (list, tuple, set)) else [value]
+            includes_true = any(v is True or v == 1 for v in candidates)
+            includes_false = any(v is False or v == 0 for v in candidates)
+            if includes_true and includes_false:
+                return [] if operator == 'in' else [('id', '=', 0)]
+            if not includes_true and not includes_false:
+                return [('id', '=', 0)] if operator == 'in' else []
+            wants_visible = includes_true if operator == 'in' else includes_false
+        else:
+            # Return an empty domain instead of crashing a hierarchy view on
+            # an unsupported operator.  Do not expand access to other users.
+            return [('id', '=', 0)]
+
+        team_ids = self.env.user.sudo().zc_team_user_ids.ids
+        return [('id', 'in' if wants_visible else 'not in', team_ids)]
+
+    def action_zc_configure_team_member(self):
+        self.ensure_one()
+        actor = self.env.user
+        if actor.salesperson_role not in ('ceo', 'manager') or not (
+            actor.has_group('zencore_salesperson_tracking.group_salesperson_ceo') or
+            actor.has_group('zencore_salesperson_tracking.group_salesperson_manager')
+        ):
+            from odoo.exceptions import AccessError
+            raise AccessError('Only ZenCore CEOs and Managers can configure the hierarchy.')
+        if self.id not in actor.sudo().zc_team_user_ids.ids and self != actor:
+            from odoo.exceptions import AccessError
+            raise AccessError('The selected person is outside your reporting team.')
+        return {'type':'ir.actions.act_window', 'name':'Edit Reporting Line',
+                'res_model':'zc.reporting.change.wizard', 'view_mode':'form',
+                'target':'new', 'context':dict(self.env.context, default_user_id=self.id)}
+
+    zc_team_user_ids = fields.Many2many('res.users', compute='_compute_zc_team_user_ids',
+                                         string='Visible Reporting Team')
+
+    def _compute_zc_team_user_ids(self):
+        Users = self.env['res.users'].sudo()
+        for user in self:
+            seen = {user.id}
+            frontier = {user.id}
+            while frontier:
+                children = Users.search([('zc_reports_to_id','in',list(frontier))])
+                next_ids = set(children.ids) - seen
+                seen |= next_ids
+                frontier = next_ids
+            user.zc_team_user_ids = [(6, 0, list(seen))]
+
+    @api.constrains('zc_reports_to_id','salesperson_role')
+    def _check_zc_reporting_line(self):
+        from odoo.exceptions import ValidationError
+        expected = {'salesman':'supervisor','supervisor':'manager','manager':'ceo'}
+        for user in self:
+            parent = user.zc_reports_to_id
+            if not parent:
+                continue  # Missing approver is blocked on Submit, not on user creation.
+            if parent.id == user.id:
+                raise ValidationError('A user cannot report to themselves.')
+            if user.salesperson_role == 'ceo':
+                raise ValidationError('A CEO cannot have a direct reporting superior. Configure a top-level approver on the company.')
+            if parent.company_id != user.company_id:
+                raise ValidationError('Reporting superior must belong to the same company.')
+            if parent.salesperson_role != expected.get(user.salesperson_role):
+                raise ValidationError('Reporting hierarchy must be Salesperson → Supervisor → Manager → CEO.')
+            seen = {user.id}
+            ancestor = parent
+            while ancestor:
+                if ancestor.id in seen:
+                    raise ValidationError('Circular reporting hierarchy is not allowed.')
+                seen.add(ancestor.id)
+                ancestor = ancestor.zc_reports_to_id
 
     salesperson_tracker_ids = fields.One2many(
         "salesperson.tracker",
@@ -67,14 +193,15 @@ class ResUsers(models.Model):
 
     def _sync_salesperson_role_groups(self):
         self.ensure_one()
-        manager_group = self.env.ref('zencore_salesperson_tracking.group_salesperson_manager', raise_if_not_found=False)
-        salesman_group = self.env.ref('zencore_salesperson_tracking.group_salesperson_salesman', raise_if_not_found=False)
-        if not manager_group or not salesman_group:
-            return  # groups not loaded yet (e.g. mid-install) — nothing to sync
-        if self.salesperson_role == 'manager':
-            commands = [(4, manager_group.id), (3, salesman_group.id)]
-        else:
-            commands = [(3, manager_group.id), (4, salesman_group.id)]
+        keys = {'ceo':'group_salesperson_ceo', 'manager':'group_salesperson_manager',
+                'supervisor':'group_salesperson_supervisor', 'salesman':'group_salesperson_salesman'}
+        groups = [self.env.ref('zencore_salesperson_tracking.'+key, raise_if_not_found=False)
+                  for key in keys.values()]
+        if not all(groups):
+            return
+        chosen = keys.get(self.salesperson_role, 'group_salesperson_salesman')
+        commands = [(4 if xml_id.endswith(chosen) else 3, group.id)
+                    for xml_id,group in zip(keys.values(),groups)]
         self.sudo().write({'group_ids': commands})
 
     def _register_hook(self):
@@ -102,6 +229,10 @@ class ResUsers(models.Model):
                 ('group_ids', 'not in', salesman_group.id),
             ])
             for user in managers_out_of_sync | salesmen_out_of_sync:
+                user._sync_salesperson_role_groups()
+            # Legacy installations may have assigned the Salesman group to
+            # supervisors or CEOs; repair it once after all role groups exist.
+            for user in self.sudo().search([('salesperson_role','in',['supervisor','ceo'])]):
                 user._sync_salesperson_role_groups()
         except Exception as e:
             _logger.warning("_register_hook: salesperson role/group self-heal failed (non-fatal): %s", e)

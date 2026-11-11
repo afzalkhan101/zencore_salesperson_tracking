@@ -71,8 +71,9 @@ class SalespersonTrackingController(http.Controller):
         user = request.env.user
         if user._is_public():
             raise AccessError(_("Please log in to access tracking."))
-        if not hasattr(user, 'salesperson_role') or user.salesperson_role not in ("manager", "salesman"):
-            raise AccessError(_("Only salespersons and managers can access tracking."))
+        if (getattr(user, 'salesperson_role', None) not in ('ceo', 'manager', 'supervisor', 'salesman')
+                and not user.has_group('base.group_system')):
+            raise AccessError(_("Tracking access requires a ZenCore Field role."))
         
         # Ensure the user has the tracker method
         if not hasattr(user, '_ensure_salesperson_tracker'):
@@ -80,6 +81,48 @@ class SalespersonTrackingController(http.Controller):
             pass
         
         return user
+
+    def _ensure_tracker_access(self, user, tracker, write=False):
+        """Authorize the tracking owner for writes and reporting subtree for reads.
+
+        Tracker endpoints use sudo() for operational data. Check ownership before
+        sudo reads/writes so arbitrary tracker IDs cannot disclose team GPS.
+        """
+        if not tracker or not tracker.exists():
+            raise AccessError(_("Tracker not found."))
+        if tracker.user_id.id == user.id:
+            return tracker
+        if write:
+            raise AccessError(_("You may only update your own tracking session."))
+        if user.salesperson_role not in ('ceo', 'manager', 'supervisor'):
+            raise AccessError(_("You cannot view another person's GPS data."))
+        if tracker.user_id.id not in user.sudo().zc_team_user_ids.ids:
+            raise AccessError(_("This tracking session is outside your reporting team."))
+        return tracker
+
+    def _check_dashboard_access(self):
+        """CEO, manager and supervisor can view dashboards, not salespersons.
+
+        This is separate from _check_access(), which gates tracking operations.
+        Never use the broad tracker access test to authorize dashboard reads.
+        """
+        user = request.env.user
+        if user._is_public():
+            raise AccessError(_("Please log in to access the dashboard."))
+        if user.salesperson_role not in ('ceo', 'manager', 'supervisor') and not user.has_group('base.group_system'):
+            raise AccessError(_("The dashboard is available to CEOs, managers and supervisors only."))
+        return user
+
+    def _dashboard_team_domain(self, user):
+        """Scope sudo() dashboard queries to the logged-in reporting tree.
+
+        System administrators may inspect all companies/users for diagnostics.
+        Others see only themselves and descendants, never other teams.
+        """
+        if user.has_group('base.group_system'):
+            return []
+        team_ids = user.zc_team_user_ids.ids or [user.id]
+        return [('user_id', 'in', team_ids)]
 
     def _no_cache(self, response):
         """Force browsers/webviews to always re-fetch these pages instead of
@@ -242,6 +285,7 @@ class SalespersonTrackingController(http.Controller):
         if not tracker.exists():
             _logger.warning("moving_map: tracker_id=%s does not exist", tracker_id)
             return request.not_found()
+        self._ensure_tracker_access(user, tracker)
 
         _logger.info(
             "moving_map: tracker found — user=%s is_tracking=%s last_seen=%s last_lat=%s last_lng=%s",
@@ -398,9 +442,9 @@ class SalespersonTrackingController(http.Controller):
     @http.route("/salesperson/dashboard", type="http", auth="user", website=False)
     def salesperson_dashboard(self, **kwargs):
         """Manager dashboard with live map, KPI cards, activity feed and alerts."""
-        user = self._check_access()
+        user = self._check_dashboard_access()
         tz_name = self._user_tz(user)
-        is_manager = getattr(user, 'salesperson_role', '') == 'manager'
+        is_manager = True  # all authorized roles use the team dashboard layout
 
         allowed_periods = ('today', 'yesterday', 'weekly', 'monthly')
         period = kwargs.get('period') if kwargs.get('period') in allowed_periods else 'today'
@@ -412,12 +456,12 @@ class SalespersonTrackingController(http.Controller):
         today = fields.Date.today()
         Tracker = request.env["salesperson.tracker"].sudo()
 
-        # Salesman filter contains only users who have tracking records.
-        all_trackers_ever = Tracker.search([])
-        salesmen = sorted(
-            {(t.user_id.id, t.user_id.name) for t in all_trackers_ever if t.user_id},
-            key=lambda p: p[1] or '',
-        )
+        # Include planned staff even if their phone has never started tracking.
+        all_trackers_ever = Tracker.search(self._dashboard_team_domain(user))
+        all_plans = request.env['salesperson.visit.plan'].sudo().search(self._dashboard_team_domain(user))
+        roster = {(t.user_id.id, t.user_id.name) for t in all_trackers_ever if t.user_id}
+        roster.update((p.user_id.id, p.user_id.name) for p in all_plans if p.user_id)
+        salesmen = sorted(roster, key=lambda p: (p[1] or '').casefold())
 
         custom_range = bool(kwargs.get('date_from') and kwargs.get('date_to'))
         if custom_range:
@@ -441,13 +485,13 @@ class SalespersonTrackingController(http.Controller):
             date_from, date_to = self._dashboard_period_range(period, today)
             is_live = (period == 'today')
 
-        domain = list(date_domain)
+        domain = list(date_domain) + self._dashboard_team_domain(user)
         if salesman_id:
             domain.append(("user_id", "=", salesman_id))
         trackers = Tracker.search(domain)
 
         if is_live:
-            live_payload = self._dashboard_live_payload(trackers, tz_name)
+            live_payload = self._dashboard_live_payload(trackers, tz_name, today=today, user=user, salesman_id=salesman_id)
             rows = live_payload['rows']
             map_salesmen = live_payload['trackers']
             map_customers = live_payload['customers']
@@ -496,6 +540,7 @@ class SalespersonTrackingController(http.Controller):
         values = {
             "user": user,
             "is_manager": is_manager,
+            "dashboard_role": dict(user._fields["salesperson_role"].selection).get(user.salesperson_role, "Administrator"),
             "today": today.strftime('%A, %d %B %Y'),
             "period": period if not custom_range else 'custom',
             "period_label": period_label,
@@ -626,7 +671,14 @@ class SalespersonTrackingController(http.Controller):
 
         for i, tracker in enumerate(trackers):
             status, color, label = tracker._compute_dashboard_status()
-            name = tracker.user_id.name or 'Unknown'
+            # A stale GPS heartbeat is not proof of live tracking. Keep the
+            # last recorded position on the map, but classify it as inactive.
+            if status != 'offline' and (not tracker.last_seen or
+                    (now - tracker.last_seen).total_seconds() > 300):
+                status, color, label = 'offline', '#94A3B8', 'Inactive'
+            elif status == 'offline':
+                label = 'Inactive'
+            name = tracker.user_id.name or 'Unknown' 
             initials = ''.join(p[0].upper() for p in name.split()[:2]) or '?'
             total = tracker.total_visits
             covered = tracker.total_visited
@@ -889,36 +941,96 @@ class SalespersonTrackingController(http.Controller):
                 user_ids.add(tracker.user_id.id)
         return len(user_ids)
 
-    def _dashboard_live_payload(self, trackers, tz_name):
-        rows, map_salesmen, map_customers = self._dashboard_today_rows(trackers, tz_name)
-        status_counts = {
-            'at_customer': sum(1 for r in rows if r['status'] == 'at_customer'),
-            'moving': sum(1 for r in rows if r['status'] == 'moving'),
-            'idle': sum(1 for r in rows if r['status'] == 'idle'),
-            'offline': sum(1 for r in rows if r['status'] == 'offline'),
-        }
+    def _dashboard_live_payload(self, trackers, tz_name, today=None, user=None, salesman_id=None):
+        """Unique salesperson roster: one current state per person, all of today's sessions.
+
+        Planned-only staff must appear as inactive; historical GPS samples remain
+        accessible as last-known positions. A stale heartbeat cannot mark a
+        salesperson active. Totals sum each tracker exactly once.
+        """
+        today = today or fields.Date.today()
+        user = user or request.env.user
+        session_rows, map_salesmen, map_customers = self._dashboard_today_rows(trackers, tz_name)
+        by_user = {}
+        for row in session_rows:
+            uid = row['user_id']
+            bucket = by_user.setdefault(uid, [])
+            bucket.append(row)
+        # A Visit Plan can exist before any tracking session. Include its owner.
+        plan_domain = [('visit_date', '=', today)] + self._dashboard_team_domain(user)
+        if salesman_id:
+            plan_domain.append(('user_id', '=', salesman_id))
+        plans = request.env['salesperson.visit.plan'].sudo().search(plan_domain)
+        names = {p.user_id.id: p.user_id.name for p in plans if p.user_id}
+        for uid, label in names.items():
+            by_user.setdefault(uid, [])
+        rows = []
+        for uid, group in by_user.items():
+            if group:
+                # Prefer a genuinely active session; otherwise most recent GPS.
+                chosen = max(group, key=lambda r: (
+                    r['status'] != 'offline', r.get('last_seen_epoch') or 0, r['id']))
+                agg = dict(chosen)
+                for key in ('covered', 'total', 'distance_km', 'tracking_seconds'):
+                    agg[key] = sum(float(r.get(key) or 0) for r in group)
+                agg['covered'] = int(agg['covered'])
+                agg['total'] = int(agg['total'])
+                agg['missed'] = max(agg['total'] - agg['covered'], 0)
+                agg['pct'] = int(100 * agg['covered'] / agg['total']) if agg['total'] else 0
+                agg['distance_km'] = round(agg['distance_km'], 2)
+                agg['distance'] = '%.2f km' % agg['distance_km']
+                agg['tracking_time'] = self._format_tracking_duration(int(agg['tracking_seconds']))
+            else:
+                label = names.get(uid) or 'Salesperson'
+                agg = {
+                    'id': 0, 'user_id': uid, 'name': label,
+                    'initials': ''.join(w[0].upper() for w in label.split()[:2]) or '?',
+                    'status': 'offline', 'status_label': 'Inactive', 'status_color': '#94A3B8',
+                    'covered': 0, 'total': 0, 'missed': 0, 'pct': 0,
+                    'distance_km': 0.0, 'distance': '0.00 km',
+                    'tracking_seconds': 0, 'tracking_time': '0h 00m',
+                    'first_start': '—', 'last_update': '—', 'last_seen_epoch': 0,
+                    'last_seen_age': 0, 'gps_health': 'No GPS yet',
+                    'gps_health_color': '#94A3B8', 'accuracy': 0,
+                    'speed_kmh': 0, 'location': 'Location unavailable',
+                    'gradient': 'linear-gradient(135deg,#08639C,#28A745)', 'state': 'planned',
+                }
+            rows.append(agg)
+        rows.sort(key=lambda r: (r['name'] or '').casefold())
+        active_ids = {r['user_id'] for r in rows if r['status'] != 'offline'}
+        active_map = {}
+        for m in map_salesmen:
+            uid = m['user_id']
+            old = active_map.get(uid)
+            if not old or (m['status'] != 'offline', m.get('last_seen_epoch') or 0) > (
+                    old['status'] != 'offline', old.get('last_seen_epoch') or 0):
+                active_map[uid] = m
+        # Ensure displayed marker status agrees with consolidated salesperson status.
+        state_by_user = {r['user_id']: r for r in rows}
+        for uid, marker in active_map.items():
+            current = state_by_user.get(uid)
+            if current:
+                for k in ('status', 'status_label', 'status_color'):
+                    marker[k] = current[k]
+        map_salesmen = list(active_map.values())
+        statuses = {name: sum(1 for r in rows if r['status'] == name)
+                    for name in ('at_customer', 'moving', 'idle', 'offline')}
         total_planned = sum(r['total'] for r in rows)
         total_covered = sum(r['covered'] for r in rows)
-        total_distance = round(sum(r['distance_km'] for r in rows), 1)
         summary = {
-            'total_reps': self._dashboard_unique_tracking_salesmen(trackers),
-            'active_count': status_counts['at_customer'] + status_counts['moving'] + status_counts['idle'],
-            'at_customer_count': status_counts['at_customer'],
-            'moving_count': status_counts['moving'],
-            'idle_count': status_counts['idle'],
-            'offline_count': status_counts['offline'],
-            'total_planned': total_planned,
-            'total_covered': total_covered,
+            'total_reps': len(rows), 'active_count': len(active_ids),
+            'inactive_count': len(rows) - len(active_ids),
+            'at_customer_count': statuses['at_customer'],
+            'moving_count': statuses['moving'], 'idle_count': statuses['idle'],
+            'offline_count': statuses['offline'],
+            'total_planned': total_planned, 'total_covered': total_covered,
             'missed_count': max(total_planned - total_covered, 0),
             'visit_rate': int(total_covered * 100 / total_planned) if total_planned else 0,
-            'total_distance': total_distance,
+            'total_distance': round(sum(r['distance_km'] for r in rows), 2),
         }
         return {
-            'rows': rows,
-            'trackers': map_salesmen,
-            'customers': map_customers,
-            'summary': summary,
-            'activities': self._dashboard_activities(trackers, tz_name),
+            'rows': rows, 'trackers': map_salesmen, 'customers': map_customers,
+            'summary': summary, 'activities': self._dashboard_activities(trackers, tz_name),
             'alerts': self._dashboard_alerts(trackers),
         }
 
@@ -927,7 +1039,7 @@ class SalespersonTrackingController(http.Controller):
     @http.route("/salesperson/dashboard/visit_details", type="http", auth="user", methods=["GET"], csrf=False)
     def dashboard_visit_details(self, **kwargs):
         """Customer-level visit details for the currently selected salesperson and dates."""
-        user = self._check_access()
+        user = self._check_dashboard_access()
         try:
             tracker_id = int(kwargs.get('tracker_id') or 0)
             date_from = fields.Date.from_string(kwargs.get('date_from'))
@@ -941,8 +1053,8 @@ class SalespersonTrackingController(http.Controller):
         tracker = request.env['salesperson.tracker'].sudo().browse(tracker_id).exists()
         if not tracker or not (date_from <= tracker.visit_date <= date_to):
             return self._json_response({'ok': False, 'error': 'Tracking session not found for selected dates'})
-        # Respect the dashboard's access scope; non-managers may only view their own records.
-        if not (user.has_group('sales_team.group_sale_manager') or user.has_group('base.group_system')) and tracker.user_id.id != user.id:
+        # Protect tracker details even though this endpoint uses sudo().
+        if self._dashboard_team_domain(user) and tracker.user_id.id not in user.zc_team_user_ids.ids:
             return self._json_response({'ok': False, 'error': 'Access denied'})
         trackers = tracker
         tz_name = self._user_tz(user)
@@ -982,11 +1094,11 @@ class SalespersonTrackingController(http.Controller):
     @http.route("/salesperson/dashboard/data", type="http", auth="user", methods=["GET"], csrf=False)
     def dashboard_data(self, **kwargs):
         """Live JSON payload for map, KPI cards, activity feed and row statuses."""
-        user = self._check_access()
+        user = self._check_dashboard_access()
         tz_name = self._user_tz(user)
         today = fields.Date.today()
         Tracker = request.env["salesperson.tracker"].sudo()
-        domain = [("visit_date", "=", today)]
+        domain = [("visit_date", "=", today)] + self._dashboard_team_domain(user)
         try:
             salesman_id = int(kwargs['salesman_id']) if kwargs.get('salesman_id') else None
         except (TypeError, ValueError):
@@ -994,7 +1106,7 @@ class SalespersonTrackingController(http.Controller):
         if salesman_id:
             domain.append(("user_id", "=", salesman_id))
         trackers = Tracker.search(domain)
-        payload = self._dashboard_live_payload(trackers, tz_name)
+        payload = self._dashboard_live_payload(trackers, tz_name, today=today, user=user, salesman_id=salesman_id)
         payload['ok'] = True
         payload['server_time'] = _epoch_ms(fields.Datetime.now())
         return self._json_response(payload)
@@ -1023,6 +1135,10 @@ class SalespersonTrackingController(http.Controller):
 
         if not tracker or not tracker.exists():
             return self._json_response({"ok": False})
+
+        if not tracker or not tracker.exists():
+            return self._json_response({"ok": False, "error": "Tracker not found"})
+        self._ensure_tracker_access(user, tracker, write=True)
 
         # Run the blocking Nominatim HTTP request AFTER releasing the DB cursor
         # by committing first.  This prevents the 5-second HTTP timeout from
@@ -1061,6 +1177,8 @@ class SalespersonTrackingController(http.Controller):
         if not tracker or not tracker.exists():
             _logger.error("update_location: no tracker found for user=%s tracker_id=%s", user.name, tracker_id)
             return self._json_response({"ok": False, "error": "No tracker found."})
+
+        self._ensure_tracker_access(user, tracker, write=True)
 
         _logger.info(
             "update_location: user=%s tracker=%s lat=%.6f lng=%.6f accuracy=%s distance=%s",
@@ -1186,6 +1304,9 @@ class SalespersonTrackingController(http.Controller):
         Access: /salesperson_tracking/debug/<tracker_id>
         Returns JSON with full tracker + recent log stats for debugging."""
         user = request.env.user
+        user = self._check_access()
+        tracker = request.env['salesperson.tracker'].sudo().browse(tracker_id)
+        self._ensure_tracker_access(user, tracker)
         request.env.cr.execute(
             """
             SELECT
@@ -1239,6 +1360,7 @@ class SalespersonTrackingController(http.Controller):
         if not tracker.exists():
             _logger.warning("moving_map_data: tracker_id=%s not found", tracker_id)
             return self._json_response({"ok": False, "error": "Tracker not found"})
+        self._ensure_tracker_access(user, tracker)
         
         logs = request.env["salesperson.location.log"].sudo().search([
             ("tracker_id", "=", tracker_id),
@@ -1352,6 +1474,8 @@ class SalespersonTrackingController(http.Controller):
                 _logger.error("start_tracking: no tracker for user=%s", user.name)
                 return self._json_response({"ok": False, "error": "No tracker found"})
 
+            self._ensure_tracker_access(user, tracker, write=True)
+
             # Stop any OTHER active trackers for this user (same day, different tracker)
             other_active = request.env["salesperson.tracker"].sudo().search([
                 ("user_id", "=", user.id),
@@ -1414,6 +1538,8 @@ class SalespersonTrackingController(http.Controller):
             _logger.error("stop_tracking: no tracker for user=%s", user.name)
             return self._json_response({"ok": False, "error": "No tracker found"})
 
+        self._ensure_tracker_access(user, tracker, write=True)
+
         tracker.action_stop_tracking()
         _logger.info(
             "stop_tracking: user=%s tracker=%s stopped → checkout_time=%s",
@@ -1433,6 +1559,7 @@ class SalespersonTrackingController(http.Controller):
         tracker = request.env["salesperson.tracker"].sudo().browse(tracker_id)
         if not tracker.exists():
             return self._json_response({"ok": False, "error": "Tracker not found"})
+        self._ensure_tracker_access(user, tracker)
 
         # Read directly from SQL — same worker that handled /update may have
         # a stale ORM cache for is_tracking after our raw SQL writes.

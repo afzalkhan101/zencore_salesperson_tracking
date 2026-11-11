@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='UTF-8'?>
 <odoo>
     <record id="paperformat_salesperson_performance" model="report.paperformat">
         <field name="name">Salesperson Performance Report</field>
@@ -21,6 +21,7 @@
         <field name="report_file">zencore_salesperson_tracking.report_salesperson_performance_document</field>
         <field name="paperformat_id" ref="paperformat_salesperson_performance"/>
         <field name="print_report_name">'Salesperson Performance - %s to %s' % (object.date_from, object.date_to)</field>
+
     </record>
 
     <template id="report_salesperson_performance_document">
@@ -101,7 +102,7 @@
                     </t>
 
                     <t t-if="doc.visit_line_ids">
-                        <div style="page-break-before:always;"></div>
+                        <div style="page-break-before:always;"/>
                         <div style="font-size:15px;font-weight:700;background:#15803D;color:white;padding:7px 9px;">Visit Details</div>
                         <table style="width:100%;border-collapse:collapse;font-size:9px;">
                             <thead><tr style="background:#F2F4F7;">

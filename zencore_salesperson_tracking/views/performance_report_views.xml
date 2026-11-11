@@ -113,12 +113,12 @@
               name="Reports"
               parent="menu_salesperson_tracking_root"
               sequence="34"
-              groups="zencore_salesperson_tracking.group_salesperson_manager"/>
+              groups="zencore_salesperson_tracking.group_salesperson_ceo,zencore_salesperson_tracking.group_salesperson_manager,zencore_salesperson_tracking.group_salesperson_supervisor"/>
 
     <menuitem id="menu_salesperson_performance_report"
               name="Performance Report"
               parent="menu_salesperson_reports_root"
               action="action_salesperson_performance_report"
               sequence="10"
-              groups="zencore_salesperson_tracking.group_salesperson_manager"/>
+              groups="zencore_salesperson_tracking.group_salesperson_ceo,zencore_salesperson_tracking.group_salesperson_manager,zencore_salesperson_tracking.group_salesperson_supervisor"/>
 </odoo>

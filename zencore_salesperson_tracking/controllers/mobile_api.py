@@ -128,14 +128,15 @@ class MobileApiController(http.Controller):
         """Manager approves a submitted plan."""
         try:
             user = self._require_user()
-            if getattr(user, 'salesperson_role', '') != 'manager':
-                return self._json_response({'ok': False, 'message': 'Only managers can approve plans'})
+            # Direct superior check is enforced on the plan model.
             plan = request.env['salesperson.visit.plan'].sudo().browse(plan_id)
             if not plan.exists():
                 return self._json_response({'ok': False, 'message': 'Plan not found'})
 
             if plan.state != 'submitted':
                 return self._json_response({'ok': False, 'message': f'Plan is {plan.state}, not submitted'})
+            if plan.zc_approver_id.id != user.id:
+                return self._json_response({'ok': False, 'message': 'Not your assigned approval'})
             plan.action_approve()
             return self._json_response({'ok': True, 'state': plan.state})
         except Exception as e:

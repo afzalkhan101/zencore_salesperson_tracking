@@ -17,7 +17,7 @@
         <field name="name">Tracker: Manager All</field>
         <field name="model_id" ref="model_salesperson_tracker"/>
         <field name="groups" eval="[(4, ref('zencore_salesperson_tracking.group_salesperson_manager'))]"/>
-        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="domain_force">[('user_id', 'in', user.zc_team_user_ids.ids)]</field>
         <field name="perm_read" eval="True"/>
         <field name="perm_write" eval="True"/>
         <field name="perm_create" eval="True"/>
@@ -29,14 +29,14 @@
         <field name="name">Visit Plan: Own Only</field>
         <field name="model_id" ref="model_salesperson_visit_plan"/>
         <field name="groups" eval="[(4, ref('zencore_salesperson_tracking.group_salesperson_salesman'))]"/>
-        <field name="domain_force">[('user_id', '=', user.id)]</field>
+        <field name="domain_force">['|',('user_id', '=', user.id),('zc_approver_id','=',user.id)]</field>
     </record>
 
     <record id="rule_visit_plan_manager_all" model="ir.rule">
         <field name="name">Visit Plan: Manager All</field>
         <field name="model_id" ref="model_salesperson_visit_plan"/>
         <field name="groups" eval="[(4, ref('zencore_salesperson_tracking.group_salesperson_manager'))]"/>
-        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="domain_force">['|',('user_id', 'in', user.zc_team_user_ids.ids),('zc_approver_id','=',user.id)]</field>
     </record>
 
     <!-- Check-in Record Rules -->
@@ -51,7 +51,256 @@
         <field name="name">Check-In: Manager All</field>
         <field name="model_id" ref="model_salesperson_checkin"/>
         <field name="groups" eval="[(4, ref('zencore_salesperson_tracking.group_salesperson_manager'))]"/>
-        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="domain_force">[('user_id', 'in', user.zc_team_user_ids.ids)]</field>
     </record>
 
+
+    <!-- Record rules for child records, including GPS logs and target lines. -->
+    <!-- Hierarchy read access for supervisors and CEOs. The manager
+         rules above now follow the same reporting tree. -->
+    <record id="rule_tracker_supervisor_team" model="ir.rule">
+      <field name="name">tracker supervisor reporting team</field>
+      <field name="model_id" ref="model_salesperson_tracker"/>
+      <field name="groups" eval="[(4, ref('group_salesperson_supervisor'))]"/>
+      <field name="domain_force">[('user_id','in',user.zc_team_user_ids.ids)]</field>
+    </record>
+    <record id="rule_tracker_ceo_team" model="ir.rule">
+      <field name="name">tracker ceo reporting team</field>
+      <field name="model_id" ref="model_salesperson_tracker"/>
+      <field name="groups" eval="[(4, ref('group_salesperson_ceo'))]"/>
+      <field name="domain_force">[('user_id','in',user.zc_team_user_ids.ids)]</field>
+    </record>
+    <record id="rule_visit_plan_supervisor_team" model="ir.rule">
+      <field name="name">visit_plan supervisor reporting team</field>
+      <field name="model_id" ref="model_salesperson_visit_plan"/>
+      <field name="groups" eval="[(4, ref('group_salesperson_supervisor'))]"/>
+      <field name="domain_force">['|',('user_id', 'in', user.zc_team_user_ids.ids),('zc_approver_id','=',user.id)]</field>
+    </record>
+    <record id="rule_visit_plan_ceo_team" model="ir.rule">
+      <field name="name">visit_plan ceo reporting team</field>
+      <field name="model_id" ref="model_salesperson_visit_plan"/>
+      <field name="groups" eval="[(4, ref('group_salesperson_ceo'))]"/>
+      <field name="domain_force">['|',('user_id', 'in', user.zc_team_user_ids.ids),('zc_approver_id','=',user.id)]</field>
+    </record>
+    <record id="rule_checkin_supervisor_team" model="ir.rule">
+      <field name="name">checkin supervisor reporting team</field>
+      <field name="model_id" ref="model_salesperson_checkin"/>
+      <field name="groups" eval="[(4, ref('group_salesperson_supervisor'))]"/>
+      <field name="domain_force">[('user_id','in',user.zc_team_user_ids.ids)]</field>
+    </record>
+    <record id="rule_checkin_ceo_team" model="ir.rule">
+      <field name="name">checkin ceo reporting team</field>
+      <field name="model_id" ref="model_salesperson_checkin"/>
+      <field name="groups" eval="[(4, ref('group_salesperson_ceo'))]"/>
+      <field name="domain_force">[('user_id','in',user.zc_team_user_ids.ids)]</field>
+    </record>
+    <record id="rule_zc_salesperson_location_log_salesman" model="ir.rule">
+       <field name="name">salesperson_location_log salesman scope</field>
+       <field name="model_id" ref="model_salesperson_location_log"/>
+       <field name="groups" eval="[(4, ref('group_salesperson_salesman'))]"/>
+       <field name="domain_force">[('user_id','=',user.id)]</field>
+    </record>
+    <record id="rule_zc_salesperson_location_log_supervisor" model="ir.rule">
+       <field name="name">salesperson_location_log supervisor scope</field>
+       <field name="model_id" ref="model_salesperson_location_log"/>
+       <field name="groups" eval="[(4, ref('group_salesperson_supervisor'))]"/>
+       <field name="domain_force">[('user_id','in',user.zc_team_user_ids.ids)]</field>
+    </record>
+    <record id="rule_zc_salesperson_location_log_manager" model="ir.rule">
+       <field name="name">salesperson_location_log manager scope</field>
+       <field name="model_id" ref="model_salesperson_location_log"/>
+       <field name="groups" eval="[(4, ref('group_salesperson_manager'))]"/>
+       <field name="domain_force">[('user_id','in',user.zc_team_user_ids.ids)]</field>
+    </record>
+    <record id="rule_zc_salesperson_location_log_ceo" model="ir.rule">
+       <field name="name">salesperson_location_log ceo scope</field>
+       <field name="model_id" ref="model_salesperson_location_log"/>
+       <field name="groups" eval="[(4, ref('group_salesperson_ceo'))]"/>
+       <field name="domain_force">[('user_id','in',user.zc_team_user_ids.ids)]</field>
+    </record>
+    <record id="rule_zc_salesperson_location_backup_salesman" model="ir.rule">
+       <field name="name">salesperson_location_backup salesman scope</field>
+       <field name="model_id" ref="model_salesperson_location_backup"/>
+       <field name="groups" eval="[(4, ref('group_salesperson_salesman'))]"/>
+       <field name="domain_force">[('user_id','=',user.id)]</field>
+    </record>
+    <record id="rule_zc_salesperson_location_backup_supervisor" model="ir.rule">
+       <field name="name">salesperson_location_backup supervisor scope</field>
+       <field name="model_id" ref="model_salesperson_location_backup"/>
+       <field name="groups" eval="[(4, ref('group_salesperson_supervisor'))]"/>
+       <field name="domain_force">[('user_id','in',user.zc_team_user_ids.ids)]</field>
+    </record>
+    <record id="rule_zc_salesperson_location_backup_manager" model="ir.rule">
+       <field name="name">salesperson_location_backup manager scope</field>
+       <field name="model_id" ref="model_salesperson_location_backup"/>
+       <field name="groups" eval="[(4, ref('group_salesperson_manager'))]"/>
+       <field name="domain_force">[('user_id','in',user.zc_team_user_ids.ids)]</field>
+    </record>
+    <record id="rule_zc_salesperson_location_backup_ceo" model="ir.rule">
+       <field name="name">salesperson_location_backup ceo scope</field>
+       <field name="model_id" ref="model_salesperson_location_backup"/>
+       <field name="groups" eval="[(4, ref('group_salesperson_ceo'))]"/>
+       <field name="domain_force">[('user_id','in',user.zc_team_user_ids.ids)]</field>
+    </record>
+    <record id="rule_zc_salesperson_visit_plan_line_salesman" model="ir.rule">
+       <field name="name">salesperson_visit_plan_line salesman scope</field>
+       <field name="model_id" ref="model_salesperson_visit_plan_line"/>
+       <field name="groups" eval="[(4, ref('group_salesperson_salesman'))]"/>
+       <field name="domain_force">[('plan_id.user_id','=',user.id)]</field>
+    </record>
+    <record id="rule_zc_salesperson_visit_plan_line_supervisor" model="ir.rule">
+       <field name="name">salesperson_visit_plan_line supervisor scope</field>
+       <field name="model_id" ref="model_salesperson_visit_plan_line"/>
+       <field name="groups" eval="[(4, ref('group_salesperson_supervisor'))]"/>
+       <field name="domain_force">[('plan_id.user_id','in',user.zc_team_user_ids.ids)]</field>
+    </record>
+    <record id="rule_zc_salesperson_visit_plan_line_manager" model="ir.rule">
+       <field name="name">salesperson_visit_plan_line manager scope</field>
+       <field name="model_id" ref="model_salesperson_visit_plan_line"/>
+       <field name="groups" eval="[(4, ref('group_salesperson_manager'))]"/>
+       <field name="domain_force">[('plan_id.user_id','in',user.zc_team_user_ids.ids)]</field>
+    </record>
+    <record id="rule_zc_salesperson_visit_plan_line_ceo" model="ir.rule">
+       <field name="name">salesperson_visit_plan_line ceo scope</field>
+       <field name="model_id" ref="model_salesperson_visit_plan_line"/>
+       <field name="groups" eval="[(4, ref('group_salesperson_ceo'))]"/>
+       <field name="domain_force">[('plan_id.user_id','in',user.zc_team_user_ids.ids)]</field>
+    </record>
+    <record id="rule_zc_salesperson_tracker_target_line_salesman" model="ir.rule">
+       <field name="name">salesperson_tracker_target_line salesman scope</field>
+       <field name="model_id" ref="model_salesperson_tracker_target_line"/>
+       <field name="groups" eval="[(4, ref('group_salesperson_salesman'))]"/>
+       <field name="domain_force">[('tracker_id.user_id','=',user.id)]</field>
+    </record>
+    <record id="rule_zc_salesperson_tracker_target_line_supervisor" model="ir.rule">
+       <field name="name">salesperson_tracker_target_line supervisor scope</field>
+       <field name="model_id" ref="model_salesperson_tracker_target_line"/>
+       <field name="groups" eval="[(4, ref('group_salesperson_supervisor'))]"/>
+       <field name="domain_force">[('tracker_id.user_id','in',user.zc_team_user_ids.ids)]</field>
+    </record>
+    <record id="rule_zc_salesperson_tracker_target_line_manager" model="ir.rule">
+       <field name="name">salesperson_tracker_target_line manager scope</field>
+       <field name="model_id" ref="model_salesperson_tracker_target_line"/>
+       <field name="groups" eval="[(4, ref('group_salesperson_manager'))]"/>
+       <field name="domain_force">[('tracker_id.user_id','in',user.zc_team_user_ids.ids)]</field>
+    </record>
+    <record id="rule_zc_salesperson_tracker_target_line_ceo" model="ir.rule">
+       <field name="name">salesperson_tracker_target_line ceo scope</field>
+       <field name="model_id" ref="model_salesperson_tracker_target_line"/>
+       <field name="groups" eval="[(4, ref('group_salesperson_ceo'))]"/>
+       <field name="domain_force">[('tracker_id.user_id','in',user.zc_team_user_ids.ids)]</field>
+    </record>
+    <record id="rule_zc_salesperson_tracker_visited_line_salesman" model="ir.rule">
+       <field name="name">salesperson_tracker_visited_line salesman scope</field>
+       <field name="model_id" ref="model_salesperson_tracker_visited_line"/>
+       <field name="groups" eval="[(4, ref('group_salesperson_salesman'))]"/>
+       <field name="domain_force">[('tracker_id.user_id','=',user.id)]</field>
+    </record>
+    <record id="rule_zc_salesperson_tracker_visited_line_supervisor" model="ir.rule">
+       <field name="name">salesperson_tracker_visited_line supervisor scope</field>
+       <field name="model_id" ref="model_salesperson_tracker_visited_line"/>
+       <field name="groups" eval="[(4, ref('group_salesperson_supervisor'))]"/>
+       <field name="domain_force">[('tracker_id.user_id','in',user.zc_team_user_ids.ids)]</field>
+    </record>
+    <record id="rule_zc_salesperson_tracker_visited_line_manager" model="ir.rule">
+       <field name="name">salesperson_tracker_visited_line manager scope</field>
+       <field name="model_id" ref="model_salesperson_tracker_visited_line"/>
+       <field name="groups" eval="[(4, ref('group_salesperson_manager'))]"/>
+       <field name="domain_force">[('tracker_id.user_id','in',user.zc_team_user_ids.ids)]</field>
+    </record>
+    <record id="rule_zc_salesperson_tracker_visited_line_ceo" model="ir.rule">
+       <field name="name">salesperson_tracker_visited_line ceo scope</field>
+       <field name="model_id" ref="model_salesperson_tracker_visited_line"/>
+       <field name="groups" eval="[(4, ref('group_salesperson_ceo'))]"/>
+       <field name="domain_force">[('tracker_id.user_id','in',user.zc_team_user_ids.ids)]</field>
+    </record>
+    <record id="rule_zc_salesperson_visit_plan_admin" model="ir.rule">
+       <field name="name">salesperson.visit.plan system administrator</field>
+       <field name="model_id" ref="model_salesperson_visit_plan"/>
+       <field name="groups" eval="[(4, ref('base.group_system'))]"/>
+       <field name="domain_force">[(1,'=',1)]</field>
+    </record>
+    <record id="rule_zc_salesperson_tracker_admin" model="ir.rule">
+       <field name="name">salesperson.tracker system administrator</field>
+       <field name="model_id" ref="model_salesperson_tracker"/>
+       <field name="groups" eval="[(4, ref('base.group_system'))]"/>
+       <field name="domain_force">[(1,'=',1)]</field>
+    </record>
+    <record id="rule_zc_salesperson_checkin_admin" model="ir.rule">
+       <field name="name">salesperson.checkin system administrator</field>
+       <field name="model_id" ref="model_salesperson_checkin"/>
+       <field name="groups" eval="[(4, ref('base.group_system'))]"/>
+       <field name="domain_force">[(1,'=',1)]</field>
+    </record>
+    <record id="rule_zc_salesperson_location_log_admin" model="ir.rule">
+       <field name="name">salesperson.location.log system administrator</field>
+       <field name="model_id" ref="model_salesperson_location_log"/>
+       <field name="groups" eval="[(4, ref('base.group_system'))]"/>
+       <field name="domain_force">[(1,'=',1)]</field>
+    </record>
+    <record id="rule_zc_salesperson_visit_plan_line_admin" model="ir.rule">
+       <field name="name">salesperson.visit.plan.line system administrator</field>
+       <field name="model_id" ref="model_salesperson_visit_plan_line"/>
+       <field name="groups" eval="[(4, ref('base.group_system'))]"/>
+       <field name="domain_force">[(1,'=',1)]</field>
+    </record>
+    <record id="rule_zc_salesperson_location_backup_admin" model="ir.rule">
+       <field name="name">salesperson.location.backup system administrator</field>
+       <field name="model_id" ref="model_salesperson_location_backup"/>
+       <field name="groups" eval="[(4, ref('base.group_system'))]"/>
+       <field name="domain_force">[(1,'=',1)]</field>
+    </record>
+    <record id="rule_zc_salesperson_tracker_target_line_admin" model="ir.rule">
+       <field name="name">salesperson.tracker.target.line system administrator</field>
+       <field name="model_id" ref="model_salesperson_tracker_target_line"/>
+       <field name="groups" eval="[(4, ref('base.group_system'))]"/>
+       <field name="domain_force">[(1,'=',1)]</field>
+    </record>
+    <record id="rule_zc_salesperson_tracker_visited_line_admin" model="ir.rule">
+       <field name="name">salesperson.tracker.visited.line system administrator</field>
+       <field name="model_id" ref="model_salesperson_tracker_visited_line"/>
+       <field name="groups" eval="[(4, ref('base.group_system'))]"/>
+       <field name="domain_force">[(1,'=',1)]</field>
+    </record>
+    <record id="rule_zc_policy_company" model="ir.rule">
+        <field name="name">ZenCore policy: active companies</field>
+        <field name="model_id" ref="model_zencore_approval_policy"/>
+        <field name="domain_force">[('company_id','in',company_ids)]</field>
+    </record>
+    <record id="rule_zc_salesperson_customer_report_wizard_own_creator" model="ir.rule">
+        <field name="name">salesperson_customer_report_wizard — creator only</field>
+        <field name="model_id" ref="model_salesperson_customer_report_wizard"/>
+        <field name="domain_force">[('create_uid','=',user.id)]</field>
+        <field name="perm_read" eval="True"/><field name="perm_write" eval="True"/><field name="perm_unlink" eval="True"/>
+    </record>
+    <record id="rule_zc_salesperson_performance_report_wizard_own_creator" model="ir.rule">
+        <field name="name">salesperson_performance_report_wizard — creator only</field>
+        <field name="model_id" ref="model_salesperson_performance_report_wizard"/>
+        <field name="domain_force">[('create_uid','=',user.id)]</field>
+        <field name="perm_read" eval="True"/><field name="perm_write" eval="True"/><field name="perm_unlink" eval="True"/>
+    </record>
+    <record id="rule_zc_salesperson_customer_report_line_wizard_owner" model="ir.rule">
+        <field name="name">salesperson_customer_report_line — wizard creator only</field>
+        <field name="model_id" ref="model_salesperson_customer_report_line"/>
+        <field name="domain_force">[('wizard_id.create_uid','=',user.id)]</field>
+        <field name="perm_read" eval="True"/><field name="perm_write" eval="True"/><field name="perm_unlink" eval="True"/>
+    </record>
+    <record id="rule_zc_salesperson_performance_report_line_wizard_owner" model="ir.rule">
+        <field name="name">salesperson_performance_report_line — wizard creator only</field>
+        <field name="model_id" ref="model_salesperson_performance_report_line"/>
+        <field name="domain_force">[('wizard_id.create_uid','=',user.id)]</field>
+        <field name="perm_read" eval="True"/><field name="perm_write" eval="True"/><field name="perm_unlink" eval="True"/>
+    </record>
+    <record id="rule_zc_salesperson_performance_report_day_line_wizard_owner" model="ir.rule">
+        <field name="name">salesperson_performance_report_day_line — wizard creator only</field>
+        <field name="model_id" ref="model_salesperson_performance_report_day_line"/>
+        <field name="domain_force">[('wizard_id.create_uid','=',user.id)]</field>
+        <field name="perm_read" eval="True"/><field name="perm_write" eval="True"/><field name="perm_unlink" eval="True"/>
+    </record>
+    <record id="rule_zc_salesperson_performance_report_visit_line_wizard_owner" model="ir.rule">
+        <field name="name">salesperson_performance_report_visit_line — wizard creator only</field>
+        <field name="model_id" ref="model_salesperson_performance_report_visit_line"/>
+        <field name="domain_force">[('wizard_id.create_uid','=',user.id)]</field>
+        <field name="perm_read" eval="True"/><field name="perm_write" eval="True"/><field name="perm_unlink" eval="True"/>
+    </record>
 </odoo>

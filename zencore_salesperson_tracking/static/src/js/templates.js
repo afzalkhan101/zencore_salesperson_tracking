@@ -215,7 +215,7 @@
         if (livePolyline) {
             livePolyline.addLatLng([lat, lng]);
         } else {
-            livePolyline = L.polyline(livePath, { color: '#3b82f6', weight: 4 }).addTo(liveMap);
+            livePolyline = L.polyline(livePath, { color: '#0860F9', weight: 7 }).addTo(liveMap);
         }
         if (!liveMarker) {
             liveMarker = L.circleMarker([lat, lng], {
@@ -983,6 +983,18 @@
     // Customer layer rendered FIRST → sits below path and salesperson marker
     const customerLayer = L.layerGroup().addTo(map);
 
+    // Same color semantics in Odoo Movement Map and Mobile Live Map.
+    // Dashboard map is a live position overview, not a historical GPS polyline.
+    const routeLegend = L.control({position: 'topright'});
+    routeLegend.onAdd = function () {
+        const node = L.DomUtil.create('div', 'zc-route-gap-legend');
+        node.style.cssText = 'background:rgba(255,255,255,.95);border-radius:9px;padding:8px 10px;box-shadow:0 1px 7px #2342;font:11px sans-serif;color:#26374e;pointer-events:none;';
+        node.innerHTML = '<div style="display:flex;gap:7px;align-items:center;margin-bottom:5px"><span style="width:24px;border-top:5px solid #0860F9;border-radius:6px"></span>Recorded GPS route</div>' +
+            '<div style="display:flex;gap:7px;align-items:center"><span style="width:24px;border-top:5px dotted #F5B400"></span>Disconnected · no GPS</div>';
+        return node;
+    };
+    routeLegend.addTo(map);
+
     let trackPolylines = [];
     let reconnectLines = [];
     let startMarker    = null;
@@ -1002,6 +1014,10 @@
             d += R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
         }
         return d;
+    }
+
+    function gapMeters(a, b) {
+        return calcDistKm([{lat: a.lat, lng: a.lng}, {lat: b.lat, lng: b.lng}]) * 1000;
     }
 
     // Route statistics always use the same validated segments as the blue map.
@@ -1197,25 +1213,29 @@
         for (const seg of segs) {
             if (seg.length > 1) {
                 const poly = L.polyline(seg.map(p => [p.lat, p.lng]), {
-                    color: '#3288ee', weight: 5, opacity: 0.95,
+                    color: '#0860F9', weight: 8, opacity: 0.96,
                     smoothFactor: 1.2, lineCap: 'round', lineJoin: 'round',
                 }).addTo(map);
                 trackPolylines.push(poly);
             }
         }
-        // Visual continuity only: bridge verified segment endpoints after a GPS/network
-        // interruption. Orange is the unknown (unrecorded) portion, not a measured route.
-        // Keep identical weight/opacity to the blue track; do not count it as distance.
+        // Display-only gap connectors: <=500 m blue, >500 m amber dotted.
+        // These lines are straight-line estimates, NOT confirmed travel and
+        // deliberately excluded from visibleDistance / GPS totals below.
         for (let i = 1; i < segs.length; i++) {
             const before = segs[i - 1];
             const after = segs[i];
             if (!before.length || !after.length) continue;
             const from = before[before.length - 1];
             const to = after[0];
-            const bridge = L.polyline([[from.lat, from.lng], [to.lat, to.lng]], {
-                color: '#f59e0b', weight: 5, opacity: 0.95,
-                smoothFactor: 1.2, lineCap: 'round', lineJoin: 'round',
-            }).bindTooltip('GPS/network gap — connecting last and next recorded points; actual route unknown');
+            const isLongGap = gapMeters(from, to) > 500.001;
+            const bridge = L.polyline([[from.lat, from.lng], [to.lat, to.lng]],
+                isLongGap
+                ? {color: '#f5b400', weight: 5, opacity: 0.90, dashArray: '1 11',
+                   smoothFactor: 1.2, lineCap: 'round', lineJoin: 'round'}
+                : {color: '#0860F9', weight: 8, opacity: 0.96,
+                   smoothFactor: 1.2, lineCap: 'round', lineJoin: 'round'}
+            ).bindTooltip('GPS recording gap — straight-line estimate; actual travel path unknown');
             bridge.addTo(map);
             reconnectLines.push(bridge);
         }
@@ -1237,8 +1257,14 @@
         const tipLabel    = isLive ? '● Live' : '● Last seen';
         const tooltip     = `${tipLabel}${last.time ? '\n' + last.time : ''}${last.accuracy ? '\nAccuracy: ' + last.accuracy.toFixed(0) + ' m' : ''}`;
 
-        currentMarker = L.circleMarker([last.lat, last.lng], {
-            radius: 8, color: '#fff', fillColor: markerColor, fillOpacity: 1, weight: 2,
+        currentMarker = L.marker([last.lat, last.lng], {
+            icon: L.divIcon({
+                className: 'zc-salesperson-endpoint',
+                html: '<img src="/zencore_salesperson_tracking/static/src/img/walking_salesperson_briefcase.svg" alt="Salesperson carrying a small briefcase" ' +
+                      'style="width:36px;height:54px;display:block;object-fit:contain;background:transparent;border:0;' +
+                      (isLive ? '' : 'filter:grayscale(1);opacity:.82;') + '" />',
+                iconSize: [36, 54], iconAnchor: [18, 50],
+            }),
             pane: 'markerPane',
         }).bindTooltip(tooltip, { permanent: false, sticky: false }).addTo(map);
 

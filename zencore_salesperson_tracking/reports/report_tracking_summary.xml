@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='UTF-8'?>
 <odoo>
 
     <record id="action_report_tracking_summary" model="ir.actions.report">
@@ -8,6 +8,7 @@
         <field name="report_name">zencore_salesperson_tracking.report_tracking_summary</field>
         <field name="binding_model_id" ref="model_salesperson_tracker"/>
         <field name="binding_type">report</field>
+
     </record>
 
     <template id="report_tracking_summary">
@@ -77,11 +78,11 @@
 
                         <!-- ══ KPI SUMMARY ══ -->
                         <p style="margin: 8px 0 14px; padding: 6px 0; border-top: 1px solid #e5e7eb; border-bottom: 1px solid #e5e7eb;">
-                            <strong>Planned:</strong>&#160;<t t-esc="tracker.total_visits"/>&#160;&#160;&#160;
-                            <strong>Visited:</strong>&#160;<t t-esc="tracker.total_visited"/>&#160;&#160;&#160;
-                            <strong>Skipped:</strong>&#160;<t t-esc="tracker.skipped_visits"/>&#160;&#160;&#160;
-                            <strong>Coverage:</strong>&#160;<t t-if="tracker.total_visits"><t t-esc="int(tracker.total_visited * 100 / tracker.total_visits)"/>%</t><t t-else="">—</t>&#160;&#160;&#160;
-                            <strong>Distance:</strong>&#160;<t t-esc="tracker.total_distance_km"/> km
+                            <strong>Planned:</strong> <t t-esc="tracker.total_visits"/>   
+                            <strong>Visited:</strong> <t t-esc="tracker.total_visited"/>   
+                            <strong>Skipped:</strong> <t t-esc="tracker.skipped_visits"/>   
+                            <strong>Coverage:</strong> <t t-if="tracker.total_visits"><t t-esc="int(tracker.total_visited * 100 / tracker.total_visits)"/>%</t><t t-else="">—</t>   
+                            <strong>Distance:</strong> <t t-esc="tracker.total_distance_km"/> km
                         </p>
 
                         <!-- ══ TIMING + EXPENSES (side by side) ══ -->

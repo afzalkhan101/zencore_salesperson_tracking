@@ -1,16 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <record id="action_zc_field_entry_client" model="ir.actions.client">
+        <field name="name">ZenCore Field</field>
+        <field name="tag">zencore_field_role_entry</field>
+    </record>
 
     <menuitem id="menu_salesperson_tracking_root"
+              action="action_zc_field_entry_client"
               name="Salesperson Tracking"
               sequence="90"
-              groups="zencore_salesperson_tracking.group_salesperson_salesman,zencore_salesperson_tracking.group_salesperson_manager"/>
+              groups="zencore_salesperson_tracking.group_salesperson_salesman,zencore_salesperson_tracking.group_salesperson_supervisor,zencore_salesperson_tracking.group_salesperson_manager,zencore_salesperson_tracking.group_salesperson_ceo,base.group_system"/>
 
     <menuitem id="menu_salesperson_visit_plan"
               name="Visit Plans"
               parent="menu_salesperson_tracking_root"
               sequence="10"
-              groups="zencore_salesperson_tracking.group_salesperson_salesman,zencore_salesperson_tracking.group_salesperson_manager"/>
+              groups="zencore_salesperson_tracking.group_salesperson_salesman,zencore_salesperson_tracking.group_salesperson_supervisor,zencore_salesperson_tracking.group_salesperson_manager,zencore_salesperson_tracking.group_salesperson_ceo"/>
 
     <menuitem id="menu_salesperson_visit_plan_my"
               name="My Visit Plans"
@@ -24,14 +29,14 @@
               parent="menu_salesperson_visit_plan"
               action="action_salesperson_visit_plan"
               sequence="20"
-              groups="zencore_salesperson_tracking.group_salesperson_manager"/>
+              groups="zencore_salesperson_tracking.group_salesperson_manager,zencore_salesperson_tracking.group_salesperson_ceo,zencore_salesperson_tracking.group_salesperson_supervisor"/>
 
     <!-- ── Live Tracking — sequence 20 ──────────────────────────────────────── -->
     <menuitem id="menu_salesperson_tracker"
               name="Live Tracking"
               parent="menu_salesperson_tracking_root"
               sequence="20"
-              groups="zencore_salesperson_tracking.group_salesperson_salesman,zencore_salesperson_tracking.group_salesperson_manager"/>
+              groups="zencore_salesperson_tracking.group_salesperson_salesman,zencore_salesperson_tracking.group_salesperson_supervisor,zencore_salesperson_tracking.group_salesperson_manager,zencore_salesperson_tracking.group_salesperson_ceo"/>
 
     <menuitem id="menu_salesperson_tracker_my"
               name="My Tracking"
@@ -45,26 +50,7 @@
               parent="menu_salesperson_tracker"
               action="action_salesperson_tracker_kanban"
               sequence="20"
-              groups="zencore_salesperson_tracking.group_salesperson_manager"/>
-
-    <!-- ── Location Data — sequence 30 ──────────────────────────────────────── -->
-    <menuitem id="menu_salesperson_location"
-              name="Location Data"
-              parent="menu_salesperson_tracking_root"
-              sequence="30"
-              groups="zencore_salesperson_tracking.group_salesperson_manager"/>
-
-    <menuitem id="menu_salesperson_location_log"
-              name="Location History"
-              parent="menu_salesperson_location"
-              action="action_salesperson_location_log"
-              sequence="10"/>
-
-    <menuitem id="menu_salesperson_location_backup"
-              name="Backups"
-              parent="menu_salesperson_location"
-              action="action_salesperson_location_backup"
-              sequence="20"/>
+              groups="zencore_salesperson_tracking.group_salesperson_manager,zencore_salesperson_tracking.group_salesperson_ceo,zencore_salesperson_tracking.group_salesperson_supervisor"/>
 
     <delete model="ir.actions.act_url" id="action_salesperson_dashboard"/>
 
@@ -77,8 +63,8 @@
               name="Dashboard"
               parent="menu_salesperson_tracking_root"
               action="action_salesperson_dashboard_client"
-              sequence="40"
-              groups="zencore_salesperson_tracking.group_salesperson_manager"/>
+              sequence="1"
+              groups="zencore_salesperson_tracking.group_salesperson_manager,zencore_salesperson_tracking.group_salesperson_ceo,zencore_salesperson_tracking.group_salesperson_supervisor"/>
 
               
 </odoo>

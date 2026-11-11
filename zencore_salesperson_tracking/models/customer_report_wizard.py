@@ -3,6 +3,7 @@ from calendar import monthrange
 
 from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError
+from .report_security import check_report_access, report_team_user_ids, check_report_user
 
 
 class SalespersonCustomerReportWizard(models.TransientModel):
@@ -60,6 +61,7 @@ class SalespersonCustomerReportWizard(models.TransientModel):
             ("visit_date", ">=", self.date_from),
             ("visit_date", "<=", self.date_to),
         ]
+        domain.append(("user_id", "in", list(report_team_user_ids(self.env))))
         if self.user_id:
             domain.append(("user_id", "=", self.user_id.id))
         return domain
@@ -71,6 +73,7 @@ class SalespersonCustomerReportWizard(models.TransientModel):
             ("visit_date", "<=", self.date_to),
             ("target_line_ids.customer_ids", "in", self.partner_id.id),
         ]
+        domain.append(("user_id", "in", list(report_team_user_ids(self.env))))
         if self.user_id:
             domain.append(("user_id", "=", self.user_id.id))
         return domain
@@ -171,6 +174,7 @@ class SalespersonCustomerReportWizard(models.TransientModel):
             ("tracker_id.visit_date", ">=", self.date_from),
             ("tracker_id.visit_date", "<=", self.date_to),
         ]
+        checkin_domain.append(("tracker_id.user_id", "in", list(report_team_user_ids(self.env))))
         if self.user_id:
             checkin_domain.append(("tracker_id.user_id", "=", self.user_id.id))
 
@@ -234,6 +238,8 @@ class SalespersonCustomerReportWizard(models.TransientModel):
 
     def action_generate_report(self):
         self.ensure_one()
+        check_report_access(self.env)
+        check_report_user(self.env, self.user_id)
         if not self.partner_id:
             raise ValidationError(_("Please select a Customer before generating the report."))
         self._check_date_range()
@@ -305,6 +311,8 @@ class SalespersonCustomerReportWizard(models.TransientModel):
 
     def action_reset(self):
         self.ensure_one()
+        check_report_access(self.env)
+        check_report_user(self.env, self.user_id)
         today = fields.Date.context_today(self)
         self.write({
             "user_id": False,
@@ -331,6 +339,8 @@ class SalespersonCustomerReportWizard(models.TransientModel):
 
     def action_print_pdf(self):
         self.ensure_one()
+        check_report_access(self.env)
+        check_report_user(self.env, self.user_id)
         if not self.partner_id:
             raise ValidationError(_("Please select a Customer before printing the report."))
         if not self.line_ids:

@@ -2,7 +2,8 @@ from calendar import monthrange
 from datetime import timedelta
 
 from odoo import api, fields, models, _
-from odoo.exceptions import ValidationError
+from odoo.exceptions import ValidationError, AccessError
+from .report_security import check_report_access, report_team_user_ids, check_report_user
 
 
 class SalespersonPerformanceReportWizard(models.TransientModel):
@@ -123,6 +124,7 @@ class SalespersonPerformanceReportWizard(models.TransientModel):
 
     def _selected_users(self):
         self.ensure_one()
+        check_report_access(self.env)
         User = self.env["res.users"].sudo()
         if self.report_type == "individual":
             if not self.individual_user_id:
@@ -133,9 +135,12 @@ class SalespersonPerformanceReportWizard(models.TransientModel):
                 raise ValidationError(_("Please select at least one salesperson for the Multiple Salespersons report."))
             users = self.user_ids
         else:
-            users = self.user_ids or User.search([("salesperson_role", "=", "salesman"), ("active", "=", True)])
+            users = self.user_ids or User.search([("id", "in", list(report_team_user_ids(self.env))), ("salesperson_role", "=", "salesman"), ("active", "=", True)])
         if self.sale_team_id:
             users = users.filtered(lambda u: u.sale_team_id == self.sale_team_id)
+        permitted = report_team_user_ids(self.env)
+        if any(u.id not in permitted for u in users):
+            raise AccessError(_("Selected users must belong to your reporting hierarchy."))
         return users
 
     def _tracker_domain_for_user(self, user):
@@ -245,6 +250,7 @@ class SalespersonPerformanceReportWizard(models.TransientModel):
 
     def action_generate_report(self):
         self.ensure_one()
+        check_report_access(self.env)
         users = self._selected_users()
         self.line_ids.unlink()
         self.day_line_ids.unlink()
@@ -350,6 +356,7 @@ class SalespersonPerformanceReportWizard(models.TransientModel):
 
     def action_reset(self):
         self.ensure_one()
+        check_report_access(self.env)
         self.line_ids.unlink()
         self.day_line_ids.unlink()
         self.visit_line_ids.unlink()
@@ -370,12 +377,14 @@ class SalespersonPerformanceReportWizard(models.TransientModel):
 
     def action_print_pdf(self):
         self.ensure_one()
+        check_report_access(self.env)
         if not self.line_ids:
             self.action_generate_report()
         return self.env.ref("zencore_salesperson_tracking.action_report_salesperson_performance").report_action(self)
 
     def action_export_excel(self):
         self.ensure_one()
+        check_report_access(self.env)
         if not self.line_ids:
             self.action_generate_report()
         return {

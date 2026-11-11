@@ -1,3 +1,4 @@
+from .report_security import check_report_access
 from datetime import datetime
 from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError
@@ -8,6 +9,25 @@ class SalespersonVisitPlan(models.Model):
     _description = "Visit Plan"
     _order = "visit_date desc, id desc"
     _inherit = ["mail.thread", "mail.activity.mixin"]
+
+    zc_in_my_team = fields.Boolean(
+        string="In My Reporting Team", compute="_compute_zc_in_my_team",
+        search="_search_zc_in_my_team",
+        help="Current user and all users reporting beneath them in the organization hierarchy."
+    )
+
+    def _compute_zc_in_my_team(self):
+        team_ids = set(self.env.user.zc_team_user_ids.ids)
+        for record in self:
+            record.zc_in_my_team = record.user_id.id in team_ids
+
+    @api.model
+    def _search_zc_in_my_team(self, operator, value):
+        if operator not in ('=', '!=') or not isinstance(value, bool):
+            raise ValueError('In My Reporting Team supports boolean equality filters only.')
+        team_ids = self.env.user.zc_team_user_ids.ids
+        include_team = (operator == '=' and value) or (operator == '!=' and not value)
+        return [('user_id', 'in' if include_team else 'not in', team_ids)]
 
     name = fields.Char(string="Reference", required=True, copy=False, readonly=True, default=lambda self: _("New"))
     user_id = fields.Many2one("res.users", string="Salesman", required=True, tracking=True)
@@ -194,24 +214,23 @@ class SalespersonVisitPlan(models.Model):
 
     @api.model
     def action_auto_complete_past_plans(self):
-        """Scheduled action (see data/location_backup_cron.xml): once a
-        plan's visit_date is in the past, it can no longer meaningfully be
-        acted on, so mark it completed — regardless of which state it was
-        stuck in (draft, submitted, approved, in_progress). 'rejected' is
-        deliberately excluded: a rejected plan was an explicit decision and
-        should stay Rejected, not be silently overwritten to Completed.
+        """Do not silently complete pending/manual approval requests.
 
-        The state field has tracking=True (via mail.thread), so this write
-        automatically logs the old state -> 'completed' transition in each
-        record's chatter — no extra logging code needed here.
+        Legacy code completed Draft, Submitted and Approved plans when their date
+        passed; that bypassed the new hierarchy's requirement that unapproved
+        plans remain pending. Only finished historical *In Progress* plans that
+        have no live tracker may be auto-completed.
         """
         today = fields.Date.today()
-        past_plans = self.search([
-            ("visit_date", "<", today),
-            ("state", "in", ["draft", "submitted", "approved", "in_progress"]),
+        past = self.search([
+            ('visit_date', '<', today),
+            ('state', '=', 'in_progress'),
         ])
-        if past_plans:
-            past_plans.write({"state": "completed"})
+        Tracker = self.env['salesperson.tracker'].sudo()
+        for plan in past:
+            running = Tracker.search([('plan_id', '=', plan.id),('is_tracking','=',True)], limit=1)
+            if not running:
+                plan.write({'state':'completed'})
         return True
 
     def action_view_tracker(self):
@@ -228,4 +247,5 @@ class SalespersonVisitPlan(models.Model):
         return True
 
     def action_print_visit_plan(self):
+        check_report_access(self.env)
         return self.env.ref("zencore_salesperson_tracking.action_report_visit_plan").report_action(self)

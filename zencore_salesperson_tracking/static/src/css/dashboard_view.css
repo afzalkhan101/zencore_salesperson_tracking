@@ -212,6 +212,22 @@ button, input { font: inherit; }
 .map-popup-btn.primary { background:#2563eb; color:#fff; border-color:#2563eb; }
 .map-popup-location { margin-top:7px; color:var(--muted); font-size:9px; line-height:1.3; }
 
+/* V26 – Live salesperson: walking figure, small hand-held bag.
+   The vector is STATIC for inactive staff, animated green only while live. */
+.x-marker { background: transparent; border: 0; }
+.zc-walker-marker { position:relative; display:flex; flex-direction:column; align-items:center; width:112px; height:91px; pointer-events:auto; }
+.zc-walker-name { max-width:110px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding:3px 7px; border-radius:7px; background:rgba(12,37,57,.94); color:white; font:700 10px/1.25 sans-serif; box-shadow:0 2px 6px rgba(0,0,0,.16); }
+.zc-walker-stage { width:66px; height:66px; position:relative; display:flex; align-items:center; justify-content:center; }
+.zc-walker-svg { width:48px; height:72px; position:relative; z-index:2; overflow:visible; filter:drop-shadow(0 1px 1px rgba(0,0,0,.25)); }
+.zc-walker-active .zc-walker-svg { transform-origin:50% 95%; animation:zc-walker-steps 1.6s ease-in-out infinite; }
+.zc-walker-active .zc-walker-pulse { position:absolute; bottom:3px; left:50%; width:24px; height:11px; margin-left:-12px; border:2px solid #22c55e; border-radius:50%; background:rgba(34,197,94,.16); box-shadow:0 0 5px #22c55e; transform-origin:center; animation:zc-walker-radar 1.8s ease-out infinite; z-index:1; }
+.zc-walker-inactive .zc-walker-svg { filter:grayscale(1) opacity(.84) drop-shadow(0 1px 1px rgba(0,0,0,.19)); }
+.zc-walker-inactive .zc-walker-name { background:#6B7280; }
+.zc-walker-inactive .zc-walker-pulse { display:none; }
+@keyframes zc-walker-radar { 0% { transform:scale(.75);opacity:.9; } 100% { transform:scale(2.8);opacity:0; } }
+@keyframes zc-walker-steps { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-2px); } }
+@media (prefers-reduced-motion:reduce) { .zc-walker-active .zc-walker-svg, .zc-walker-active .zc-walker-pulse { animation:none !important; } }
+
 /* Table */
 .table-panel-head { min-height: 54px; }
 .table-head-actions { display:flex; align-items:center; gap:8px; }
@@ -277,3 +293,46 @@ table.dash-table tbody tr:hover td { background:#fbfdff; }
     .kpi-value { font-size:20px; }
     #live-map { height:330px; }
 }
+
+/* V24 ZenCore visual system: modern CSS, no Tailwind dependency. */
+:root { --bg:#f3f8fc;--blue:#08639c;--blue-soft:#e9f4ff;--green:#28a745;--green-soft:#e9f9ed;--violet:#08639c;--violet-soft:#edf6ff;--purple:#08789b;--purple-soft:#eafafa;--cyan:#0b8aa4;--cyan-soft:#e9faff;--mint:#008e78;--mint-soft:#e6f8f2;--radius-xl:20px;--radius-lg:17px;--shadow-md:0 9px 25px rgba(10,69,95,.085),0 2px 6px rgba(10,69,95,.045); }
+body { background:linear-gradient(155deg,#f8fcff,#eff9f5); }
+.dash-nav { border-bottom:1px solid #deedf0;box-shadow:0 2px 15px rgba(8,99,156,.05); }
+.nav-brand-icon { width:41px;height:41px;border-radius:14px;background:linear-gradient(135deg,#08639c,#00a77e);font-size:12px;letter-spacing:-.5px; }
+.nav-brand-text { font-size:19px; }
+.brand-blue { color:#08639c; }.brand-green { color:#63b82c; }
+.dash-title {font-size:24px;color:#092a46;}
+.kpi-card,.map-card,.side-card,.table-card {border-radius:19px;box-shadow:var(--shadow-md);border-color:#dae8eb;transition:box-shadow .2s ease, transform .2s ease;}
+.kpi-card:hover {box-shadow:0 13px 30px rgba(8,99,156,.12);transform:translateY(-2px)}
+.kpi-value { transition:color .18s ease; }
+.period-tab.active,.nav-live-badge {background:linear-gradient(120deg,#e2f8ed,#e8f5ff);color:#08774f;}
+.panel-badge {background:#e6f8ec;color:#15843a;border-color:#b8e7c5;}
+.map-toolbar {display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding:10px 13px;background:white;border-top:1px solid #e2edf0;position:relative;z-index:405;}
+.map-search-wrap {position:relative;flex:1 1 210px;max-width:390px;}
+#map-salesperson-search {height:38px;width:100%;border:1px solid #c9dfe7;border-radius:12px;padding:0 13px;color:#12354c;background:#f9fcfe;outline:0;transition:border-color .2s,box-shadow .2s;}
+#map-salesperson-search:focus {border-color:#08639c;box-shadow:0 0 0 3px rgba(8,99,156,.12)}
+.map-suggestions {position:absolute;top:42px;left:0;right:0;background:#fff;border:1px solid #d3e4e7;border-radius:12px;box-shadow:0 12px 28px #092e4b26;max-height:265px;overflow:auto;z-index:1100;}
+.map-suggestions:empty {display:none;}
+.map-suggestion-item {background:transparent;border:0;width:100%;text-align:left;padding:12px 13px;color:#18364b;cursor:pointer;display:block;}
+.map-suggestion-item:hover,.map-suggestion-item:focus {background:#ecf8f2;}
+.map-no-result {padding:12px;color:#748597;font-size:12px;}
+.map-status-tabs {display:flex;gap:3px;background:#edf3f6;border-radius:12px;padding:3px;}
+.map-status-tabs button {border:0;background:transparent;padding:7px 11px;border-radius:9px;font-size:12px;cursor:pointer;color:#516579;}
+.map-status-tabs button.selected {background:linear-gradient(110deg,#08639c,#078e82);color:#fff;box-shadow:0 2px 5px #076c7d30;}
+#map-search-feedback {font-size:11px;color:#377089;min-height:1em;}
+.map-pin-dot {border:3px solid white;box-shadow:0 2px 9px #092c4b50;}
+@media(max-width:680px){.map-toolbar{align-items:stretch;}.map-search-wrap{max-width:none;}.map-status-tabs{justify-content:center;}}
+@media(prefers-reduced-motion:reduce){.kpi-card,.kpi-value,.map-pin-dot{transition:none!important;animation:none!important;}}
+
+@keyframes metric-pop {0%{opacity:.55;transform:translateY(3px)}100%{opacity:1;transform:translateY(0)}}
+.metric-changed {animation:metric-pop .28s ease-out;}
+@media(prefers-reduced-motion:reduce){.metric-changed{animation:none}}
+
+/* V25: compact date filter without a redundant top-level salesperson dropdown. */
+#zc-date-form {gap:8px; border-radius:14px; box-shadow:0 2px 12px rgba(8,99,156,.05)}
+#zc-date-form .zc-date-mode {color:#07518c; border:1px solid #cde2e9; border-radius:9px; padding:8px; background:#f4fafc; font-size:12px; font-weight:700; min-width:104px}
+#zc-date-form .date-range-input {min-width:133px; border-radius:8px}
+#zc-date-form .date-range-input[hidden], #zc-date-separator[hidden] {display:none!important}
+.map-search-wrap input {border-radius:12px; border-color:#cde6e5}
+.map-search-wrap input:focus {outline:2px solid rgba(40,167,69,.17);border-color:#28a745}
+@media(max-width:1050px){#zc-date-form{flex-wrap:wrap}}

@@ -2,6 +2,8 @@ import io
 
 from odoo import http
 from odoo.http import request
+from odoo.exceptions import AccessError
+from ..models.report_security import check_report_access
 
 try:
     import xlsxwriter
@@ -13,11 +15,15 @@ class SalespersonPerformanceReportExportController(http.Controller):
 
     @http.route('/salesperson/performance_report/xlsx/<int:wizard_id>', type='http', auth='user')
     def export_xlsx(self, wizard_id, **kwargs):
-        manager_group = request.env.ref('zencore_salesperson_tracking.group_salesperson_manager', raise_if_not_found=False)
-        if not manager_group or manager_group not in request.env.user.group_ids:
+        try:
+            check_report_access(request.env)
+        except AccessError:
             return request.not_found()
 
-        wizard = request.env['salesperson.performance.report.wizard'].sudo().browse(wizard_id).exists()
+        wizard = request.env['salesperson.performance.report.wizard'].browse(wizard_id).exists()
+        # Never export someone else's transient wizard, even with a guessed ID.
+        if wizard and wizard.create_uid != request.env.user:
+            return request.not_found()
         if not wizard:
             return request.not_found()
         if not wizard.line_ids:

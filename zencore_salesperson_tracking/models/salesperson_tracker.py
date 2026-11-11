@@ -1,3 +1,4 @@
+from .report_security import check_report_access
 from datetime import timedelta
 import math
 import logging
@@ -16,6 +17,25 @@ class SalespersonTracker(models.Model):
     _order = "id desc"
     _inherit = ["mail.thread", "mail.activity.mixin"]
 
+
+    zc_in_my_team = fields.Boolean(
+        string="In My Reporting Team", compute="_compute_zc_in_my_team",
+        search="_search_zc_in_my_team",
+        help="Current user and all users reporting beneath them in the organization hierarchy."
+    )
+
+    def _compute_zc_in_my_team(self):
+        team_ids = set(self.env.user.zc_team_user_ids.ids)
+        for record in self:
+            record.zc_in_my_team = record.user_id.id in team_ids
+
+    @api.model
+    def _search_zc_in_my_team(self, operator, value):
+        if operator not in ('=', '!=') or not isinstance(value, bool):
+            raise ValueError('In My Reporting Team supports boolean equality filters only.')
+        team_ids = self.env.user.zc_team_user_ids.ids
+        include_team = (operator == '=' and value) or (operator == '!=' and not value)
+        return [('user_id', 'in' if include_team else 'not in', team_ids)]
 
     # Basic Info (from Visit Plan)
     name = fields.Char(string="Reference", compute="_compute_name", store=True)
@@ -761,6 +781,13 @@ class SalespersonTracker(models.Model):
     def action_start_tracking(self):
         """Start a new tracking session (idempotent — safe to call when already active)."""
         self.ensure_one()
+        # Central approval gate: covers web forms, legacy HTTP endpoints,
+        # mobile bridge and direct ORM/RPC invocation.
+        from odoo.exceptions import AccessError
+        if not self.plan_id or self.plan_id.state not in ('approved','in_progress'):
+            raise ValidationError('A hierarchy-approved Visit Plan is required before tracking.')
+        if self.user_id.id != self.env.user.id and not self.env.user.has_group('base.group_system'):
+            raise AccessError('You may start only your own approved tracker.')
         _logger.info("action_start_tracking: tracker=%s user=%s is_tracking=%s", 
                     self.id, self.user_id.name, self.is_tracking)
 
@@ -811,8 +838,9 @@ class SalespersonTracker(models.Model):
             _logger.error("action_start_tracking: failed to write tracker values: %s", e, exc_info=True)
             raise
         
-        # Flush to ensure changes are committed
-        self.env.cr.commit()
+        # Flush without committing. Controllers can now roll back a failed
+        # tracker switch instead of partially committing a previous stop.
+        self.env.flush_all()
 
         # Wake the salesman's installed mobile app, regardless of which
         # device (PC/laptop/mobile browser) called this method. No-ops
@@ -947,6 +975,7 @@ class SalespersonTracker(models.Model):
         }
 
     def action_print_tracking_report(self):
+        check_report_access(self.env)
         return self.env.ref("zencore_salesperson_tracking.action_report_tracking_summary").report_action(self)
 
     @api.model

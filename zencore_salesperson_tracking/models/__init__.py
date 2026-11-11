@@ -1,3 +1,4 @@
+from . import report_security
 from . import res_users
 from . import salesperson_visit_plan_line
 from . import salesperson_visit_plan
@@ -11,3 +12,9 @@ from . import res_config_settings
 from . import customer_report_wizard
 
 from . import performance_report_wizard
+
+from . import zencore_approval
+
+from . import zc_reporting_change_wizard
+
+from . import report_render_security

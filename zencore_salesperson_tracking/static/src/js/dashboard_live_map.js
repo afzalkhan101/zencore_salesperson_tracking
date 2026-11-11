@@ -7,6 +7,9 @@
         customerMarkers: {},
         firstFitDone: false,
         lastPayload: null,
+        mapFilter: 'all',
+        selectedUserId: null,
+        pollRunning: false,
     };
 
     function escapeHtml(value) {
@@ -53,9 +56,13 @@
 
     function focusSalesman(trackerId) {
         var marker = liveState.salesmanMarkers[String(trackerId)] || liveState.salesmanMarkers[trackerId];
-        if (!marker || !liveState.map) return;
-        liveState.map.setView(marker.getLatLng(), 16, { animate: true });
+        if (!marker || !liveState.map) return false;
+        var data = liveState.lastPayload;
+        var found = data && (data.trackers || []).find(function(r) { return String(r.id) === String(trackerId); });
+        if (found) liveState.selectedUserId = String(found.user_id);
+        liveState.map.setView(marker.getLatLng(), 16, { animate: true, duration: .6 });
         marker.openPopup();
+        return true;
     }
 
     function closeVisitDetails() {
@@ -116,53 +123,111 @@
     window.openMovementMap = openMovementMap;
     window.focusSalesman = focusSalesman;
 
-    function initSalesmanSearch() {
-        var wrap = document.getElementById('salesman-search');
-        var input = document.getElementById('salesman-search-input');
-        var list = document.getElementById('salesman-search-list');
-        if (!wrap || !input || !list) return;
-
-        var options = Array.prototype.slice.call(list.querySelectorAll('.salesman-search-option'));
-        function openList() { list.classList.add('open'); }
-        function closeList() { list.classList.remove('open'); }
-        function filterOptions() {
-            var q = input.value.trim().toLowerCase();
-            options.forEach(function (opt) {
-                var text = opt.textContent.trim().toLowerCase();
-                opt.classList.toggle('hidden', q.length > 0 && text.indexOf(q) === -1);
-            });
+    function initDashboardDateMode() {
+        var form = document.getElementById('zc-date-form');
+        var mode = document.getElementById('zc-date-mode');
+        if (!form || !mode) return;
+        var from = form.querySelector('[name="date_from"]');
+        var to = form.querySelector('[name="date_to"]');
+        var separator = document.getElementById('zc-date-separator');
+        if (!from || !to) return;
+        function syncMode() {
+            var single = mode.value === 'single';
+            to.hidden = single;
+            to.disabled = single;
+            if (separator) separator.hidden = single;
         }
+        mode.addEventListener('change', syncMode);
+        form.addEventListener('submit', function(e) {
+            if (mode.value === 'single') {
+                to.disabled = false;
+                to.value = from.value;
+            }
+            if (!from.value || !to.value || from.value > to.value) {
+                e.preventDefault();
+                // Keep the UI editable: invalid ranges are not sent to Odoo.
+                to.disabled = mode.value === 'single';
+                from.setCustomValidity('Choose a valid date range');
+                from.reportValidity();
+            }
+        });
+        from.addEventListener('input', function() { from.setCustomValidity(''); });
+        to.addEventListener('input', function() { from.setCustomValidity(''); });
+        syncMode();
+    }
 
-        input.addEventListener('focus', function () {
-            input.select();
-            filterOptions();
-            openList();
+    function filteredMarkers() {
+        var payload = liveState.lastPayload || {};
+        return (payload.trackers || []).filter(function(s) {
+            return liveState.mapFilter === 'all' ||
+                (liveState.mapFilter === 'active' ? s.status !== 'offline' : s.status === 'offline');
         });
-        input.addEventListener('input', function () {
-            filterOptions();
-            openList();
-        });
-        input.addEventListener('keydown', function (ev) {
-            if (ev.key === 'Escape') {
-                closeList();
-                input.blur();
+    }
+
+    function initMapSearch() {
+        var input = document.getElementById('map-salesperson-search');
+        var list = document.getElementById('map-salesperson-suggestions');
+        if (!input || !list) return;
+        function fill() {
+            var q = input.value.trim().toLowerCase();
+            var payload = liveState.lastPayload || {};
+            var rows = (payload.rows || []).filter(function(s) {
+                return q && String(s.name || '').toLowerCase().includes(q);
+            }).slice(0, 12);
+            list.innerHTML = '';
+            rows.forEach(function(s) {
+                var btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'map-suggestion-item';
+                btn.textContent = s.name + ' · ' + (s.status === 'offline' ? 'Inactive' : 'Active');
+                btn.onclick = function() { focusUser(s); list.innerHTML = ''; input.value = s.name; };
+                list.appendChild(btn);
+            });
+            if (q && !rows.length) {
+                var none = document.createElement('div');
+                none.className = 'map-no-result';
+                none.textContent = 'No matching salesperson in selected scope';
+                list.appendChild(none);
             }
-            if (ev.key === 'Enter') {
-                var visible = options.find(function (opt) { return !opt.classList.contains('hidden'); });
-                if (visible) {
-                    ev.preventDefault();
-                    navigateWithSalesman(visible.dataset.id || '');
-                }
+        }
+        input.addEventListener('input', fill);
+        input.addEventListener('focus', fill);
+        input.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') list.innerHTML = '';
+            if (e.key === 'Enter' && list.querySelector('button')) {
+                e.preventDefault(); list.querySelector('button').click();
             }
         });
-        options.forEach(function (opt) {
-            opt.addEventListener('click', function () {
-                navigateWithSalesman(opt.dataset.id || '');
+        document.addEventListener('click', function(e) { if (!e.target.closest('.map-search-wrap')) list.innerHTML = ''; });
+        document.querySelectorAll('[data-map-filter]').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                liveState.mapFilter = btn.dataset.mapFilter;
+                document.querySelectorAll('[data-map-filter]').forEach(function(b) {
+                    b.classList.toggle('selected', b === btn);
+                });
+                if (liveState.lastPayload) renderMap(liveState.lastPayload);
+                fill();
             });
         });
-        document.addEventListener('click', function (ev) {
-            if (!wrap.contains(ev.target)) closeList();
+    }
+
+    function focusUser(s) {
+        liveState.selectedUserId = String(s.user_id);
+        var payload = liveState.lastPayload || {};
+        var markerRow = (payload.trackers || []).find(function(t) { return String(t.user_id) === String(s.user_id); });
+        var notice = document.getElementById('map-search-feedback');
+        if (!markerRow || !focusSalesman(markerRow.id)) {
+            if (notice) notice.textContent = s.name + ': location unavailable';
+            return;
+        }
+        // Keep searched-for marker visible even if a status filter was active.
+        liveState.mapFilter = 'all';
+        document.querySelectorAll('[data-map-filter]').forEach(function(b) {
+            b.classList.toggle('selected', b.dataset.mapFilter === 'all');
         });
+        renderMap(payload);
+        focusSalesman(markerRow.id);
+        if (notice) notice.textContent = s.name + ' · Last recorded position';
     }
 
     function relativeTime(epoch) {
@@ -187,12 +252,25 @@
         });
     }
 
+    // The server's five-minute GPS freshness rule is authoritative for status.
+    // Display-only animation never changes a tracking/session state.
+    function isLiveSalesperson(s) {
+        return Boolean(s && s.status && s.status !== 'offline');
+    }
+
     function salesmanHtml(s) {
-        var pulse = (s.status === 'moving' || s.status === 'at_customer') ? ' pulse' : '';
-        return '<div class="map-pin">' +
-               '<div class="map-pin-label">' + escapeHtml(s.name) + '</div>' +
-               '<div class="map-pin-dot' + pulse + '" style="background:' + escapeHtml(s.status_color) + '"></div>' +
-               '</div>';
+        var active = isLiveSalesperson(s);
+        var cls = active ? 'zc-walker-active' : 'zc-walker-inactive';
+        var label = active ? 'Active' : 'Inactive';
+        // Shared marker asset is identical to Movement Map and Mobile Map.
+        // CSS applies green pulse only to active staff; inactive stays static gray.
+        var walker = '<img class="zc-walker-svg" src="/zencore_salesperson_tracking/static/src/img/walking_salesperson_briefcase.svg" ' +
+            'width="48" height="72" alt="Walking salesperson with small hand-held briefcase" />';
+        return '<div class="zc-walker-marker ' + cls + '" role="img" aria-label="' +
+            escapeHtml(s.name) + ', ' + label + '" title="' + escapeHtml(s.name) + ' — ' + label + '">' +
+            '<div class="zc-walker-name">' + escapeHtml(s.name) + '</div>' +
+            '<div class="zc-walker-stage"><span class="zc-walker-pulse"></span>' + walker + '</div>' +
+            '</div>';
     }
 
     function popupHtml(s) {
@@ -222,7 +300,7 @@
 
     function renderMap(data) {
         if (!liveState.map) return;
-        var trackers = data.trackers || [];
+        var trackers = filteredMarkers();
         var customers = data.customers || [];
         var seenTrackers = {};
         var seenCustomers = {};
@@ -234,14 +312,25 @@
             var latlng = [Number(s.lat), Number(s.lng)];
             trackerBounds.push(latlng);
             seenTrackers[key] = true;
-            var icon = pinIcon(salesmanHtml(s), 104, 48);
+            var live = isLiveSalesperson(s);
+            var iconKey = [s.name, live ? "active" : "inactive"].join("|");
+            var icon = pinIcon(salesmanHtml(s), 112, 91);
             var marker = liveState.salesmanMarkers[key];
             if (!marker) {
-                marker = L.marker(latlng, { icon: icon }).addTo(liveState.map);
+                marker = L.marker(latlng, { icon: icon, keyboard: true }).addTo(liveState.map);
+                marker._zcIconKey = iconKey;
                 liveState.salesmanMarkers[key] = marker;
             } else {
-                marker.setLatLng(latlng);
-                marker.setIcon(icon);
+                var oldPos = marker.getLatLng();
+                if (oldPos.lat !== latlng[0] || oldPos.lng !== latlng[1]) {
+                    marker.setLatLng(latlng);
+                }
+                // Do not recreate every icon at each 10-second poll: Leaflet
+                // replaces the DOM and would restart pulses and close popups.
+                if (marker._zcIconKey !== iconKey) {
+                    marker.setIcon(icon);
+                    marker._zcIconKey = iconKey;
+                }
             }
             marker.bindPopup(popupHtml(s), { maxWidth: 300 });
         });
@@ -292,7 +381,12 @@
 
     function setText(id, value) {
         var el = document.getElementById(id);
-        if (el) el.textContent = value;
+        if (el && el.textContent !== String(value)) {
+            el.textContent = value;
+            el.classList.remove('metric-changed');
+            void el.offsetWidth;
+            el.classList.add('metric-changed');
+        }
     }
 
     function updateKpis(summary) {
@@ -309,11 +403,45 @@
         setText('kpi-missed', summary.missed_count);
         setText('kpi-distance', Number(summary.total_distance || 0).toFixed(1));
         setText('map-active-count', summary.active_count);
+        setText('map-inactive-count', summary.inactive_count);
+    }
+
+    function syncRosterRows(rows) {
+        var body = document.getElementById('rep-table-body');
+        if (!body) return;
+        var currentIds = Array.prototype.map.call(body.querySelectorAll('tr[data-user-id]'), function(el) {
+            return String(el.dataset.userId) + ':' + String(el.dataset.trackerId);
+        }).sort().join(',');
+        var nextIds = rows.map(function(r) { return String(r.user_id) + ':' + String(r.id); }).sort().join(',');
+        if (currentIds === nextIds) return; // Avoid DOM replacement on every GPS poll.
+        body.innerHTML = rows.map(function(r, i) {
+            var id = Number(r.id || 0), uid = Number(r.user_id);
+            var safeName = escapeHtml(r.name), safeInitials = escapeHtml(r.initials);
+            return '<tr data-user-id="' + uid + '" data-tracker-id="' + id + '">' +
+                '<td class="row-number">' + (i + 1) + '</td>' +
+                '<td><div class="rep-cell"><div class="rep-avatar" style="background:linear-gradient(135deg,#08639C,#28A745)">' + safeInitials + '</div><div><div class="rep-name">' + safeName + '</div><div class="rep-location">' + escapeHtml(r.location) + '</div></div></div></td>' +
+                '<td class="cell-planned">' + Number(r.total || 0) + '</td>' +
+                '<td class="cell-visited positive">' + Number(r.covered || 0) + '</td>' +
+                '<td class="cell-missed negative">' + Number(r.missed || 0) + '</td>' +
+                '<td><div class="visit-rate-bar"><span class="cell-pct">' + Number(r.pct || 0) + '%</span><div class="vr-track"><div class="vr-fill" style="width:' + Number(r.pct || 0) + '%"></div></div></div></td>' +
+                '<td class="cell-distance">' + escapeHtml(r.distance) + '</td>' +
+                '<td class="cell-tracking-time">' + escapeHtml(r.tracking_time) + '</td>' +
+                '<td class="cell-first-start">' + escapeHtml(r.first_start) + '</td>' +
+                '<td><span class="cell-last-update" data-epoch="' + Number(r.last_seen_epoch || 0) + '">' + escapeHtml(r.last_update) + '</span></td>' +
+                '<td><span class="gps-health-pill"><i></i><span class="gps-health-text">' + escapeHtml(r.gps_health) + '</span></span></td>' +
+                '<td><span class="status-pill rep-status-cell"><i class="status-dot"></i><span>' + escapeHtml(r.status_label) + '</span></span></td>' +
+                '<td><div class="row-actions">' +
+                (id ? '<button type="button" class="action-btn primary" data-focus-tracker="' + id + '">Live</button><button type="button" class="action-btn" data-open-route="' + id + '">Route</button><button type="button" class="action-btn visit-details-trigger" data-tracker-id="' + id + '">Details</button>' : '') +
+                '</div></td></tr>';
+        }).join('');
+        var count = document.getElementById('table-row-count');
+        if (count) count.textContent = rows.length;
     }
 
     function updateRows(rows) {
+        syncRosterRows(rows || []);
         (rows || []).forEach(function (r) {
-            var row = document.querySelector('tr[data-tracker-id="' + r.id + '"]');
+            var row = document.querySelector('tr[data-user-id="' + r.user_id + '"]');
             if (!row) return;
             var set = function (selector, value) {
                 var el = row.querySelector(selector);
@@ -410,7 +538,10 @@
         }).addTo(liveState.map);
         setTimeout(function () { liveState.map.invalidateSize(); }, 150);
 
+        initMapSearch();
         function poll() {
+            if (liveState.pollRunning) return;
+            liveState.pollRunning = true;
             var salesmanId = cfg.dataset.salesmanId || '';
             var url = '/salesperson/dashboard/data';
             if (salesmanId) url += '?salesman_id=' + encodeURIComponent(salesmanId);
@@ -432,8 +563,9 @@
                 .catch(function (err) {
                     console.error('[Dashboard] live poll failed:', err);
                     var el = document.getElementById('last-refresh-text');
-                    if (el) el.textContent = 'Refresh failed';
-                });
+                    if (el) el.textContent = 'Connection unavailable · showing last update';
+                })
+                .finally(function() { liveState.pollRunning = false; });
         }
 
         poll();
@@ -442,7 +574,13 @@
     }
 
     function initAll() {
-        initSalesmanSearch();
+        document.addEventListener('click', function(e) {
+            var focus = e.target.closest('[data-focus-tracker]');
+            var route = e.target.closest('[data-open-route]');
+            if (focus) focusSalesman(focus.dataset.focusTracker);
+            if (route) openMovementMap(route.dataset.openRoute);
+        });
+        initDashboardDateMode();
         initLiveDashboard();
         updateRelativeTimes();
     }
