@@ -419,9 +419,9 @@ export default function App(){
   <Pressable onPress={()=>go('Tracking')} accessibilityRole="button" accessibilityLabel="Open tracking" style={st.heroButton}><Text style={st.heroButtonText}>Open Tracking</Text><Text style={st.heroButtonArrow}>›</Text></Pressable>
  </GradientBackground>
  <View style={st.metrics}>
-  <Metric icon="▣" value={connected?String(dashboard?.visit_plans??serverPlans.length):'0'} title="Visit Plans"/>
-  <Metric icon="✓" value={connected?String(dashboard?.completed_visits??dashboard?.completed_customer_visits??0):'0'} title="Completed Visits"/>
-  <Metric icon="♙" value={String(dashboard?.completed_customer_visits??0)} title="Customers Visited"/>
+  <Metric icon="▣" value={connected?String(dashboard?.visit_plans??serverPlans.length):'0'} title="Overall Visit Plans"/>
+  <Metric icon="✓" value={connected?String(dashboard?.completed_visits??dashboard?.completed_customer_visits??0):'0'} title="Overall Completed Visits"/>
+  <Metric icon="♙" value={String(dashboard?.completed_customer_visits??0)} title="Overall Customers Visited"/>
   <Metric icon="⌁" value={displayDistance(Math.max(dashboard?.total_distance_km??0,localTotalKm))} title="Total Distance Traveled"/>
  </View>
  <Panel style={st.dailyCard}>
