@@ -176,7 +176,13 @@
                       </div>
                       <span id="map-search-feedback" aria-live="polite"></span>
                     </div>
-                    <div id="live-map"></div>
+                    <div class="live-map-shell">
+                        <div id="live-map"></div>
+                        <div class="map-target-legend" aria-label="Customer target map legend">
+                            <span class="map-target-legend-pin" aria-hidden="true"></span>
+                            <span><strong>Customer targets</strong><small>Target: salesperson</small></span>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="side-stack">

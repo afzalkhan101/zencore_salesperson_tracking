@@ -273,6 +273,30 @@
             '</div>';
     }
 
+    function customerTargetHtml(customer) {
+        var targetNames = (Array.isArray(customer.targeted_by) ? customer.targeted_by : [])
+            .map(function (target) { return target && target.name ? String(target.name) : ''; })
+            .filter(Boolean);
+        var customerName = customer.name || 'Customer';
+        var targetLabel = targetNames.length ? targetNames.join(' · ') : 'Assigned salesperson';
+        var stateClass = customer.visited ? 'visited' : 'pending';
+        var status = customer.visited ? 'Visited target' : 'Planned target';
+        return '<div class="zc-customer-target ' + stateClass + '" role="img" aria-label="' +
+            escapeHtml(customerName + '. ' + status + '. Target: ' + targetLabel) + '" title="' +
+            escapeHtml(customerName + ' — Target: ' + targetLabel) + '">' +
+                '<div class="zc-customer-name">' + escapeHtml(customerName) + '</div>' +
+                '<div class="zc-customer-assignee">Target: ' + escapeHtml(targetLabel) + '</div>' +
+                '<div class="zc-customer-pin-stage">' +
+                    '<span class="zc-customer-radar radar-one"></span>' +
+                    '<span class="zc-customer-radar radar-two"></span>' +
+                    '<svg class="zc-customer-pin-icon" viewBox="0 0 24 32" aria-hidden="true">' +
+                        '<path d="M12 31S1 19.3 1 11.8A11 11 0 1 1 23 11.8C23 19.3 12 31 12 31Z"></path>' +
+                        '<circle cx="12" cy="12" r="4.2"></circle>' +
+                    '</svg>' +
+                '</div>' +
+            '</div>';
+    }
+
     function popupHtml(s) {
         var speed = Number(s.speed_kmh || 0).toFixed(1) + ' km/h';
         var accuracy = Number(s.accuracy || 0) > 0 ? Number(s.accuracy).toFixed(0) + ' m' : '—';
@@ -346,17 +370,27 @@
             if (!c.lat || !c.lng) return;
             var key = String(c.id);
             seenCustomers[key] = true;
-            var css = c.visited ? 'visited' : 'pending';
-            var icon = pinIcon('<div class="cust-pin ' + css + '" title="' + escapeHtml(c.name) + '"></div>', 12, 12);
+            var targetNames = (Array.isArray(c.targeted_by) ? c.targeted_by : [])
+                .map(function (target) { return target && target.name ? String(target.name) : ''; })
+                .filter(Boolean)
+                .join('|');
+            var iconKey = [c.name || '', c.visited ? 'visited' : 'pending', targetNames].join('|');
+            var icon = pinIcon(customerTargetHtml(c), 176, 116);
             var marker = liveState.customerMarkers[key];
             if (!marker) {
-                marker = L.marker([Number(c.lat), Number(c.lng)], { icon: icon })
-                    .bindTooltip(escapeHtml(c.name))
-                    .addTo(liveState.map);
+                marker = L.marker([Number(c.lat), Number(c.lng)], {
+                    icon: icon,
+                    keyboard: true,
+                    riseOnHover: true,
+                }).addTo(liveState.map);
+                marker._zcIconKey = iconKey;
                 liveState.customerMarkers[key] = marker;
             } else {
                 marker.setLatLng([Number(c.lat), Number(c.lng)]);
-                marker.setIcon(icon);
+                if (marker._zcIconKey !== iconKey) {
+                    marker.setIcon(icon);
+                    marker._zcIconKey = iconKey;
+                }
             }
         });
 

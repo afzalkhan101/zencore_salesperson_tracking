@@ -168,6 +168,13 @@ button, input { font: inherit; }
 .panel-badge { background: var(--green-soft); color: #047857; border:1px solid #a7f3d0; border-radius:999px; padding:3px 8px; font-size:10px; font-weight:700; }
 .panel-muted, .map-location-label { color: var(--muted); font-size: 10px; }
 #live-map { width:100%; height: 500px; background: #e5e7eb; }
+.live-map-shell { position:relative; }
+.map-target-legend { position:absolute; left:12px; bottom:12px; z-index:650; display:flex; align-items:center; gap:8px; padding:8px 10px; border:1px solid rgba(8,47,73,.18); border-radius:10px; background:rgba(255,255,255,.94); color:#12324a; box-shadow:0 5px 16px rgba(15,23,42,.16); font-size:10px; line-height:1.2; pointer-events:none; }
+.map-target-legend strong, .map-target-legend small { display:block; }
+.map-target-legend strong { font-size:10px; font-weight:800; }
+.map-target-legend small { margin-top:2px; color:#527086; font-size:9px; }
+.map-target-legend-pin { position:relative; width:17px; height:22px; border-radius:12px 12px 12px 0; transform:rotate(-45deg); background:#06b6d4; border:2px solid #073b5c; box-shadow:0 0 0 4px rgba(6,182,212,.18); }
+.map-target-legend-pin::after { content:""; position:absolute; width:5px; height:5px; top:4px; left:4px; border-radius:50%; background:#fff; }
 .side-stack { display: grid; grid-template-rows: minmax(0, 1.3fr) minmax(0, .8fr); gap: 14px; min-height: 500px; }
 .side-card { min-height: 0; }
 .activity-list { padding: 4px 0; max-height: 290px; overflow:auto; }
@@ -197,9 +204,20 @@ button, input { font: inherit; }
 .map-pin-dot { width:17px; height:17px; border-radius:50%; border:3px solid #fff; box-shadow:0 0 0 1px rgba(15,23,42,.12); }
 .map-pin-dot.pulse { animation: map-pulse 1.8s infinite; }
 @keyframes map-pulse { 0%,100%{box-shadow:0 0 0 0 rgba(37,99,235,.28)} 50%{box-shadow:0 0 0 8px rgba(37,99,235,0)} }
-.cust-pin { width:12px; height:12px; border-radius:50%; border:2px solid #fff; box-shadow:0 1px 4px rgba(15,23,42,.35); }
-.cust-pin.pending { background:#2563eb; }
-.cust-pin.visited { background:#059669; }
+.zc-customer-target { width:176px; min-height:112px; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; pointer-events:auto; text-align:center; }
+.zc-customer-name { max-width:168px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding:4px 9px; border:1px solid rgba(7,59,92,.32); border-radius:8px; background:rgba(255,255,255,.98); color:#082f49; font:800 11px/1.2 sans-serif; box-shadow:0 3px 9px rgba(15,23,42,.18); }
+.zc-customer-assignee { max-width:172px; margin-top:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding:3px 8px; border-radius:999px; background:#083b6d; color:#fff; font:700 9px/1.2 sans-serif; box-shadow:0 2px 6px rgba(8,59,109,.24); }
+.zc-customer-pin-stage { position:relative; display:flex; align-items:flex-end; justify-content:center; width:82px; height:64px; margin-top:-2px; }
+.zc-customer-pin-icon { position:relative; z-index:3; width:42px; height:56px; overflow:visible; filter:drop-shadow(0 3px 3px rgba(8,47,73,.28)); }
+.zc-customer-pin-icon path { fill:#06b6d4; stroke:#073b5c; stroke-width:1.6px; }
+.zc-customer-pin-icon circle { fill:#fff; stroke:#073b5c; stroke-width:1.45px; }
+.zc-customer-radar { position:absolute; z-index:1; left:50%; bottom:5px; width:32px; height:13px; margin-left:-16px; border:2px solid rgba(6,182,212,.8); border-radius:50%; background:rgba(34,211,238,.17); transform-origin:center; }
+.zc-customer-target.pending .zc-customer-radar { animation:zc-customer-target-radar 2.4s ease-out infinite; }
+.zc-customer-target.pending .radar-two { animation-delay:1.2s; }
+.zc-customer-target.visited .zc-customer-pin-icon path { fill:#10b981; stroke:#047857; }
+.zc-customer-target.visited .zc-customer-pin-icon circle { stroke:#047857; }
+.zc-customer-target.visited .zc-customer-radar { display:none; }
+@keyframes zc-customer-target-radar { 0% { transform:scale(.68); opacity:.95; } 100% { transform:scale(2.9); opacity:0; } }
 .leaflet-popup-content-wrapper { border-radius:12px; box-shadow:0 10px 30px rgba(15,23,42,.18); }
 .leaflet-popup-content { margin: 11px 12px; min-width: 230px; }
 .map-popup-name { font-weight:800; font-size:13px; margin-bottom:7px; color:var(--text); }

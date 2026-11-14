@@ -666,8 +666,10 @@ class SalespersonTrackingController(http.Controller):
             'linear-gradient(135deg,#7C3AED,#A78BFA)',
         ]
         now = fields.Datetime.now()
-        rows, map_salesmen, map_customers = [], [], []
-        seen_customer_ids = set()
+        rows, map_salesmen = [], []
+        # A customer can be a target for more than one salesperson. Keep one
+        # map point per customer, with every assigned salesperson listed on it.
+        map_customers_by_id = {}
 
         for i, tracker in enumerate(trackers):
             status, color, label = tracker._compute_dashboard_status()
@@ -728,19 +730,32 @@ class SalespersonTrackingController(http.Controller):
 
             visited_ids = set(tracker.visited_line_ids.mapped('partner_id').ids)
             for customer in tracker.target_line_ids.mapped('customer_ids'):
-                if customer.id in seen_customer_ids:
-                    continue
                 if customer.partner_latitude and customer.partner_longitude:
-                    seen_customer_ids.add(customer.id)
-                    map_customers.append({
+                    customer_data = map_customers_by_id.setdefault(customer.id, {
                         'id': customer.id,
                         'name': customer.name,
                         'lat': customer.partner_latitude,
                         'lng': customer.partner_longitude,
-                        'visited': customer.id in visited_ids,
+                        'visited': False,
+                        'targeted_by': [],
                     })
+                    customer_data['visited'] = bool(
+                        customer_data['visited'] or customer.id in visited_ids
+                    )
+                    if not any(
+                        target['id'] == tracker.user_id.id
+                        for target in customer_data['targeted_by']
+                    ):
+                        customer_data['targeted_by'].append({
+                            'id': tracker.user_id.id,
+                            'name': name,
+                        })
 
         rows.sort(key=lambda r: r['name'] or '')
+        map_customers = sorted(
+            map_customers_by_id.values(),
+            key=lambda customer: (customer['name'] or '').lower(),
+        )
         return rows, map_salesmen, map_customers
 
     def _dashboard_period_rows(self, trackers, tz_name=None):
