@@ -118,10 +118,7 @@
   <menuitem id="menu_zc_my_approvals" name="My Pending Approvals" parent="menu_salesperson_visit_plan"
       action="action_zc_my_approvals" sequence="25"
       groups="zencore_salesperson_tracking.group_salesperson_supervisor,zencore_salesperson_tracking.group_salesperson_manager,zencore_salesperson_tracking.group_salesperson_ceo"/>
-  <!-- Unified Odoo-native organization menu: no OWL chart or duplicated root entries. -->
-  <menuitem id="menu_zc_organization_root" name="Organization"
-            parent="menu_salesperson_tracking_root" sequence="79"
-            groups="zencore_salesperson_tracking.group_salesperson_ceo,zencore_salesperson_tracking.group_salesperson_manager,zencore_salesperson_tracking.group_salesperson_supervisor"/>
+  <!-- Organization navigation is intentionally not exposed in Salesperson Tracking. -->
   <record id="action_zc_org_tree_list" model="ir.actions.act_window">
     <field name="name">Organization Tree</field>
     <field name="res_model">res.users</field>
@@ -129,20 +126,16 @@
     <field name="view_id" ref="view_zc_users_hierarchy_list"/>
     <field name="domain">[('share','=',False),('zc_chart_visible','=',True)]</field>
   </record>
-  <menuitem id="menu_zc_org_tree" name="Organization Tree"
-            parent="menu_zc_organization_root" action="action_zc_org_tree_list"
-            sequence="10" groups="zencore_salesperson_tracking.group_salesperson_ceo,zencore_salesperson_tracking.group_salesperson_manager,zencore_salesperson_tracking.group_salesperson_supervisor"/>
-  <menuitem id="menu_zc_organization" name="Organization Hierarchy"
-            parent="menu_zc_organization_root" action="action_zc_hierarchy"
-            sequence="20" groups="zencore_salesperson_tracking.group_salesperson_ceo,zencore_salesperson_tracking.group_salesperson_manager,zencore_salesperson_tracking.group_salesperson_supervisor"/>
   <record id="action_zc_departments_hierarchy" model="ir.actions.act_window">
     <field name="name">Departments</field>
     <field name="res_model">hr.department</field>
     <field name="view_mode">hierarchy,list,form</field>
   </record>
-  <menuitem id="menu_zc_departments" name="Departments"
-            parent="menu_zc_organization_root" action="action_zc_departments_hierarchy"
-            sequence="30" groups="zencore_salesperson_tracking.group_salesperson_ceo,zencore_salesperson_tracking.group_salesperson_manager,zencore_salesperson_tracking.group_salesperson_supervisor"/>
+  <!-- Explicit deletes remove these menus from databases that already installed an older module version. -->
+  <delete model="ir.ui.menu" id="menu_zc_org_tree"/>
+  <delete model="ir.ui.menu" id="menu_zc_organization"/>
+  <delete model="ir.ui.menu" id="menu_zc_departments"/>
+  <delete model="ir.ui.menu" id="menu_zc_organization_root"/>
   <menuitem id="menu_zc_settings_root" name="Settings"
             parent="menu_salesperson_tracking_root" sequence="90"
             groups="zencore_salesperson_tracking.group_salesperson_ceo,zencore_salesperson_tracking.group_salesperson_manager"/>
