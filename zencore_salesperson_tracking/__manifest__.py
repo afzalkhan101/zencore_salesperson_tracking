@@ -1,7 +1,7 @@
 {
     "name": "ZenCore Salesperson Tracking",
     "summary": "Complete salesperson tracking with geofencing, visit plans, and KPI reports",
-    "version": "19.0.11.0.22",
+    "version": "19.0.11.0.23",
     "category": "Zencore",
     "author": "ZenCore",
     "website": "",

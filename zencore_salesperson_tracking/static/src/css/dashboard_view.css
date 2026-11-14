@@ -337,22 +337,20 @@ body { background:linear-gradient(155deg,#f8fcff,#eff9f5); }
 .map-search-wrap input:focus {outline:2px solid rgba(40,167,69,.17);border-color:#28a745}
 @media(max-width:1050px){#zc-date-form{flex-wrap:wrap}}
 
-/* V29: focused Soft flow KPI layout for faster dashboard scanning. */
-.kpi-sections { display:grid; gap:18px; }
-.kpi-section-label { display:flex; align-items:center; gap:10px; color:#6d8494; font-size:10px; font-weight:800; letter-spacing:.09em; text-transform:uppercase; }
-.kpi-section-label::after { content:""; flex:1; height:1px; background:linear-gradient(90deg,#d7e7e8,transparent); }
-.kpi-grid.kpi-team-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
-.kpi-grid.kpi-visit-grid, .kpi-grid.is-report { grid-template-columns:repeat(2,minmax(0,1fr)); }
+/* V30: one-row priority KPI layout for faster dashboard scanning. */
+.kpi-grid.kpi-priority-grid { grid-template-columns:repeat(5,minmax(0,1fr)); }
+.kpi-grid.is-report { grid-template-columns:repeat(2,minmax(0,1fr)); }
 .kpi-card { min-height:119px; padding:14px; display:grid; grid-template-columns:31px minmax(0,1fr); grid-template-rows:31px auto minmax(24px,auto); column-gap:9px; row-gap:0; align-items:start; }
 .kpi-card .kpi-icon { grid-column:1; grid-row:1; width:31px; height:31px; }
 .kpi-card .kpi-body { display:contents; }
 .kpi-card .kpi-label { grid-column:2; grid-row:1; align-self:center; font-size:10px; }
 .kpi-card .kpi-value { grid-column:1 / -1; grid-row:2; margin:13px 0 5px; font-size:24px; letter-spacing:-.035em; }
 .kpi-card .kpi-sub { grid-column:1 / -1; grid-row:3; align-self:end; min-height:24px; font-size:9.5px; line-height:1.3; }
-.kpi-section .kpi-card { background:linear-gradient(145deg,#fff,#fcfefe); }
+@media(max-width:1100px){
+    .kpi-grid.kpi-priority-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
+}
 @media(max-width:720px){
-    .kpi-sections { gap:15px; }
-    .kpi-grid.kpi-team-grid, .kpi-grid.kpi-visit-grid, .kpi-grid.is-report { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .kpi-grid.kpi-priority-grid, .kpi-grid.is-report { grid-template-columns:repeat(2,minmax(0,1fr)); }
     .kpi-card { min-height:110px; padding:12px; }
     .kpi-card .kpi-value { font-size:22px; margin-top:11px; }
 }

@@ -10,7 +10,7 @@
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""/>
         <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&amp;family=DM+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-        <link rel="stylesheet" type="text/css" href="/zencore_salesperson_tracking/static/src/css/dashboard_view.css?v=29.0.0"/>
+        <link rel="stylesheet" type="text/css" href="/zencore_salesperson_tracking/static/src/css/dashboard_view.css?v=30.0.0"/>
         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     </head>
     <body>
@@ -89,10 +89,7 @@
         </div>
 
         <t t-if="is_live">
-            <div class="kpi-sections">
-                <section class="kpi-section" aria-label="Team presence">
-                    <div class="kpi-section-label"><span>Team presence</span></div>
-                    <div class="kpi-grid kpi-team-grid">
+            <div class="kpi-grid kpi-priority-grid" aria-label="Priority tracking KPIs">
                 <div class="kpi-card kpi-green">
                     <div class="kpi-icon">●</div>
                     <div class="kpi-body">
@@ -117,11 +114,6 @@
                         <div class="kpi-sub">Stopped or stale GPS</div>
                     </div>
                 </div>
-                    </div>
-                </section>
-                <section class="kpi-section" aria-label="Visit progress">
-                    <div class="kpi-section-label"><span>Visit progress</span></div>
-                    <div class="kpi-grid kpi-visit-grid">
                         <div class="kpi-card kpi-green">
                             <div class="kpi-icon">✓</div>
                             <div class="kpi-body">
@@ -138,8 +130,6 @@
                                 <div class="kpi-sub">Planned but not completed</div>
                             </div>
                         </div>
-                    </div>
-                </section>
             </div>
         </t>
 
