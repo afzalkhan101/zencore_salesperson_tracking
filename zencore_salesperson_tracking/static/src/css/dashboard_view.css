@@ -215,12 +215,12 @@ button, input { font: inherit; }
 /* V26 – Live salesperson: walking figure, small hand-held bag.
    The vector is STATIC for inactive staff, animated green only while live. */
 .x-marker { background: transparent; border: 0; }
-.zc-walker-marker { position:relative; display:flex; flex-direction:column; align-items:center; width:72px; height:55px; pointer-events:auto; }
+.zc-walker-marker { position:relative; display:flex; flex-direction:column; align-items:center; width:72px; height:28px; pointer-events:auto; }
 .zc-walker-name { max-width:70px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding:2px 5px; border-radius:6px; background:rgba(12,37,57,.94); color:white; font:700 8px/1.15 sans-serif; box-shadow:0 2px 6px rgba(0,0,0,.16); }
-.zc-walker-stage { width:36px; height:36px; position:relative; display:flex; align-items:center; justify-content:center; }
-.zc-walker-svg { width:24px; height:36px; position:relative; z-index:2; overflow:visible; filter:drop-shadow(0 1px 1px rgba(0,0,0,.25)); }
+.zc-walker-stage { width:8px; height:8px; position:relative; display:flex; align-items:center; justify-content:center; }
+.zc-walker-svg { width:3px; height:4px; position:relative; z-index:2; overflow:visible; filter:drop-shadow(0 1px 1px rgba(0,0,0,.25)); }
 .zc-walker-active .zc-walker-svg { transform-origin:50% 95%; animation:zc-walker-steps 1.6s ease-in-out infinite; }
-.zc-walker-active .zc-walker-pulse { position:absolute; bottom:1px; left:50%; width:14px; height:6px; margin-left:-7px; border:1.5px solid #22c55e; border-radius:50%; background:rgba(34,197,94,.16); box-shadow:0 0 4px #22c55e; transform-origin:center; animation:zc-walker-radar 1.8s ease-out infinite; z-index:1; }
+.zc-walker-active .zc-walker-pulse { position:absolute; bottom:0; left:50%; width:4px; height:2px; margin-left:-2px; border:1px solid #22c55e; border-radius:50%; background:rgba(34,197,94,.16); box-shadow:0 0 3px #22c55e; transform-origin:center; animation:zc-walker-radar 1.8s ease-out infinite; z-index:1; }
 .zc-walker-inactive .zc-walker-svg { filter:grayscale(1) opacity(.84) drop-shadow(0 1px 1px rgba(0,0,0,.19)); }
 .zc-walker-inactive .zc-walker-name { background:#6B7280; }
 .zc-walker-inactive .zc-walker-pulse { display:none; }

@@ -265,7 +265,7 @@
         // Shared marker asset is identical to Movement Map and Mobile Map.
         // CSS applies green pulse only to active staff; inactive stays static gray.
         var walker = '<img class="zc-walker-svg" src="/zencore_salesperson_tracking/static/src/img/walking_salesperson_briefcase.svg" ' +
-            'width="24" height="36" alt="Walking salesperson with small hand-held briefcase" />';
+            'width="3" height="4" alt="Walking salesperson with small hand-held briefcase" />';
         return '<div class="zc-walker-marker ' + cls + '" role="img" aria-label="' +
             escapeHtml(s.name) + ', ' + label + '" title="' + escapeHtml(s.name) + ' — ' + label + '">' +
             '<div class="zc-walker-name">' + escapeHtml(s.name) + '</div>' +
@@ -314,7 +314,7 @@
             seenTrackers[key] = true;
             var live = isLiveSalesperson(s);
             var iconKey = [s.name, live ? "active" : "inactive"].join("|");
-            var icon = pinIcon(salesmanHtml(s), 112, 91);
+            var icon = pinIcon(salesmanHtml(s), 72, 55);
             var marker = liveState.salesmanMarkers[key];
             if (!marker) {
                 marker = L.marker(latlng, { icon: icon, keyboard: true }).addTo(liveState.map);
