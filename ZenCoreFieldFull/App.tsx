@@ -29,6 +29,7 @@ type DialogTone='success'|'warning'|'error'|'info';
 type DialogAction={label:string;variant?:'primary'|'light'|'danger';onPress?:()=>void|Promise<void>};
 type DialogState={title:string;message:string;tone:DialogTone;actions:DialogAction[]};
 const evidencePanelStyle={backgroundColor:'#FCFFFD',borderColor:'#CBE9DD',borderWidth:1.5,borderRadius:24,padding:18,shadowColor:'#0B7A62',shadowOpacity:.10,shadowRadius:14,elevation:3};
+const infoValueStyle={maxWidth:'58%',backgroundColor:'#F1F8F5',borderRadius:10,paddingHorizontal:9,paddingVertical:5};
 function B({children,onPress,variant='primary',disabled=false}:{children:React.ReactNode;onPress:()=>void;variant?:'primary'|'light'|'danger'|'ghost';disabled?:boolean}){
  const label=typeof children==='string'?children:'';
  // Check-in is now created by the 100m server geofence. Keep the handler in
@@ -554,7 +555,7 @@ export default function App(){
  {busy&&<View style={st.busy}><ActivityIndicator color={C.green} size="large"/></View>}
  </View>;
 }
-function Info({label,value}:{label:string;value:string}){return <View style={st.info}><Text style={st.muted}>{label}</Text><Text style={[st.body,{maxWidth:'55%',textAlign:'right'}]}>{value}</Text></View>}
+function Info({label,value}:{label:string;value:string}){return <View style={st.info}><Text style={st.muted}>{label}</Text><View style={infoValueStyle}><Text style={[st.body,{textAlign:'right'}]} numberOfLines={2}>{value}</Text></View></View>}
 function ZenCoreDialog({dialog,onClose}:{dialog:DialogState|null;onClose:()=>void}){
  if(!dialog)return null;
  const palette=dialog.tone==='success'?{accent:'#2EAB63',soft:'#EAF9EF',icon:'✓'}:
