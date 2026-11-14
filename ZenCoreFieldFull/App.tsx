@@ -510,7 +510,7 @@ export default function App(){
    <Info label="Login / Email" value={profile?.login||'Not available'}/>
    <Info label="Role" value={profile?.role||'Not available'}/>
    <Info label="Reports To" value={profile?.reports_to||'Not assigned'}/>
-   <Info label="App Version" value="V33"/>
+   <Info label="App Version" value="v1"/>
    <B variant="light" onPress={()=>setProfileCustomersOpen(v=>!v)}>{profileCustomersOpen?'Close Customers':'Customers / Add Customer'}</B>
    <B variant="danger" onPress={()=>{
       const perform=()=>run(async()=>{await Odoo.logout();setConnected(false);setProfile(null);setDashboard(null);setUserName('');setServerPlans([]);setEmail('');setPassword('');notify('Signed out. Local unsynced records have not been deleted.');});
