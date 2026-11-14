@@ -9,10 +9,8 @@
             <form string="Tracking Report">
                 <header>
                     <button name="action_print_tracking_report" string="Print Report" type="object" class="btn-secondary" groups="zencore_salesperson_tracking.group_salesperson_ceo,zencore_salesperson_tracking.group_salesperson_manager,zencore_salesperson_tracking.group_salesperson_supervisor"/>
-                    <button name="action_open_live_tracking_page" string="Live Page" type="object" class="btn-primary" invisible="not is_own_tracker or state == 'completed'"/>
                     <button name="action_view_moving_map" string="Map" type="object" class="btn-secondary"/>
                     <field name="state" widget="statusbar" statusbar_visible="planned,offline,live,completed"/>
-                    <field name="is_own_tracker" invisible="1"/>
                 </header>
                 <sheet>
                     <div class="oe_title"><h1><field name="name"/></h1></div>
@@ -123,10 +121,8 @@
     <!--
         Rules:
         - Top-right corner: status badge (Live green pulse / Idle amber / Offline grey)
-        - Live Page button: routes per-record via action_open_live_tracking_page — own
-          today's tracker opens /live (Start/Stop controls); anything else (someone
-          else's card, or an older day of your own) opens read-only /moving_map/<id>.
-        - Map button: always /moving_map/<id> for the clicked record, for everyone
+        - Map button: always /moving_map/<id> for the clicked record, for everyone.
+          Tracking controls are intentionally kept in the mobile app.
         - Status colour uses `state` (stored) for the header stripe
         - Status badge uses `is_tracking` (stored bool) to derive Live/Offline safely
     -->
@@ -145,7 +141,6 @@
                 <field name="total_visited"/>
                 <field name="state"/>
                 <field name="is_tracking"/>
-                <field name="is_own_tracker"/>
                 <templates>
                     <t t-name="card">
 
@@ -235,28 +230,10 @@
                         <div style="display:flex;gap:6px;padding:8px 14px 12px;border-top:1px solid #E2E8F0;"
                              onclick="event.stopPropagation()">
 
-                            <!-- Live Page — only the assigned salesman may open the
-                                 interactive Start/Stop page. Everyone else (including
-                                 managers) gets read-only Map only. -->
-                            <t t-if="record.is_own_tracker.raw_value and record.state.raw_value != 'completed'">
-                                <button type="object" name="action_open_live_tracking_page"
-                                   style="flex:1;display:inline-flex;align-items:center;justify-content:center;
-                                          gap:5px;padding:7px 10px;border-radius:8px;font-size:11px;font-weight:600;
-                                          background:linear-gradient(135deg,#2563EB,#4F46E5);
-                                          color:#fff;text-decoration:none;border:none;cursor:pointer;">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;">
-                                        <circle cx="12" cy="12" r="2"/>
-                                        <path d="M16.24 7.76a6 6 0 0 1 0 8.49"/>
-                                        <path d="M7.76 7.76a6 6 0 0 0 0 8.49"/>
-                                    </svg>
-                                    Live Page
-                                </button>
-                            </t>
-
-                            <!-- Map: always visible -->
+                            <!-- Map: read-only monitoring; tracking is controlled in mobile. -->
                             <a t-attf-href="/salesperson_tracking/moving_map/#{record.id.raw_value}"
                                target="_blank"
-                               style="flex:1;display:inline-flex;align-items:center;justify-content:center;
+                               style="width:100%;display:inline-flex;align-items:center;justify-content:center;
                                       gap:5px;padding:7px 10px;border-radius:8px;font-size:11px;font-weight:600;
                                       background:#059669;color:#fff;text-decoration:none;">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;">
@@ -299,8 +276,6 @@
                 <field name="total_visited"/>
                 <field name="total_distance_km"/>
                 <field name="duration_hours"/>
-                <field name="is_own_tracker" column_invisible="1"/>
-                <button type="object" name="action_open_live_tracking_page" string="Live Page" icon="fa-video-camera" invisible="not is_own_tracker or state == 'completed'"/>
                 <button type="object" name="action_view_moving_map" string="Map" icon="fa-map-marker"/>
             </list>
         </field>
