@@ -114,6 +114,8 @@ class ZenCoreFieldMobileBridge(http.Controller):
                         'plan_id': plan.id, 'plan_name': plan.name, 'line_id': line.id,
                         'customer_names': line.customer_ids.mapped('name'),
                         'visited': bool(line.is_visited), 'location': location,
+                        'latitude': partner.partner_latitude if customer and 'partner_latitude' in partner._fields else None,
+                        'longitude': partner.partner_longitude if customer and 'partner_longitude' in partner._fields else None,
                         'plan_state': plan.state,
                     })
             next_item = next((item for item in schedule if not item['visited'] and item['plan_state'] in ('approved', 'in_progress')), None)

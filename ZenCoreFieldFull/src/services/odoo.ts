@@ -223,7 +223,7 @@ export const fieldProfile=()=>call<FieldProfile>('/zencore/field/v6/profile');
 export const fieldDashboard=()=>call<FieldDashboard>('/zencore/field/v6/dashboard');
 
 // V19 read-only daily schedule. Only Odoo-owned visit plans for the authenticated user.
-export type FieldTodayItem={plan_id:number;plan_name:string;line_id:number;customer_names:string[];visited:boolean;location:string;plan_state:string};
+export type FieldTodayItem={plan_id:number;plan_name:string;line_id:number;customer_names:string[];visited:boolean;location:string;latitude:number|null;longitude:number|null;plan_state:string};
 export type FieldTodaySummary={date:string;total_targets:number;completed_targets:number;schedule:FieldTodayItem[];next_visit:(FieldTodayItem&{customer_name:string})|null};
 export const fieldTodaySummary=()=>call<FieldTodaySummary>('/zencore/field/v7/home/today');
 

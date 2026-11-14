@@ -30,6 +30,8 @@ type DialogAction={label:string;variant?:'primary'|'light'|'danger';onPress?:()=
 type DialogState={title:string;message:string;tone:DialogTone;actions:DialogAction[]};
 const evidencePanelStyle={backgroundColor:'#FCFFFD',borderColor:'#CBE9DD',borderWidth:1.5,borderRadius:24,padding:18,shadowColor:'#0B7A62',shadowOpacity:.10,shadowRadius:14,elevation:3};
 const infoValueStyle={maxWidth:'58%',backgroundColor:'#F1F8F5',borderRadius:10,paddingHorizontal:9,paddingVertical:5};
+const nextDistanceBadge={alignSelf:'flex-start' as const,backgroundColor:'#EAF4FB',borderRadius:12,paddingHorizontal:10,paddingVertical:6,marginTop:9};
+const nextDistanceText={fontSize:11,fontWeight:'800' as const,color:'#07518C'};
 function B({children,onPress,variant='primary',disabled=false}:{children:React.ReactNode;onPress:()=>void;variant?:'primary'|'light'|'danger'|'ghost';disabled?:boolean}){
  const label=typeof children==='string'?children:'';
  // Check-in is now created by the 100m server geofence. Keep the handler in
@@ -98,6 +100,12 @@ const customerDistance=(m:TrackingMetrics,customers:Customer[])=>{
  const a=Math.sin(dlat/2)**2+Math.cos(rad(m.latestLat))*Math.cos(rad(dest.latitude))*Math.sin(dlng/2)**2;
  const km=6371*2*Math.atan2(Math.sqrt(a),Math.sqrt(Math.max(0,1-a)));
  return `${km.toFixed(2)} km`;
+};
+const straightLineKm=(lat1:number,lng1:number,lat2:number,lng2:number)=>{
+ const rad=(v:number)=>v*Math.PI/180;
+ const dlat=rad(lat2-lat1),dlng=rad(lng2-lng1);
+ const a=Math.sin(dlat/2)**2+Math.cos(rad(lat1))*Math.cos(rad(lat2))*Math.sin(dlng/2)**2;
+ return 6371*2*Math.atan2(Math.sqrt(a),Math.sqrt(Math.max(0,1-a)));
 };
 export default function App(){
  const [tab,setTab]=useState<Tab>('Home');const [activePlanId,setActivePlanId]=useState<number|null>(null);const [plans,setLocalPlans]=useState<Plan[]>([]);const [serverPlans,setServerPlans]=useState<Odoo.RemotePlan[]>([]);
@@ -401,6 +409,9 @@ export default function App(){
    }
  });
  const currencyTotal=editing?editing.transport+editing.food+editing.other:0;
+ const nextVisitDistance=todaySummary?.next_visit&&metrics.latestLat!=null&&metrics.latestLng!=null&&todaySummary.next_visit.latitude!=null&&todaySummary.next_visit.longitude!=null
+  ? `${straightLineKm(metrics.latestLat,metrics.latestLng,todaySummary.next_visit.latitude,todaySummary.next_visit.longitude).toFixed(2)} km away`
+  : 'Distance unavailable';
  return <View style={st.root}><StatusBar barStyle="dark-content"/>
  <View style={st.header}><View><Text style={st.brand}>zen<Text style={{color:C.green}}>core</Text> <Text style={{fontSize:13,color:C.green}}>FIELD</Text></Text><Text style={st.headerSubtitle}>Field Sales Workspace</Text></View><View style={st.avatar}><Text style={{fontWeight:'800',color:C.blue}}>ZF</Text></View></View>
  <KeyboardAvoidingView style={{flex:1}} behavior={Platform.OS==='ios'?'padding':undefined}><ScrollView contentContainerStyle={st.scroll} keyboardShouldPersistTaps="handled"><GradientBackground pointerEvents="none" colors={["#F3FBF7","#EDF9F5","#E9F6FE","#F4FBF8"]} start={{x:0,y:0}} end={{x:1,y:1}} style={st.ambient}/>
@@ -432,8 +443,9 @@ export default function App(){
  </Panel>
  <Panel style={st.dailyCard}>
   <View style={st.topLine}><Text style={st.cardTitle}>Next Customer Visit</Text><Badge tone={todaySummary?.next_visit?'blue':'gray'}>{todaySummary?.next_visit?'Upcoming':'No target'}</Badge></View>
-  {todaySummary?.next_visit?<>
+  {todaySummary?.next_visit? <>
    <Text style={st.nextCustomerName}>{todaySummary.next_visit.customer_name}</Text>
+   <View style={nextDistanceBadge}><Text style={nextDistanceText}>⌖ {nextVisitDistance}</Text></View>
    <Text style={st.nextCustomerAddress}>{todaySummary.next_visit.location||'Address not available'}</Text>
    <Text style={st.nextCustomerPlan}>{todaySummary.next_visit.plan_name}</Text>
    <Pressable style={st.dailyAction} onPress={()=>{go('Visits');void openServerPlan(todaySummary.next_visit!.plan_id)}} accessibilityRole="button"><Text style={st.dailyActionLabel}>View Visit Details</Text><Text style={st.dailyActionLabel}>›</Text></Pressable>
