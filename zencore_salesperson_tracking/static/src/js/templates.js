@@ -1072,7 +1072,7 @@
     function terminalPersonIcon() {
         return L.divIcon({
             className: 'zc-route-terminal-icon',
-            html: '<img src="/zencore_salesperson_tracking/static/src/img/person_location_terminal.svg" alt="Last recorded location" />',
+            html: '<img src="/zencore_salesperson_tracking/static/src/img/person_location_terminal.svg" alt="Salesperson location" />',
             iconSize: [44, 60],
             iconAnchor: [22, 54],
         });
@@ -1316,7 +1316,9 @@
         const tooltip     = `${tipLabel}${last.time ? '\n' + last.time : ''}${last.accuracy ? '\nAccuracy: ' + last.accuracy.toFixed(0) + ' m' : ''}`;
 
         currentMarker = L.marker([last.lat, last.lng], {
-            icon: isLive ? directionArrowIcon(heading, true) : terminalPersonIcon(),
+            // Use the same person/location marker while live and after stop.
+            // New GPS points move it when tracking is active.
+            icon: terminalPersonIcon(),
             pane: 'markerPane',
         }).bindTooltip(tooltip, { permanent: false, sticky: false }).addTo(map);
 

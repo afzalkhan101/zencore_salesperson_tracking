@@ -58,9 +58,10 @@ const HTML = `<!DOCTYPE html><html lang="en"><head><meta name="viewport" content
    if(coords.length){first=dot(coords[0],'#70BF36');}
    const live=payload.current&&Number.isFinite(payload.current.latitude)&&Number.isFinite(payload.current.longitude)
       ?[payload.current.latitude,payload.current.longitude]:(coords.length?coords[coords.length-1]:null);
-   const currentHeading=Number(payload.current&&payload.current.heading);
-   const direction=Number.isFinite(currentHeading)?currentHeading:(points.length>1?headingBetween(points[points.length-2],points[points.length-1]):0);
-   if(live){last=payload.active===true?directionArrow(live,direction,payload.label,true):terminalPerson(live,payload.label);}
+   // Keep the person-and-location terminal visible in every state.  During
+   // tracking it moves with the latest GPS fix; after Stop it remains on the
+   // final recorded fix.
+   if(live){last=terminalPerson(live,payload.label);}
    if(payload.destination&&Number.isFinite(payload.destination.latitude)&&Number.isFinite(payload.destination.longitude)){
       target=dot([payload.destination.latitude,payload.destination.longitude],'#32a852');
    }

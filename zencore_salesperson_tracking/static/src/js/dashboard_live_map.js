@@ -259,28 +259,12 @@
     }
 
     function salesmanHtml(s) {
-        var active = isLiveSalesperson(s);
-        if (!active) {
-            return '<div class="zc-terminal-marker" role="img" aria-label="' +
-                escapeHtml(s.name) + ', last recorded location" title="' +
-                escapeHtml(s.name) + ' — last recorded location">' +
-                '<div class="zc-terminal-name">' + escapeHtml(s.name) + '</div>' +
-                '<img src="/zencore_salesperson_tracking/static/src/img/person_location_terminal.svg" alt="Last recorded location" />' +
-            '</div>';
-        }
-        var cls = active ? 'zc-direction-active' : 'zc-direction-inactive';
-        var label = active ? 'Active' : 'Inactive';
-        var heading = Number(s.heading);
-        heading = Number.isFinite(heading) ? ((heading % 360) + 360) % 360 : 0;
-        return '<div class="zc-direction-marker ' + cls + '" role="img" aria-label="' +
-            escapeHtml(s.name) + ', ' + label + '" title="' + escapeHtml(s.name) + ' — ' + label + '">' +
-            '<div class="zc-direction-name">' + escapeHtml(s.name) + '</div>' +
-            '<div class="zc-direction-stage"><span class="zc-direction-pulse"></span>' +
-                '<svg class="zc-direction-arrow" viewBox="0 0 32 32" aria-hidden="true" style="transform:rotate(' + heading + 'deg)">' +
-                    '<path d="M16 2 30 28 16 22 2 28Z"></path>' +
-                '</svg>' +
-            '</div>' +
-            '</div>';
+        return '<div class="zc-terminal-marker" role="img" aria-label="' +
+            escapeHtml(s.name) + ', salesperson location" title="' +
+            escapeHtml(s.name) + ' — current or last recorded location">' +
+            '<div class="zc-terminal-name">' + escapeHtml(s.name) + '</div>' +
+            '<img src="/zencore_salesperson_tracking/static/src/img/person_location_terminal.svg" alt="Salesperson location" />' +
+        '</div>';
     }
 
     function customerTargetHtml(customer) {
@@ -347,8 +331,8 @@
             trackerBounds.push(latlng);
             seenTrackers[key] = true;
             var live = isLiveSalesperson(s);
-            var iconKey = [s.name, live ? "active" : "inactive", Number(s.heading || 0).toFixed(1)].join("|");
-            var icon = pinIcon(salesmanHtml(s), 76, live ? 62 : 76);
+            var iconKey = String(s.name || '');
+            var icon = pinIcon(salesmanHtml(s), 76, 76);
             var marker = liveState.salesmanMarkers[key];
             if (!marker) {
                 marker = L.marker(latlng, { icon: icon, keyboard: true }).addTo(liveState.map);
