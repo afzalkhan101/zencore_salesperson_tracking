@@ -265,7 +265,7 @@
         // Shared marker asset is identical to Movement Map and Mobile Map.
         // CSS applies green pulse only to active staff; inactive stays static gray.
         var walker = '<img class="zc-walker-svg" src="/zencore_salesperson_tracking/static/src/img/walking_salesperson_briefcase.svg" ' +
-            'width="48" height="72" alt="Walking salesperson with small hand-held briefcase" />';
+            'width="32" height="48" alt="Walking salesperson with small hand-held briefcase" />';
         return '<div class="zc-walker-marker ' + cls + '" role="img" aria-label="' +
             escapeHtml(s.name) + ', ' + label + '" title="' + escapeHtml(s.name) + ' — ' + label + '">' +
             '<div class="zc-walker-name">' + escapeHtml(s.name) + '</div>' +
