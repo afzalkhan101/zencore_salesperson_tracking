@@ -52,8 +52,6 @@
               sequence="20"
               groups="zencore_salesperson_tracking.group_salesperson_manager,zencore_salesperson_tracking.group_salesperson_ceo,zencore_salesperson_tracking.group_salesperson_supervisor"/>
 
-    <delete model="ir.actions.act_url" id="action_salesperson_dashboard"/>
-
     <record id="action_salesperson_dashboard_client" model="ir.actions.client">
         <field name="name">Dashboard</field>
         <field name="tag">salesperson_dashboard_iframe</field>
