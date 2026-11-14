@@ -260,6 +260,14 @@
 
     function salesmanHtml(s) {
         var active = isLiveSalesperson(s);
+        if (!active) {
+            return '<div class="zc-terminal-marker" role="img" aria-label="' +
+                escapeHtml(s.name) + ', last recorded location" title="' +
+                escapeHtml(s.name) + ' — last recorded location">' +
+                '<div class="zc-terminal-name">' + escapeHtml(s.name) + '</div>' +
+                '<img src="/zencore_salesperson_tracking/static/src/img/person_location_terminal.svg" alt="Last recorded location" />' +
+            '</div>';
+        }
         var cls = active ? 'zc-direction-active' : 'zc-direction-inactive';
         var label = active ? 'Active' : 'Inactive';
         var heading = Number(s.heading);
@@ -340,7 +348,7 @@
             seenTrackers[key] = true;
             var live = isLiveSalesperson(s);
             var iconKey = [s.name, live ? "active" : "inactive", Number(s.heading || 0).toFixed(1)].join("|");
-            var icon = pinIcon(salesmanHtml(s), 76, 62);
+            var icon = pinIcon(salesmanHtml(s), 76, live ? 62 : 76);
             var marker = liveState.salesmanMarkers[key];
             if (!marker) {
                 marker = L.marker(latlng, { icon: icon, keyboard: true }).addTo(liveState.map);

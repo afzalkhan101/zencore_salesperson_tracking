@@ -1069,6 +1069,15 @@
         });
     }
 
+    function terminalPersonIcon() {
+        return L.divIcon({
+            className: 'zc-route-terminal-icon',
+            html: '<img src="/zencore_salesperson_tracking/static/src/img/person_location_terminal.svg" alt="Last recorded location" />',
+            iconSize: [44, 60],
+            iconAnchor: [22, 54],
+        });
+    }
+
     // Route statistics always use the same validated segments as the blue map.
     // Raw server totals can include GPS jumps and must never replace this value.
     function updateStats(pts, distanceKm = 0, breakCount = 0, dropped = 0) {
@@ -1307,7 +1316,7 @@
         const tooltip     = `${tipLabel}${last.time ? '\n' + last.time : ''}${last.accuracy ? '\nAccuracy: ' + last.accuracy.toFixed(0) + ' m' : ''}`;
 
         currentMarker = L.marker([last.lat, last.lng], {
-            icon: directionArrowIcon(heading, isLive),
+            icon: isLive ? directionArrowIcon(heading, true) : terminalPersonIcon(),
             pane: 'markerPane',
         }).bindTooltip(tooltip, { permanent: false, sticky: false }).addTo(map);
 

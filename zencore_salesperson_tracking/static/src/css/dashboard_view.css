@@ -244,6 +244,9 @@ button, input { font: inherit; }
 .zc-direction-inactive .zc-direction-pulse { display:none; }
 @keyframes zc-direction-radar { 0% { transform:scale(.7); opacity:.9; } 100% { transform:scale(2.9); opacity:0; } }
 @media (prefers-reduced-motion:reduce) { .zc-direction-active .zc-direction-pulse { animation:none !important; } }
+.zc-terminal-marker { position:relative; display:flex; flex-direction:column; align-items:center; width:76px; height:76px; pointer-events:auto; }
+.zc-terminal-marker img { width:38px; height:51px; margin-top:-1px; filter:drop-shadow(0 2px 2px rgba(8,47,73,.28)); }
+.zc-terminal-name { position:relative; z-index:2; max-width:74px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding:3px 7px; border-radius:7px; background:#64748b; color:#fff; font:700 9px/1.2 sans-serif; box-shadow:0 2px 6px rgba(0,0,0,.16); }
 
 /* Table */
 .table-panel-head { min-height: 54px; }

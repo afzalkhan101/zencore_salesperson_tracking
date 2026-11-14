@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 64" role="img" aria-label="Last recorded salesperson location">
+  <path d="M24 62 13.5 45h21z" fill="#123b62"/>
+  <ellipse cx="24" cy="42" rx="20" ry="8" fill="#d7f6ef" stroke="#0f766e" stroke-width="2.4"/>
+  <circle cx="24" cy="13" r="7" fill="#0f172a"/>
+  <path d="M16.5 24.5c0-4.1 3.3-7.4 7.5-7.4s7.5 3.3 7.5 7.4v17.7c0 2.1-1.7 3.8-3.8 3.8h-1.3V31.5h-4.8V46h-1.3c-2.1 0-3.8-1.7-3.8-3.8z" fill="#0f172a"/>
+  <path d="M18.2 28.5h11.6" stroke="#334155" stroke-width="1.3" opacity=".75"/>
+</svg>
