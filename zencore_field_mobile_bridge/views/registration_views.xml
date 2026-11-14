@@ -3,30 +3,34 @@
     <record id="view_zc_registration_list" model="ir.ui.view">
       <field name="name">zencore.field.registration.list</field>
       <field name="model">zencore.field.registration</field>
-      <field name="arch" type="xml"><list create="false" delete="false">
-        <field name="name"/><field name="email"/><field name="phone"/>
-        <field name="requested_role"/><field name="assigned_role"/>
-        <field name="reporting_to_id"/><field name="state"/>
-      </list></field>
+      <field name="arch" type="xml">
+        <list create="false" delete="false">
+          <field name="name"/><field name="email"/><field name="phone"/>
+          <field name="requested_role"/><field name="assigned_role"/>
+          <field name="reporting_to_id"/><field name="state"/>
+        </list>
+      </field>
     </record>
     <record id="view_zc_registration_form" model="ir.ui.view">
       <field name="name">zencore.field.registration.form</field>
       <field name="model">zencore.field.registration</field>
-      <field name="arch" type="xml"><form create="false" delete="false">
-        <header>
-          <button name="action_approve" type="object" string="Approve &amp; Invite" class="btn-primary" invisible="state != 'pending'"/>
-          <button name="action_reject" type="object" string="Reject" invisible="state != 'pending'"/>
-          <field name="state" widget="statusbar" statusbar_visible="pending,approved,rejected"/>
-        </header>
-        <sheet><group><group>
-          <field name="name"/><field name="email"/><field name="phone"/>
-          <field name="requested_role"/>
-        </group><group>
-          <field name="assigned_role" readonly="state != 'pending'"/>
-          <field name="reporting_to_id" readonly="state != 'pending'"/>
-          <field name="reviewed_by_id"/><field name="reviewed_at"/><field name="user_id"/>
-        </group></group></sheet>
-      </form></field>
+      <field name="arch" type="xml">
+        <form create="false" delete="false">
+          <header>
+            <button name="action_approve" type="object" string="Approve &amp; Invite" class="btn-primary" invisible="state != 'pending'"/>
+            <button name="action_reject" type="object" string="Reject" invisible="state != 'pending'"/>
+            <field name="state" widget="statusbar" statusbar_visible="pending,approved,rejected"/>
+          </header>
+          <sheet><group><group>
+            <field name="name"/><field name="email"/><field name="phone"/>
+            <field name="requested_role"/>
+          </group><group>
+            <field name="assigned_role" readonly="state != 'pending'"/>
+            <field name="reporting_to_id" readonly="state != 'pending'"/>
+            <field name="reviewed_by_id"/><field name="reviewed_at"/><field name="user_id"/>
+          </group></group></sheet>
+        </form>
+      </field>
     </record>
     <record id="action_zc_registration" model="ir.actions.act_window">
       <field name="name">Mobile Registrations</field>
