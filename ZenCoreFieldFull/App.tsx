@@ -25,8 +25,18 @@ const formatMoney=(n:number)=>`৳ ${Number(n||0).toFixed(2)}`;
 const freshPlan=():Plan=>({localId:createId(),name:'New Visit Plan',date:TODAY(),purpose:'followup',priority:'normal',targets:[],transport:0,food:0,other:0,state:'draft',notes:''});
 const safeNum=(s:string)=>Math.max(0,Number(s)||0);
 const icons:Record<Tab,string>={Home:'⌂',Visits:'▣',Tracking:'⌖',Map:'▱',Profile:'♙'};
-function B({children,onPress,variant='primary',disabled=false}:{children:React.ReactNode;onPress:()=>void;variant?:'primary'|'light'|'danger'|'ghost';disabled?:boolean}){return <Pressable disabled={disabled} onPress={onPress} style={[st.btn,variant==='light'&&st.btnLight,variant==='danger'&&st.btnDanger,variant==='ghost'&&st.btnGhost,disabled&&{opacity:.5}]}><Text style={[st.btnLabel,variant!=='primary'&&{color:variant==='danger'?C.danger:C.blue}]}>{children}</Text></Pressable>}
-function Panel({children,style}:{children:React.ReactNode;style?:object}){return <View style={[st.panel,style]}>{children}</View>}
+const evidencePanelStyle={backgroundColor:'#FCFFFD',borderColor:'#CBE9DD',borderWidth:1.5,borderRadius:24,padding:18,shadowColor:'#0B7A62',shadowOpacity:.10,shadowRadius:14,elevation:3};
+function B({children,onPress,variant='primary',disabled=false}:{children:React.ReactNode;onPress:()=>void;variant?:'primary'|'light'|'danger'|'ghost';disabled?:boolean}){
+ const label=typeof children==='string'?children:'';
+ // Check-in is now created by the 100m server geofence. Keep the handler in
+ // place for compatibility, but do not expose a manual button in the UI.
+ if(label==='GPS Check In')return null;
+ return <Pressable disabled={disabled} onPress={onPress} style={[st.btn,variant==='light'&&st.btnLight,variant==='danger'&&st.btnDanger,variant==='ghost'&&st.btnGhost,disabled&&{opacity:.5}]}><Text style={[st.btnLabel,variant!=='primary'&&{color:variant==='danger'?C.danger:C.blue}]}>{children}</Text></Pressable>
+}
+function Panel({children,style}:{children:React.ReactNode;style?:object}){
+ const hasHeading=React.Children.toArray(children).some(child=>React.isValidElement(child)&&child.type===H);
+ return <View style={[st.panel,hasHeading&&evidencePanelStyle,style]}>{children}</View>
+}
 function H({children}:{children:React.ReactNode}){return <Text style={st.heading}>{children}</Text>}
 function Tiny({children}:{children:React.ReactNode}){return <Text style={st.muted}>{children}</Text>}
 function Badge({children,tone='green'}:{children:React.ReactNode;tone?:'green'|'blue'|'amber'|'gray'}){return <View style={[st.badge,{backgroundColor:tone==='green'?'#E8F8DF':tone==='blue'?C.paleBlue:tone==='amber'?'#FFF1DB':'#EDF2F0'}]}><Text style={[st.badgeText,{color:tone==='green'?'#388F27':tone==='blue'?C.blue:tone==='amber'?C.amber:C.muted}]}>{children}</Text></View>}
