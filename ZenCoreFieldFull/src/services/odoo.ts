@@ -217,7 +217,7 @@ export type PhotoUploadReceipt={ok:boolean;photo_id:string;attachment_id:number;
 export const uploadVisitPhoto=(payload:PhotoUploadPayload)=>call<PhotoUploadReceipt>('/zencore/field/v5/photos/upload','POST',payload);
 
 // V18 authenticated dashboard/profile. No credentials are embedded in these requests.
-export type FieldProfile={id:number;name:string;login:string;company:string;role:string};
+export type FieldProfile={id:number;name:string;login:string;company:string;role:string;reports_to:string};
 export type FieldDashboard={visit_plans:number;completed_plans:number;completed_visits?:number;completed_customer_visits:number|null;total_distance_km:number|null};
 export const fieldProfile=()=>call<FieldProfile>('/zencore/field/v6/profile');
 export const fieldDashboard=()=>call<FieldDashboard>('/zencore/field/v6/dashboard');

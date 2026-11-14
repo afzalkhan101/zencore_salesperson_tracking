@@ -20,9 +20,10 @@
     <field name="model">res.users</field>
     <field name="arch" type="xml">
       <list>
-        <field name="name"/><field name="salesperson_role"/>
-        <field name="zc_reports_to_id"/><field name="zc_approval_override"/>
+        <field name="name"/><field name="salesperson_role" widget="badge"/>
+        <field name="zc_reports_to_id" string="Reports To"/>
         <field name="company_id"/>
+        <field name="active"/>
       </list>
     </field>
   </record>
@@ -40,8 +41,10 @@
             <div class="o_hierarchy_node_header d-flex justify-content-center align-items-center p-2">
               <strong><field name="name"/></strong>
             </div>
-            <div class="o_hierarchy_node_body d-flex flex-column p-2">
-              <field name="salesperson_role"/>
+            <div class="o_hierarchy_node_body d-flex flex-column gap-1 p-2">
+              <span class="text-muted small">Role</span>
+              <field name="salesperson_role" widget="badge"/>
+              <span class="text-muted small">Reports To</span>
               <field name="zc_reports_to_id"/>
             </div>
           </t>
@@ -50,7 +53,7 @@
     </field>
   </record>
   <record id="action_zc_hierarchy" model="ir.actions.act_window">
-    <field name="name">Organization Hierarchy</field>
+    <field name="name">Reporting Hierarchy</field>
     <field name="res_model">res.users</field>
     <field name="view_mode">hierarchy,list,form</field>
     <field name="domain">[('share','=',False),('zc_chart_visible','=',True)]</field>
@@ -74,7 +77,7 @@
       <form string="Edit Reporting Line">
         <group>
           <field name="user_id"/>
-          <field name="reports_to_id"/>
+          <field name="reports_to_id" domain="[('active','=',True),('share','=',False)]"/>
           <field name="approval_override"/>
         </group>
         <footer>

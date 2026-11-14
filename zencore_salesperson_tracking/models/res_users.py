@@ -1,4 +1,5 @@
 from odoo import fields, models, api
+from odoo.exceptions import AccessError, ValidationError
 import logging
 import time
 import requests
@@ -6,6 +7,16 @@ import requests
 _logger = logging.getLogger(__name__)
 
 EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send"
+
+# A reporting line is deliberately independent from the security role groups.
+# It grants visibility only through the existing reporting-team record rules;
+# it never adds a group or backend administration privilege.
+ZC_ALLOWED_REPORTING_SUPERIORS = {
+    'ceo': set(),
+    'manager': {'ceo'},
+    'supervisor': {'ceo', 'manager'},
+    'salesman': {'ceo', 'manager', 'supervisor'},
+}
 
 
 class ResUsers(models.Model):
@@ -40,8 +51,8 @@ class ResUsers(models.Model):
 
     zc_reports_to_id = fields.Many2one(
         'res.users', string='Reports To', ondelete='restrict', index=True,
-        domain="[('share','=',False)]",
-        help='Direct approver: Salesperson → Supervisor → Manager → CEO.',
+        domain="[('active','=',True),('share','=',False),('company_ids','in',company_id)]",
+        help='Optional direct reporting manager. The allowed role is validated on the server.',
     )
     zc_approval_override = fields.Selection([
         ('default','Use Role Policy'),('manual','Manual Approval'),('auto','Auto Approve')
@@ -100,10 +111,8 @@ class ResUsers(models.Model):
             actor.has_group('zencore_salesperson_tracking.group_salesperson_ceo') or
             actor.has_group('zencore_salesperson_tracking.group_salesperson_manager')
         ):
-            from odoo.exceptions import AccessError
             raise AccessError('Only ZenCore CEOs and Managers can configure the hierarchy.')
         if self.id not in actor.sudo().zc_team_user_ids.ids and self != actor:
-            from odoo.exceptions import AccessError
             raise AccessError('The selected person is outside your reporting team.')
         return {'type':'ir.actions.act_window', 'name':'Edit Reporting Line',
                 'res_model':'zc.reporting.change.wizard', 'view_mode':'form',
@@ -113,8 +122,22 @@ class ResUsers(models.Model):
                                          string='Visible Reporting Team')
 
     def _compute_zc_team_user_ids(self):
-        Users = self.env['res.users'].sudo()
+        # ``active_test=False`` intentionally retains former staff in reporting
+        # and map history. It does not make them able to log in or receive new
+        # assignments; it only keeps historic records visible to authorized
+        # monitors.
+        Users = self.env['res.users'].sudo().with_context(active_test=False)
         for user in self:
+            # A CEO is a company-level monitor, including users who registered
+            # without choosing a Reports To manager. Manager and Supervisor
+            # visibility remains strictly their reporting subtree.
+            if user.salesperson_role == 'ceo' and user.company_id:
+                company_users = Users.search([
+                    ('company_id', '=', user.company_id.id),
+                    ('share', '=', False),
+                ])
+                user.zc_team_user_ids = [(6, 0, company_users.ids)]
+                continue
             seen = {user.id}
             frontier = {user.id}
             while frontier:
@@ -124,22 +147,35 @@ class ResUsers(models.Model):
                 frontier = next_ids
             user.zc_team_user_ids = [(6, 0, list(seen))]
 
-    @api.constrains('zc_reports_to_id','salesperson_role')
+    def _zc_allowed_reporting_superior_roles(self):
+        """Return the server-authoritative allowed direct-superior roles."""
+        self.ensure_one()
+        return ZC_ALLOWED_REPORTING_SUPERIORS.get(self.salesperson_role, set())
+
+    @api.constrains('zc_reports_to_id', 'salesperson_role', 'company_id', 'company_ids')
     def _check_zc_reporting_line(self):
-        from odoo.exceptions import ValidationError
-        expected = {'salesman':'supervisor','supervisor':'manager','manager':'ceo'}
         for user in self:
             parent = user.zc_reports_to_id
+            if user.salesperson_role == 'ceo' and parent:
+                raise ValidationError('A CEO cannot have a direct reporting superior.')
             if not parent:
-                continue  # Missing approver is blocked on Submit, not on user creation.
+                # Reports To is optional for every non-CEO role. An approval
+                # policy may still route an unassigned plan to a company CEO.
+                continue
             if parent.id == user.id:
                 raise ValidationError('A user cannot report to themselves.')
-            if user.salesperson_role == 'ceo':
-                raise ValidationError('A CEO cannot have a direct reporting superior. Configure a top-level approver on the company.')
-            if parent.company_id != user.company_id:
+            if not parent.active or parent.share:
+                raise ValidationError('Reports To must be an active internal user.')
+            if parent.company_id != user.company_id or user.company_id not in parent.company_ids:
                 raise ValidationError('Reporting superior must belong to the same company.')
-            if parent.salesperson_role != expected.get(user.salesperson_role):
-                raise ValidationError('Reporting hierarchy must be Salesperson → Supervisor → Manager → CEO.')
+            if parent.salesperson_role not in user._zc_allowed_reporting_superior_roles():
+                allowed = ', '.join(sorted(
+                    dict(self._fields['salesperson_role'].selection).get(role, role)
+                    for role in user._zc_allowed_reporting_superior_roles()
+                ))
+                raise ValidationError(
+                    'This role may report only to: %s.' % (allowed or 'nobody')
+                )
             seen = {user.id}
             ancestor = parent
             while ancestor:
@@ -147,6 +183,19 @@ class ResUsers(models.Model):
                     raise ValidationError('Circular reporting hierarchy is not allowed.')
                 seen.add(ancestor.id)
                 ancestor = ancestor.zc_reports_to_id
+
+    @api.constrains('active')
+    def _check_zc_active_reporting_manager(self):
+        """Do not leave active people attached to an inactive manager."""
+        Users = self.env['res.users'].sudo().with_context(active_test=False)
+        for user in self.filtered(lambda current: not current.active):
+            direct_reports = Users.search([
+                ('zc_reports_to_id', '=', user.id), ('active', '=', True),
+            ], limit=1)
+            if direct_reports:
+                raise ValidationError(
+                    'Reassign or clear active direct reports before archiving this reporting manager.'
+                )
 
     salesperson_tracker_ids = fields.One2many(
         "salesperson.tracker",

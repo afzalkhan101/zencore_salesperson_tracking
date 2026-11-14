@@ -38,7 +38,8 @@ class ZenCoreReportingChangeWizard(models.TransientModel):
         superior = self.reports_to_id.sudo()
         if superior and superior.id not in actor.sudo().zc_team_user_ids.ids and superior.id != actor.id:
             raise AccessError('The chosen superior is outside your reporting tree.')
-        # Keep role unchanged; res.users constrains validates adjacent roles and cycles.
+        # Keep the role unchanged; res.users validates the flexible role matrix,
+        # company boundary, active manager status and circular relationships.
         target.write({'zc_reports_to_id': superior.id if superior else False,
                       'zc_approval_override': self.approval_override})
         return {'type': 'ir.actions.act_window_close'}

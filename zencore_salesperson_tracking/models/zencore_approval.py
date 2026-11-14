@@ -95,20 +95,35 @@ class ZenCoreVisitHierarchy(models.Model):
     def _zc_direct_approver(self):
         self.ensure_one()
         user = self.user_id.sudo()
-        expected = {'salesman':'supervisor','supervisor':'manager','manager':'ceo'}
         if user.salesperson_role == 'ceo':
             superior = self.company_id.sudo().zc_ceo_approver_id
             if superior and superior.salesperson_role != 'ceo':
                 raise ValidationError('CEO manual approver must also have the CEO role.')
+            if superior and (not superior.active or superior.company_id != self.company_id):
+                raise ValidationError('CEO manual approver must be active and belong to this company.')
             if superior and superior.id == user.id:
                 raise ValidationError('CEO cannot approve their own requests.')
             return superior
         superior = user.zc_reports_to_id
-        if not superior or superior.salesperson_role != expected.get(user.salesperson_role):
-            raise ValidationError('Configure a valid direct reporting superior before submitting this plan.')
-        if superior.company_id != self.company_id:
-            raise ValidationError('Direct approver must belong to the same company.')
-        return superior
+        if superior:
+            if not superior.active or superior.company_id != self.company_id:
+                raise ValidationError('Direct approver must be active and belong to the same company.')
+            if superior.salesperson_role not in user._zc_allowed_reporting_superior_roles():
+                raise ValidationError('Configured direct approver is not allowed for this role.')
+            return superior
+
+        # Reports To is optional. Prefer an explicitly designated company CEO;
+        # if none is configured, a single active CEO can safely receive manual
+        # approvals. Ambiguous/no-CEO cases remain submitted and visible to the
+        # company CEO in monitoring, without granting the registrant privileges.
+        fallback = self.company_id.sudo().zc_ceo_approver_id
+        if fallback and fallback.active and fallback.company_id == self.company_id and fallback.salesperson_role == 'ceo':
+            return fallback
+        ceos = self.env['res.users'].sudo().search([
+            ('company_id', '=', self.company_id.id), ('salesperson_role', '=', 'ceo'),
+            ('active', '=', True), ('share', '=', False),
+        ], limit=2)
+        return ceos if len(ceos) == 1 else self.env['res.users']
 
     def action_reassign_direct_approver(self):
         if not self.env.user.has_group('base.group_system'):
@@ -131,14 +146,16 @@ class ZenCoreVisitHierarchy(models.Model):
                 raise AccessError('Only the owner can submit this Visit Plan.')
             mode = plan._zc_effective_approval()
             superior = plan._zc_direct_approver()
-            if mode == 'manual' and not superior:
-                raise ValidationError('Configure a designated CEO approver, or enable CEO Auto Approval.')
             # Even automatic requests from non-CEO staff need an intact reporting tree.
             plan.write({'state':'submitted', 'zc_approver_id':superior.id if superior else False,
                         'zc_approval_mode':mode, 'zc_approved_by_id':False, 'zc_approved_at':False})
             if mode == 'auto':
                 plan.sudo().with_context(zc_auto_policy=True).action_approve()
                 plan.message_post(body='Automatically approved by ZenCore role/user policy.')
+            elif not superior:
+                plan.message_post(
+                    body='Submitted without a direct approver. A CEO can monitor it and assign a reporting line.'
+                )
             else:
                 plan.message_post(body='Submitted for approval to %s.' % superior.name)
         return True

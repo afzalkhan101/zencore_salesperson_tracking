@@ -113,20 +113,6 @@ class ZenCorePublicAccount(http.Controller):
                 'company_id': company.id, 'company_ids': [(6, 0, [company.id])],
                 'group_ids': [(6, 0, [internal_group.id, salesperson_group.id])],
             }
-            # Optional default supervisor, managed by Administrator. If only a
-            # single supervisor exists for this company, assign automatically.
-            default_id = Config.get_param(
-                'zencore_field_mobile_bridge.default_supervisor_user_id', '0')
-            candidate = Users.browse(int(default_id)) if default_id.isdigit() else Users.browse()
-            if not candidate.exists() or candidate.company_id != company or candidate.salesperson_role != 'supervisor':
-                candidates = Users.search([
-                    ('salesperson_role', '=', 'supervisor'),
-                    ('company_id', '=', company.id), ('active', '=', True),
-                    ('share', '=', False)], limit=2)
-                candidate = candidates if len(candidates) == 1 else Users.browse()
-            if candidate:
-                values['zc_reports_to_id'] = candidate.id
-
             # Odoo res.users hashes the password; no password fields are written
             # on the audit record, console or any mobile persistent store.
             with request.env.cr.savepoint():
@@ -134,7 +120,11 @@ class ZenCorePublicAccount(http.Controller):
                 Registry.create({
                     'name': name, 'email': email, 'phone': phone,
                     'requested_role': 'salesman', 'assigned_role': 'salesman',
-                    'reporting_to_id': candidate.id if candidate else False,
+                    # Public registration intentionally does not accept a user
+                    # id or reporting manager. A reporting relationship can be
+                    # configured later by an authorized CEO/Manager; leaving it
+                    # blank never blocks the new salesperson from signing in.
+                    'reporting_to_id': False,
                     'state': 'approved', 'user_id': user.id,
                     'reviewed_at': fields.Datetime.now(),
                     'source_ip_hash': ip_hash,

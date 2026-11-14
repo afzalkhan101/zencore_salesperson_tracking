@@ -35,7 +35,8 @@ class ZenCoreFieldMobileBridge(http.Controller):
             return self._json({'id':user.id,'name':user.name or '',
                                'login':user.login or '',
                                'company':user.company_id.name or '',
-                               'role':zc_role, 'reports_to':user.zc_reports_to_id.name or ''})
+                               'role':zc_role,
+                               'reports_to':user.zc_reports_to_id.name or ''})
         except Exception as ex:
             return self._json({'ok':False,'message':str(ex)},400)
 

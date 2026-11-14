@@ -9,7 +9,8 @@
             <xpath expr="//page[@name='access_rights']" position="inside">
                 <group string="Salesperson Role" name="salesperson_role_group">
                     <field name="salesperson_role" required="1"/>
-                    <field name="zc_reports_to_id" groups="base.group_system"/>
+                    <field name="zc_reports_to_id" groups="base.group_system"
+                           options="{'no_create': True, 'no_open': False}"/>
                     <field name="zc_approval_override" groups="base.group_system"/>
                 </group>
             </xpath>

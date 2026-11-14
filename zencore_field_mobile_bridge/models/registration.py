@@ -68,12 +68,6 @@ class ZenCoreFieldRegistration(models.Model):
                 raise AccessError(_('Only a System Administrator may assign CEO.'))
             if role == 'manager' and not (actor.has_group('base.group_system') or actor.has_group('zencore_salesperson_tracking.group_salesperson_ceo')):
                 raise AccessError(_('Only CEO/System Administrator may assign Manager.'))
-            if role in ('salesman', 'supervisor', 'manager'):
-                if not rec.reporting_to_id:
-                    raise ValidationError(_('Select Reports To before approval.'))
-                expected = {'salesman': 'supervisor', 'supervisor': 'manager', 'manager': 'ceo'}[role]
-                if rec.reporting_to_id.sudo().salesperson_role != expected:
-                    raise ValidationError(_('Reports To must have role: %s') % expected)
             if self.env['res.users'].sudo().search([('login', '=ilike', rec.email)], limit=1):
                 raise UserError(_('An Odoo user already exists with this login. Review the existing user instead.'))
             values = {
