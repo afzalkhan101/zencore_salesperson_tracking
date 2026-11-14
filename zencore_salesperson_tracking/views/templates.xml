@@ -180,7 +180,7 @@
                 <!-- Custom CSS -->
                 <link rel="stylesheet"
                       type="text/css"
-                      href="/zencore_salesperson_tracking/static/src/css/templates_view.css"/>
+                      href="/zencore_salesperson_tracking/static/src/css/templates_view.css?v=30.0.0"/>
 
                 <!-- Leaflet JS -->
                 <script defer="defer"
@@ -197,7 +197,7 @@
                     <div class="top-bar-left">
                         <a id="mapBackBtn" class="map-back-btn" t-att-href="tracking_cards_url" title="Return to Live Tracking cards" aria-label="Back to Live Tracking">
                             <span class="map-back-icon" aria-hidden="true">&#8592;</span>
-                            <span class="map-back-text">Back to Tracking</span>
+                            <span class="map-back-text">Tracking</span>
                         </a>
                         <div>
                             <h1>
