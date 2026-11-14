@@ -10,7 +10,7 @@
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""/>
         <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&amp;family=DM+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-        <link rel="stylesheet" type="text/css" href="/zencore_salesperson_tracking/static/src/css/dashboard_view.css?v=27.0.0"/>
+        <link rel="stylesheet" type="text/css" href="/zencore_salesperson_tracking/static/src/css/dashboard_view.css?v=28.0.0"/>
         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     </head>
     <body>
@@ -88,17 +88,19 @@
             </div>
         </div>
 
-        <div t-attf-class="kpi-grid #{'is-live' if is_live else 'is-report'}">
-            <div class="kpi-card kpi-blue">
-                <div class="kpi-icon">👥</div>
-                <div class="kpi-body">
-                    <div class="kpi-label">Total Salesmen</div>
-                    <div class="kpi-value" id="kpi-total-reps" t-esc="summary['total_reps']"/>
-                    <div class="kpi-sub">Staff with plans or tracking records</div>
-                </div>
-            </div>
-
-            <t t-if="is_live">
+        <t t-if="is_live">
+            <div class="kpi-sections">
+                <section class="kpi-section" aria-label="Team presence">
+                    <div class="kpi-section-label"><span>Team presence</span></div>
+                    <div class="kpi-grid kpi-team-grid">
+                        <div class="kpi-card kpi-blue">
+                            <div class="kpi-icon">👥</div>
+                            <div class="kpi-body">
+                                <div class="kpi-label">Total Salesmen</div>
+                                <div class="kpi-value" id="kpi-total-reps" t-esc="summary['total_reps']"/>
+                                <div class="kpi-sub">Staff with plans or tracking records</div>
+                            </div>
+                        </div>
                 <div class="kpi-card kpi-green">
                     <div class="kpi-icon">●</div>
                     <div class="kpi-body">
@@ -139,41 +141,92 @@
                         <div class="kpi-sub">Stopped or stale GPS</div>
                     </div>
                 </div>
-            </t>
+                    </div>
+                </section>
+                <section class="kpi-section" aria-label="Visit progress">
+                    <div class="kpi-section-label"><span>Visit progress</span></div>
+                    <div class="kpi-grid kpi-visit-grid">
+                        <div class="kpi-card kpi-mint">
+                            <div class="kpi-icon">⚑</div>
+                            <div class="kpi-body">
+                                <div class="kpi-label">Total Visits</div>
+                                <div class="kpi-value" id="kpi-total-visits" t-esc="summary['total_planned']"/>
+                                <div class="kpi-sub" t-esc="period_label"/>
+                            </div>
+                        </div>
+                        <div class="kpi-card kpi-green">
+                            <div class="kpi-icon">✓</div>
+                            <div class="kpi-body">
+                                <div class="kpi-label">Completed Visits</div>
+                                <div class="kpi-value" id="kpi-completed" t-esc="summary['total_covered']"/>
+                                <div class="kpi-sub"><span id="kpi-visit-rate" t-esc="summary['visit_rate']"/>% visit rate</div>
+                            </div>
+                        </div>
+                        <div class="kpi-card kpi-red">
+                            <div class="kpi-icon">×</div>
+                            <div class="kpi-body">
+                                <div class="kpi-label">Remaining Visits</div>
+                                <div class="kpi-value" id="kpi-missed" t-esc="summary['missed_count']"/>
+                                <div class="kpi-sub">Planned but not completed</div>
+                            </div>
+                        </div>
+                        <div class="kpi-card kpi-purple">
+                            <div class="kpi-icon">⌁</div>
+                            <div class="kpi-body">
+                                <div class="kpi-label">Total Distance</div>
+                                <div class="kpi-value"><span id="kpi-distance" t-esc="('%.1f' % summary['total_distance'])"/> <small>km</small></div>
+                                <div class="kpi-sub" t-esc="period_label"/>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </t>
 
-            <div class="kpi-card kpi-mint">
-                <div class="kpi-icon">⚑</div>
-                <div class="kpi-body">
-                    <div class="kpi-label">Total Visits</div>
-                    <div class="kpi-value" id="kpi-total-visits" t-esc="summary['total_planned']"/>
-                    <div class="kpi-sub" t-esc="period_label"/>
+        <t t-else="">
+            <div class="kpi-grid is-report">
+                <div class="kpi-card kpi-blue">
+                    <div class="kpi-icon">👥</div>
+                    <div class="kpi-body">
+                        <div class="kpi-label">Total Salesmen</div>
+                        <div class="kpi-value" id="kpi-total-reps" t-esc="summary['total_reps']"/>
+                        <div class="kpi-sub">Staff with plans or tracking records</div>
+                    </div>
+                </div>
+                <div class="kpi-card kpi-mint">
+                    <div class="kpi-icon">⚑</div>
+                    <div class="kpi-body">
+                        <div class="kpi-label">Total Visits</div>
+                        <div class="kpi-value" id="kpi-total-visits" t-esc="summary['total_planned']"/>
+                        <div class="kpi-sub" t-esc="period_label"/>
+                    </div>
+                </div>
+                <div class="kpi-card kpi-green">
+                    <div class="kpi-icon">✓</div>
+                    <div class="kpi-body">
+                        <div class="kpi-label">Completed Visits</div>
+                        <div class="kpi-value" id="kpi-completed" t-esc="summary['total_covered']"/>
+                        <div class="kpi-sub"><span id="kpi-visit-rate" t-esc="summary['visit_rate']"/>% visit rate</div>
+                    </div>
+                </div>
+                <div class="kpi-card kpi-red">
+                    <div class="kpi-icon">×</div>
+                    <div class="kpi-body">
+                        <div class="kpi-label">Missed Visits</div>
+                        <div class="kpi-value" id="kpi-missed" t-esc="summary['missed_count']"/>
+                        <div class="kpi-sub">Across selected period</div>
+                    </div>
+                </div>
+                <div class="kpi-card kpi-purple">
+                    <div class="kpi-icon">⌁</div>
+                    <div class="kpi-body">
+                        <div class="kpi-label">Total Distance</div>
+                        <div class="kpi-value"><span id="kpi-distance" t-esc="('%.1f' % summary['total_distance'])"/> <small>km</small></div>
+                        <div class="kpi-sub" t-esc="period_label"/>
+                    </div>
                 </div>
             </div>
-            <div class="kpi-card kpi-green">
-                <div class="kpi-icon">✓</div>
-                <div class="kpi-body">
-                    <div class="kpi-label">Completed Visits</div>
-                    <div class="kpi-value" id="kpi-completed" t-esc="summary['total_covered']"/>
-                    <div class="kpi-sub"><span id="kpi-visit-rate" t-esc="summary['visit_rate']"/>% visit rate</div>
-                </div>
-            </div>
-            <div class="kpi-card kpi-red">
-                <div class="kpi-icon">×</div>
-                <div class="kpi-body">
-                    <div class="kpi-label" t-esc="'Remaining Visits' if is_live else 'Missed Visits'"/>
-                    <div class="kpi-value" id="kpi-missed" t-esc="summary['missed_count']"/>
-                    <div class="kpi-sub" t-esc="'Planned but not completed' if is_live else 'Across selected period'"/>
-                </div>
-            </div>
-            <div class="kpi-card kpi-purple">
-                <div class="kpi-icon">⌁</div>
-                <div class="kpi-body">
-                    <div class="kpi-label">Total Distance</div>
-                    <div class="kpi-value"><span id="kpi-distance" t-esc="('%.1f' % summary['total_distance'])"/> <small>km</small></div>
-                    <div class="kpi-sub" t-esc="period_label"/>
-                </div>
-            </div>
-        </div>
+        </t>
 
         <t t-if="is_live">
             <div class="dashboard-live-grid">
