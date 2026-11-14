@@ -3,10 +3,12 @@
   <record id="view_zc_approval_policy_list" model="ir.ui.view">
     <field name="name">zencore.approval.policy.list</field>
     <field name="model">zencore.approval.policy</field>
-    <field name="arch" type="xml"><list editable="bottom" create="1" delete="0">
-      <field name="company_id"/><field name="role"/>
-      <field name="auto_approve" widget="boolean_toggle"/><field name="active"/>
-    </list></field>
+    <field name="arch" type="xml">
+      <list editable="bottom" create="1" delete="0">
+        <field name="company_id"/><field name="role"/>
+        <field name="auto_approve" widget="boolean_toggle"/><field name="active"/>
+      </list>
+    </field>
   </record>
   <record id="action_zc_approval_policy" model="ir.actions.act_window">
     <field name="name">Approval Configuration</field>
@@ -16,11 +18,13 @@
   <record id="view_zc_users_hierarchy_list" model="ir.ui.view">
     <field name="name">res.users.zencore.hierarchy.list</field>
     <field name="model">res.users</field>
-    <field name="arch" type="xml"><list>
-      <field name="name"/><field name="salesperson_role"/>
-      <field name="zc_reports_to_id"/><field name="zc_approval_override"/>
-      <field name="company_id"/>
-    </list></field>
+    <field name="arch" type="xml">
+      <list>
+        <field name="name"/><field name="salesperson_role"/>
+        <field name="zc_reports_to_id"/><field name="zc_approval_override"/>
+        <field name="company_id"/>
+      </list>
+    </field>
   </record>
   <!-- Native Odoo hierarchy renderer: no custom OWL or iframe. -->
   <record id="view_zc_users_hierarchy_native" model="ir.ui.view">
