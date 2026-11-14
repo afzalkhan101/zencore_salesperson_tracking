@@ -148,13 +148,14 @@ class MobileApiController(http.Controller):
         try:
             user = self._require_user()
             plan = request.env['salesperson.visit.plan'].sudo().browse(plan_id)
-            if not plan.exists():
-                return self._json_response({'ok': False, 'message': 'Plan not found'})
-            # Get tracker for today to determine visited status
-            today = fields.Date.today()
+            if not plan.exists() or plan.user_id.id != user.id:
+                return self._json_response({'ok': False, 'message': 'Visit plan is not available to this user'})
+            # Scope the tracker to this exact plan. Looking up today's latest
+            # tracker could return a different plan when the salesperson has
+            # switched plans on the same day.
             tracker = request.env['salesperson.tracker'].sudo().search([
                 ('user_id', '=', user.id),
-                ('visit_date', '=', today),
+                ('plan_id', '=', plan.id),
             ], limit=1, order='id desc')
             visited_ids = set()
             checkin_map = {}
@@ -166,6 +167,9 @@ class MobileApiController(http.Controller):
                         'checkout_time': str(v.checkout_time) if v.checkout_time else '',
                         'time_spent': v.time_spent_minutes,
                     }
+                if tracker.current_checkin_id and tracker.current_checkin_id.state == 'checked_in':
+                    active = tracker.current_checkin_id
+                    checkin_map.setdefault(active.partner_id.id, {})['checkin_id'] = active.id
 
             customers = []
             seen = set()
@@ -180,13 +184,14 @@ class MobileApiController(http.Controller):
                         'name': partner.name,
                         'street': partner.street or '',
                         'city': partner.city or '',
-                        'phone': partner.phone or partner.mobile or '',
+                        'phone': partner.phone or (partner.mobile if 'mobile' in partner._fields else '') or '',
                         'latitude': partner.partner_latitude or 0,
                         'longitude': partner.partner_longitude or 0,
                         'visited': partner.id in visited_ids,
                         'checkin_time': info.get('checkin_time', ''),
                         'checkout_time': info.get('checkout_time', ''),
                         'time_spent_minutes': info.get('time_spent', 0),
+                        'checkin_id': info.get('checkin_id'),
                     })
 
             is_tracking = tracker.is_tracking if tracker else False
@@ -211,21 +216,21 @@ class MobileApiController(http.Controller):
             if len(q) < 2:
                 return self._json_response({'ok': True, 'partners': []})
 
-            partners = request.env['res.partner'].sudo().search([
-                ('is_company', 'in', [True, False]),
-                ('active', '=', True),
-                '|', '|',
-                ('name', 'ilike', q),
-                ('phone', 'ilike', q),
-                ('mobile', 'ilike', q),
-            ], limit=20)
+            Partner = request.env['res.partner'].sudo()
+            terms = [('name', 'ilike', q), ('phone', 'ilike', q)]
+            if 'mobile' in Partner._fields:
+                terms.append(('mobile', 'ilike', q))
+            domain = [('is_company', 'in', [True, False]), ('active', '=', True)]
+            if terms:
+                domain += ['|'] * (len(terms) - 1) + terms
+            partners = Partner.search(domain, limit=20)
 
             result = [{
                 'id': p.id,
                 'name': p.name,
                 'street': p.street or '',
                 'city': p.city or '',
-                'phone': p.phone or p.mobile or '',
+                'phone': p.phone or (p.mobile if 'mobile' in p._fields else '') or '',
                 'email': p.email or '',
                 'latitude': p.partner_latitude or 0,
                 'longitude': p.partner_longitude or 0,
@@ -286,6 +291,7 @@ class MobileApiController(http.Controller):
             body = self._json_body()
 
             partner_id = body.get('partner_id')
+            tracker_id = body.get('tracker_id')
             latitude = float(body.get('latitude') or 0)
             longitude = float(body.get('longitude') or 0)
             selfie_b64 = body.get('selfie')
@@ -297,7 +303,16 @@ class MobileApiController(http.Controller):
             if not partner.exists():
                 return self._json_response({'ok': False, 'message': 'Customer not found'})
 
-            tracker = user._ensure_salesperson_tracker()
+            tracker = request.env['salesperson.tracker'].sudo().browse(int(tracker_id or 0))
+            if not tracker.exists() or tracker.user_id.id != user.id:
+                return self._json_response({'ok': False, 'message': 'Invalid tracker for this user'})
+            if not tracker.is_tracking or not tracker.plan_id or tracker.plan_id.state not in ('in_progress', 'approved'):
+                return self._json_response({'ok': False, 'message': 'Start tracking an approved Visit Plan first'})
+            target_line = request.env['salesperson.visit.plan.line'].sudo().search([
+                ('plan_id', '=', tracker.plan_id.id), ('customer_ids', 'in', [int(partner_id)]),
+            ], limit=1)
+            if not target_line:
+                return self._json_response({'ok': False, 'message': 'Customer is not part of the active Visit Plan'})
 
             # Close any open check-ins for this tracker
             open_checkins = request.env['salesperson.checkin'].sudo().search([
@@ -310,6 +325,7 @@ class MobileApiController(http.Controller):
             vals = {
                 'tracker_id': tracker.id,
                 'partner_id': int(partner_id),
+                'target_line_id': target_line.id,
                 'checkin_latitude': latitude,
                 'checkin_longitude': longitude,
                 'checkin_time': fields.Datetime.now(),
@@ -356,6 +372,9 @@ class MobileApiController(http.Controller):
             checkin = request.env['salesperson.checkin'].sudo().browse(checkin_id)
             if not checkin.exists():
                 return self._json_response({'ok': False, 'message': 'Check-in not found'})
+
+            if checkin.user_id.id != user.id:
+                return self._json_response({'ok': False, 'message': 'Check-in belongs to another user'}, 403)
 
             if checkin.state == 'checked_out':
                 return self._json_response({'ok': False, 'message': 'Already checked out'})

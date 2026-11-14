@@ -41,6 +41,7 @@ class SalespersonCheckin(models.Model):
     # Meeting outcome
     notes = fields.Text(string="Notes")
     meeting_outcome = fields.Selection([
+        ("completed", "Completed"),
         ("positive", "Positive"),
         ("neutral", "Neutral"),
         ("negative", "Negative"),

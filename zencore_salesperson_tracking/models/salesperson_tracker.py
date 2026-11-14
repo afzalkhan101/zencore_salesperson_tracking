@@ -367,7 +367,14 @@ class SalespersonTracker(models.Model):
             # The SAVEPOINT was causing silent rollbacks of check-in creation
             # because flush_all() inside it was re-raising ORM constraint errors.
             try:
-                self._check_geofence(latitude, longitude)
+                # Delayed offline points are valid route history, but must not
+                # create a late visit event after tracking has been stopped.
+                # Never replay an old offline point as a new visit event. GPS
+                # history may be queued for up to seven days, but geofence
+                # transitions are only valid for a recent live fix.
+                recent_fix = log_time is None or abs((now - log_time).total_seconds()) <= 180
+                if self.is_tracking and recent_fix:
+                    self._check_geofence(latitude, longitude)
                 # Flush ORM writes (checkin create, current_checkin_id, visited_line)
                 # and invalidate cache so total_visited is fresh in the response.
                 self.env.flush_all()

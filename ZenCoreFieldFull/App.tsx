@@ -167,7 +167,26 @@ export default function App(){
   return()=>{cancelled=true};
  },[connected,online,activePlanId]);
  useEffect(()=>{if(tab==='Visits'&&connected){Odoo.getPendingApprovals().then(v=>setApprovals(v.approvals)).catch(()=>{});}},[tab,connected]);
- useEffect(()=>{if(tab!=='Visits'||serverDetail===null)return;let alive=true;const poll=()=>getVisitPhotos(serverDetail).then(items=>{if(alive)setPhotos(items)}).catch(()=>{});void poll();const timer=setInterval(()=>{void poll()},7000);return()=>{alive=false;clearInterval(timer)};},[tab,serverDetail]);
+ useEffect(()=>{if(tab!=='Visits'||serverDetail===null)return;let alive=true;
+  const poll=async()=>{
+   try{
+    const [items,customerResult]=await Promise.all([getVisitPhotos(serverDetail),Odoo.planCustomers(serverDetail)]);
+    if(!alive)return;
+    setPhotos(items);
+    setCustomerVisits(customerResult.customers||[]);
+    setCheckinIds(old=>{
+     const next={...old};
+     for(const customer of customerResult.customers||[]){
+      if(customer.checkin_id)next[customer.id]=customer.checkin_id;
+      else delete next[customer.id];
+     }
+     return next;
+    });
+    if(!tracking)setTrackerId(customerResult.tracker_id||null);
+   }catch(_error){/* keep the last known visit state while offline */}
+  };
+  void poll();const timer=setInterval(()=>{void poll()},7000);return()=>{alive=false;clearInterval(timer)};
+ },[tab,serverDetail,tracking]);
  useEffect(()=>{if(tab!=='Tracking' && tab!=='Map' && tab!=='Home')return;
   void refresh();const timer=setInterval(()=>{void refresh()},5000);return()=>clearInterval(timer);
  },[tab,refresh]);
@@ -324,21 +343,20 @@ export default function App(){
  const toggleTracking=()=>{
    if(tracking){confirmStopActivePlan();return;}
    if(trackingNeedsRepair){repairDeviceTracking();return;}
-   notify('Open Visits, select your Approved Plan ID, and press Start Tracking.');
+   // When tracking is stopped, take the salesperson directly to the Visit
+   // Plans list. They can open an approved plan and start tracking from its
+   // detail view; no informational warning is needed here.
+   go('Visits');
  };
  const openServerPlan=(id:number)=>run(async()=>{
    const detailed=await Odoo.getPlanDetail(id);
    setRemoteDetailData(detailed.plan);
-   // Use the bridge's plan-specific target lines, not the legacy /mobile/api
-   // controller (which can fail if the res.partner.mobile field is absent).
-   const customers:Customer[]=[];
-   for(const line of detailed.plan.targets||[]){
-     (line.customer_ids||[]).forEach((customerId,index)=>{
-       if(!customers.some(c=>c.id===customerId)){const geo=line.customer_locations?.find(x=>x.id===customerId);customers.push({id:customerId,name:line.customer_names?.[index]||`Customer #${customerId}`,latitude:geo?.latitude??undefined,longitude:geo?.longitude??undefined});}
-     });
-   }
-   setCustomerVisits(customers);
-   if(!tracking)setTrackerId(detailed.plan.tracker_id||null);
+   // Load plan-scoped customer status so automatic server geofence events are
+   // reflected in the mobile UI (including an active check-in ID).
+   const customerResult=await Odoo.planCustomers(id);
+   setCustomerVisits(customerResult.customers||[]);
+   setCheckinIds(Object.fromEntries((customerResult.customers||[]).filter(c=>c.checkin_id).map(c=>[c.id,c.checkin_id as number])));
+   if(!tracking)setTrackerId(customerResult.tracker_id||detailed.plan.tracker_id||null);
    setServerDetail(id);setPhotos(await getVisitPhotos(id));
  });
  const choosePhoto=(camera:boolean)=>run(async()=>{
@@ -347,7 +365,22 @@ export default function App(){
    if(item){setPhotos(await getVisitPhotos(serverDetail));setPendingPhotos(await photoPendingCount());triggerAutoSync(true);notify('Photo saved on this device. It will upload to Odoo Chatter automatically when online.');}
  });
  const removePhoto=(photo:VisitPhoto)=>run(async()=>{await deleteQueuedPhoto(photo);if(serverDetail!==null)setPhotos(await getVisitPhotos(serverDetail));setPendingPhotos(await photoPendingCount());});
- const checkCustomer=(cust:Customer)=>run(async()=>{if(!tracking || !activePlanId || activePlanId!==serverDetail)throw Error('Start tracking this exact Approved Plan before customer check-in/out.');if(!trackerId)throw Error('No tracker assigned to this plan.');const coords=await GPS.currentGps();if(checkinIds[cust.id]){await Odoo.checkOut(checkinIds[cust.id],{latitude:coords.coords.latitude,longitude:coords.coords.longitude,notes:visitNotes,outcome:'completed'});setCheckinIds(old=>{const n={...old};delete n[cust.id];return n});notify('Customer checked out in Odoo.');}else{const a=await Odoo.checkIn({partner_id:cust.id,tracker_id:trackerId,latitude:coords.coords.latitude,longitude:coords.coords.longitude});setCheckinIds(old=>({...old,[cust.id]:a.checkin_id}));notify('Customer checked in to Odoo.');}});
+ const checkCustomer=(cust:Customer)=>run(async()=>{
+   if(cust.visited)throw Error('This customer visit is already completed.');
+   if(!tracking || !activePlanId || activePlanId!==serverDetail)throw Error('Start tracking this exact Approved Plan before customer check-in/out.');
+   if(!trackerId)throw Error('No tracker assigned to this plan.');
+   const coords=await GPS.currentGps();
+   const activeCheckinId=checkinIds[cust.id]||cust.checkin_id||null;
+   if(activeCheckinId){
+     await Odoo.checkOut(activeCheckinId,{latitude:coords.coords.latitude,longitude:coords.coords.longitude,notes:visitNotes,outcome:'completed'});
+     setCheckinIds(old=>{const n={...old};delete n[cust.id];return n});
+     notify('Customer checked out in Odoo.');
+   }else{
+     const a=await Odoo.checkIn({partner_id:cust.id,tracker_id:trackerId,latitude:coords.coords.latitude,longitude:coords.coords.longitude});
+     setCheckinIds(old=>({...old,[cust.id]:a.checkin_id}));
+     notify('Customer checked in to Odoo.');
+   }
+ });
  const currencyTotal=editing?editing.transport+editing.food+editing.other:0;
  return <View style={st.root}><StatusBar barStyle="dark-content"/>
  <View style={st.header}><View><Text style={st.brand}>zen<Text style={{color:C.green}}>core</Text> <Text style={{fontSize:13,color:C.green}}>FIELD</Text></Text><Text style={st.headerSubtitle}>Field Sales Workspace</Text></View><View style={st.avatar}><Text style={{fontWeight:'800',color:C.blue}}>ZF</Text></View></View>

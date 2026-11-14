@@ -561,7 +561,6 @@ class ZenCoreFieldMobileBridge(http.Controller):
             user=self._owner();data=self._body();rows=data.get('points') or []
             if not isinstance(rows,list) or len(rows)>100:raise ValidationError('Maximum 100 points per batch')
             receipt=request.env['zencore.mobile.gps.receipt'].sudo()
-            logs=request.env['salesperson.location.log'].sudo()
             tracker_model=request.env['salesperson.tracker'].sudo()
             accepted=[];rejected=[];now=fields.Datetime.now()
             for item in rows:
@@ -583,7 +582,16 @@ class ZenCoreFieldMobileBridge(http.Controller):
                     if not plan_id or tracker.plan_id.id!=plan_id:raise ValueError('GPS point Plan ID does not match tracker Plan ID')
                     if tracker.plan_id.state not in ('in_progress','completed'):raise ValueError('Plan is not tracking-ready')
                     with request.env.cr.savepoint():
-                        logs.create({'tracker_id':tracker.id,'tracked_at':capture,'latitude':lat,'longitude':lng,'accuracy':acc,'source':'zencore_field_offline'})
+                        # Use the same tracker pipeline as live GPS. This
+                        # updates the last position and invokes the server-side
+                        # 100m geofence while tracking is active. The tracker
+                        # model gates geofence actions for delayed points that
+                        # arrive after Stop.
+                        tracker.update_live_location(
+                            lat, lng, accuracy=acc,
+                            source='zencore_field_offline',
+                            distance=0.0, log_time=capture,
+                        )
                         receipt.create({'point_uuid':uuid,'tracker_id':tracker.id,'user_id':user.id,'captured_at':capture})
                     accepted.append(uuid)
                 except Exception as ex:rejected.append({'id':uuid,'reason':str(ex)[:150]})
