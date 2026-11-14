@@ -603,6 +603,25 @@ body.moving-map-page {
     width: 100%;
 }
 
+.zc-live-page-direction-icon { background:transparent; border:0; }
+.zc-live-page-direction { position:relative; display:grid; place-items:center; width:38px; height:42px; }
+.zc-live-page-direction svg { position:relative; z-index:2; width:31px; height:33px; overflow:visible; transform-origin:50% 50%; filter:drop-shadow(0 2px 2px rgba(8,47,73,.32)); }
+.zc-live-page-direction svg path { fill:#2563eb; stroke:#fff; stroke-width:2.25px; stroke-linejoin:round; }
+.zc-live-page-pulse { position:absolute; z-index:1; bottom:6px; left:50%; width:18px; height:8px; margin-left:-9px; border:2px solid #2dd4bf; border-radius:50%; background:rgba(45,212,191,.16); box-shadow:0 0 5px rgba(13,148,136,.55); transform-origin:center; animation:zc-live-page-radar 1.8s ease-out infinite; }
+@keyframes zc-live-page-radar { 0% { transform:scale(.7); opacity:.9; } 100% { transform:scale(2.9); opacity:0; } }
+@media (prefers-reduced-motion:reduce) { .zc-live-page-pulse { animation:none; } }
+
+.zc-route-direction-icon { background:transparent; border:0; }
+.zc-route-direction { position:relative; display:grid; place-items:center; width:38px; height:42px; }
+.zc-route-direction svg { position:relative; z-index:2; width:31px; height:33px; overflow:visible; transform-origin:50% 50%; filter:drop-shadow(0 2px 2px rgba(8,47,73,.32)); }
+.zc-route-direction svg path { fill:#2563eb; stroke:#fff; stroke-width:2.25px; stroke-linejoin:round; }
+.zc-route-direction-pulse { position:absolute; z-index:1; bottom:6px; left:50%; width:18px; height:8px; margin-left:-9px; border:2px solid #2dd4bf; border-radius:50%; background:rgba(45,212,191,.16); box-shadow:0 0 5px rgba(13,148,136,.55); transform-origin:center; }
+.zc-route-direction.is-live .zc-route-direction-pulse { animation:zc-route-direction-radar 1.8s ease-out infinite; }
+.zc-route-direction.is-offline svg { opacity:.6; filter:grayscale(1) drop-shadow(0 1px 1px rgba(0,0,0,.2)); }
+.zc-route-direction.is-offline .zc-route-direction-pulse { display:none; }
+@keyframes zc-route-direction-radar { 0% { transform:scale(.7); opacity:.9; } 100% { transform:scale(2.9); opacity:0; } }
+@media (prefers-reduced-motion:reduce) { .zc-route-direction.is-live .zc-route-direction-pulse { animation:none; } }
+
 .legend {
     position: absolute;
     bottom: 20px;

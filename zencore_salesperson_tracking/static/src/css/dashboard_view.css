@@ -230,21 +230,20 @@ button, input { font: inherit; }
 .map-popup-btn.primary { background:#2563eb; color:#fff; border-color:#2563eb; }
 .map-popup-location { margin-top:7px; color:var(--muted); font-size:9px; line-height:1.3; }
 
-/* V26 – Live salesperson: walking figure, small hand-held bag.
-   The vector is STATIC for inactive staff, animated green only while live. */
+/* Live salesperson: a compact direction arrow with a heading derived from GPS. */
 .x-marker { background: transparent; border: 0; }
-.zc-walker-marker { position:relative; display:flex; flex-direction:column; align-items:center; width:72px; height:28px; pointer-events:auto; }
-.zc-walker-name { max-width:70px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding:2px 5px; border-radius:6px; background:rgba(12,37,57,.94); color:white; font:700 8px/1.15 sans-serif; box-shadow:0 2px 6px rgba(0,0,0,.16); }
-.zc-walker-stage { width:8px; height:8px; position:relative; display:flex; align-items:center; justify-content:center; }
-.zc-walker-svg { width:3px; height:4px; position:relative; z-index:2; overflow:visible; filter:drop-shadow(0 1px 1px rgba(0,0,0,.25)); }
-.zc-walker-active .zc-walker-svg { transform-origin:50% 95%; animation:zc-walker-steps 1.6s ease-in-out infinite; }
-.zc-walker-active .zc-walker-pulse { position:absolute; bottom:0; left:50%; width:4px; height:2px; margin-left:-2px; border:1px solid #22c55e; border-radius:50%; background:rgba(34,197,94,.16); box-shadow:0 0 3px #22c55e; transform-origin:center; animation:zc-walker-radar 1.8s ease-out infinite; z-index:1; }
-.zc-walker-inactive .zc-walker-svg { filter:grayscale(1) opacity(.84) drop-shadow(0 1px 1px rgba(0,0,0,.19)); }
-.zc-walker-inactive .zc-walker-name { background:#6B7280; }
-.zc-walker-inactive .zc-walker-pulse { display:none; }
-@keyframes zc-walker-radar { 0% { transform:scale(.75);opacity:.9; } 100% { transform:scale(2.8);opacity:0; } }
-@keyframes zc-walker-steps { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-2px); } }
-@media (prefers-reduced-motion:reduce) { .zc-walker-active .zc-walker-svg, .zc-walker-active .zc-walker-pulse { animation:none !important; } }
+.zc-direction-marker { position:relative; display:flex; flex-direction:column; align-items:center; width:76px; height:62px; pointer-events:auto; }
+.zc-direction-name { max-width:74px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding:3px 7px; border-radius:7px; background:rgba(12,37,57,.94); color:#fff; font:700 9px/1.2 sans-serif; box-shadow:0 2px 6px rgba(0,0,0,.16); }
+.zc-direction-stage { position:relative; display:flex; align-items:center; justify-content:center; width:34px; height:37px; }
+.zc-direction-arrow { position:relative; z-index:2; width:29px; height:31px; overflow:visible; transform-origin:50% 50%; filter:drop-shadow(0 2px 2px rgba(8,47,73,.32)); }
+.zc-direction-arrow path { fill:#2563eb; stroke:#fff; stroke-width:2.25px; stroke-linejoin:round; }
+.zc-direction-pulse { position:absolute; z-index:1; left:50%; bottom:3px; width:17px; height:8px; margin-left:-8.5px; border:2px solid #2dd4bf; border-radius:50%; background:rgba(45,212,191,.18); box-shadow:0 0 5px rgba(13,148,136,.6); transform-origin:center; }
+.zc-direction-active .zc-direction-pulse { animation:zc-direction-radar 1.8s ease-out infinite; }
+.zc-direction-inactive .zc-direction-arrow { opacity:.6; filter:grayscale(1) drop-shadow(0 1px 1px rgba(0,0,0,.2)); }
+.zc-direction-inactive .zc-direction-name { background:#6b7280; }
+.zc-direction-inactive .zc-direction-pulse { display:none; }
+@keyframes zc-direction-radar { 0% { transform:scale(.7); opacity:.9; } 100% { transform:scale(2.9); opacity:0; } }
+@media (prefers-reduced-motion:reduce) { .zc-direction-active .zc-direction-pulse { animation:none !important; } }
 
 /* Table */
 .table-panel-head { min-height: 54px; }

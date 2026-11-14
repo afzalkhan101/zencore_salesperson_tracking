@@ -656,6 +656,42 @@ class SalespersonTrackingController(http.Controller):
             return 'Stale', '#D97706', age
         return 'GPS Lost', '#DC2626', age
 
+    def _tracker_map_heading(self, tracker):
+        """Return the latest trustworthy travel heading for a map marker.
+
+        GPS providers do not always send a compass heading.  In that case we
+        derive it from the final two recorded fixes, so the direction arrow
+        remains useful without requiring a new mobile permission or field.
+        """
+        self.env.cr.execute(
+            """
+                SELECT latitude, longitude, heading
+                  FROM salesperson_location_log
+                 WHERE tracker_id = %s
+                   AND latitude != 0
+                   AND longitude != 0
+                 ORDER BY tracked_at DESC, id DESC
+                 LIMIT 2
+            """,
+            (tracker.id,),
+        )
+        points = self.env.cr.fetchall()
+        if len(points) >= 2:
+            latest_lat, latest_lng, _latest_heading = points[0]
+            previous_lat, previous_lng, _previous_heading = points[1]
+            if latest_lat != previous_lat or latest_lng != previous_lng:
+                lat1 = math.radians(previous_lat)
+                lat2 = math.radians(latest_lat)
+                delta_lng = math.radians(latest_lng - previous_lng)
+                x = math.sin(delta_lng) * math.cos(lat2)
+                y = math.cos(lat1) * math.sin(lat2) - (
+                    math.sin(lat1) * math.cos(lat2) * math.cos(delta_lng)
+                )
+                return round((math.degrees(math.atan2(x, y)) + 360) % 360, 1)
+        if points and points[0][2] is not None:
+            return round(float(points[0][2]) % 360, 1)
+        return 0.0
+
     def _dashboard_today_rows(self, trackers, tz_name=None):
         """Build detailed Today rows used by table and map."""
         COLORS = [
@@ -726,6 +762,7 @@ class SalespersonTrackingController(http.Controller):
                     **row,
                     'lat': tracker.last_latitude,
                     'lng': tracker.last_longitude,
+                    'heading': self._tracker_map_heading(tracker),
                 })
 
             visited_ids = set(tracker.visited_line_ids.mapped('partner_id').ids)

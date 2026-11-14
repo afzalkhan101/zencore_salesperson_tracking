@@ -10,7 +10,7 @@
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""/>
         <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&amp;family=DM+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-        <link rel="stylesheet" type="text/css" href="/zencore_salesperson_tracking/static/src/css/dashboard_view.css?v=30.0.0"/>
+        <link rel="stylesheet" type="text/css" href="/zencore_salesperson_tracking/static/src/css/dashboard_view.css?v=31.0.0"/>
         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     </head>
     <body>
@@ -337,7 +337,7 @@
         <div id="visit-details-content" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:18px"></div>
       </div>
     </div>
-    <script src="/zencore_salesperson_tracking/static/src/js/dashboard_live_map.js?v=27.0.0"></script>
+    <script src="/zencore_salesperson_tracking/static/src/js/dashboard_live_map.js?v=31.0.0"></script>
     </body>
 </html>
 </template>

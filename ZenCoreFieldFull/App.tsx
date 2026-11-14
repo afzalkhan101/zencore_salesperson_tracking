@@ -492,7 +492,7 @@ export default function App(){
     
   </Panel></>}
  {tab==='Map'&&<><PageBanner code="MAP" title="Live Map" subtitle=""/>
-  <LiveRouteMap active={tracking} online={online} destination={tracking?(()=>{const c=customerVisits.find(x=>Number.isFinite(x.latitude)&&Number.isFinite(x.longitude)&&x.latitude!==0&&x.longitude!==0);return c?.latitude!=null&&c.longitude!=null?{latitude:c.latitude,longitude:c.longitude}:null})():null}/>
+  <LiveRouteMap active={tracking} online={online} label={userName||'You'} destination={tracking?(()=>{const c=customerVisits.find(x=>Number.isFinite(x.latitude)&&Number.isFinite(x.longitude)&&x.latitude!==0&&x.longitude!==0);return c?.latitude!=null&&c.longitude!=null?{latitude:c.latitude,longitude:c.longitude}:null})():null}/>
   <Panel style={{marginTop:14}}><Text style={st.cardTitle}>Visit Route</Text>
    <Info label="Active Visit Plan" value={activePlanId?`#${activePlanId}`:'Not started'}/>
    <Info label="Tracking" value={tracking?'Recording':'Stopped'}/>

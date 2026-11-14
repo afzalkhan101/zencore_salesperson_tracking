@@ -206,24 +206,46 @@
         }
     }
 
+    function liveMapHeading() {
+        if (livePath.length < 2) return 0;
+        const previous = livePath[livePath.length - 2];
+        const current = livePath[livePath.length - 1];
+        const fromLat = previous[0] * Math.PI / 180;
+        const toLat = current[0] * Math.PI / 180;
+        const deltaLng = (current[1] - previous[1]) * Math.PI / 180;
+        const x = Math.sin(deltaLng) * Math.cos(toLat);
+        const y = Math.cos(fromLat) * Math.sin(toLat) -
+            Math.sin(fromLat) * Math.cos(toLat) * Math.cos(deltaLng);
+        return (Math.atan2(x, y) * 180 / Math.PI + 360) % 360;
+    }
+
+    function liveDirectionIcon(heading) {
+        return L.divIcon({
+            className: 'zc-live-page-direction-icon',
+            html: '<div class="zc-live-page-direction"><span class="zc-live-page-pulse"></span>' +
+                '<svg viewBox="0 0 32 32" style="transform:rotate(' + heading + 'deg)" aria-label="Current travel direction">' +
+                    '<path d="M16 2 30 28 16 22 2 28Z"></path>' +
+                '</svg></div>',
+            iconSize: [38, 42],
+            iconAnchor: [19, 21],
+        });
+    }
+
     function updateMap(lat, lng, firstFix, nearCustomerInfo) {
         if (!liveMap) initMap();
         if (!liveMap) return;
-        // Green marker = near a planned customer; red = normal traveling
-        const markerColor = nearCustomerInfo ? '#16a34a' : '#ef4444';
         livePath.push([lat, lng]);
         if (livePolyline) {
             livePolyline.addLatLng([lat, lng]);
         } else {
             livePolyline = L.polyline(livePath, { color: '#0860F9', weight: 7 }).addTo(liveMap);
         }
+        const heading = liveMapHeading();
         if (!liveMarker) {
-            liveMarker = L.circleMarker([lat, lng], {
-                radius: 10, color: '#fff', fillColor: markerColor, fillOpacity: 1, weight: 3,
-            }).addTo(liveMap);
+            liveMarker = L.marker([lat, lng], {icon: liveDirectionIcon(heading)}).addTo(liveMap);
         } else {
             liveMarker.setLatLng([lat, lng]);
-            liveMarker.setStyle({ fillColor: markerColor });
+            liveMarker.setIcon(liveDirectionIcon(heading));
         }
         showNearCustomerBanner(nearCustomerInfo || null);
         if (firstFix && !state.userMovedMap) {
@@ -1020,6 +1042,33 @@
         return calcDistKm([{lat: a.lat, lng: a.lng}, {lat: b.lat, lng: b.lng}]) * 1000;
     }
 
+    function headingBetween(from, to) {
+        if (!from || !to || (from.lat === to.lat && from.lng === to.lng)) return 0;
+        const fromLat = from.lat * Math.PI / 180;
+        const toLat = to.lat * Math.PI / 180;
+        const deltaLng = (to.lng - from.lng) * Math.PI / 180;
+        const x = Math.sin(deltaLng) * Math.cos(toLat);
+        const y = Math.cos(fromLat) * Math.sin(toLat) -
+            Math.sin(fromLat) * Math.cos(toLat) * Math.cos(deltaLng);
+        return (Math.atan2(x, y) * 180 / Math.PI + 360) % 360;
+    }
+
+    function directionArrowIcon(heading, isLive) {
+        const state = isLive ? 'is-live' : 'is-offline';
+        return L.divIcon({
+            className: 'zc-route-direction-icon',
+            html: '<div class="zc-route-direction ' + state + '" role="img" aria-label="' +
+                (isLive ? 'Live direction' : 'Last recorded direction') + '">' +
+                '<span class="zc-route-direction-pulse"></span>' +
+                '<svg viewBox="0 0 32 32" style="transform:rotate(' + heading + 'deg)" aria-hidden="true">' +
+                    '<path d="M16 2 30 28 16 22 2 28Z"></path>' +
+                '</svg>' +
+            '</div>',
+            iconSize: [38, 42],
+            iconAnchor: [19, 21],
+        });
+    }
+
     // Route statistics always use the same validated segments as the blue map.
     // Raw server totals can include GPS jumps and must never replace this value.
     function updateStats(pts, distanceKm = 0, breakCount = 0, dropped = 0) {
@@ -1250,27 +1299,21 @@
             pane: 'markerPane',
         }).bindTooltip('Start').addTo(map);
 
-        // ── Fix 3: Current position marker ───────────────────
-        // Small (radius 8), green when live, red when offline
+        // Current position arrow uses the latest reliable route segment as
+        // heading; a lone GPS point falls back to north/up.
         const last        = clean[clean.length - 1];
-        const markerColor = isLive ? '#22c55e' : '#ef4444';
+        const heading     = clean.length > 1 ? headingBetween(clean[clean.length - 2], last) : 0;
         const tipLabel    = isLive ? '● Live' : '● Last seen';
         const tooltip     = `${tipLabel}${last.time ? '\n' + last.time : ''}${last.accuracy ? '\nAccuracy: ' + last.accuracy.toFixed(0) + ' m' : ''}`;
 
         currentMarker = L.marker([last.lat, last.lng], {
-            icon: L.divIcon({
-                className: 'zc-salesperson-endpoint',
-                html: '<img src="/zencore_salesperson_tracking/static/src/img/walking_salesperson_briefcase.svg" alt="Salesperson carrying a small briefcase" ' +
-                      'style="width:36px;height:54px;display:block;object-fit:contain;background:transparent;border:0;' +
-                      (isLive ? '' : 'filter:grayscale(1);opacity:.82;') + '" />',
-                iconSize: [36, 54], iconAnchor: [18, 50],
-            }),
+            icon: directionArrowIcon(heading, isLive),
             pane: 'markerPane',
         }).bindTooltip(tooltip, { permanent: false, sticky: false }).addTo(map);
 
         if (currentMarker.bringToFront) currentMarker.bringToFront();
 
-        log('renderPath: currentMarker lat=%.6f lng=%.6f color=%s', last.lat, last.lng, markerColor);
+        log('renderPath: currentMarker lat=%.6f lng=%.6f heading=%.1f', last.lat, last.lng, heading);
 
         // Distance excludes unrecorded gaps (which are deliberately not linked).
         const visibleDistance = segs.reduce((total, seg) => total + calcDistKm(seg), 0);

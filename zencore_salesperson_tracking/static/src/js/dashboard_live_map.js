@@ -260,16 +260,18 @@
 
     function salesmanHtml(s) {
         var active = isLiveSalesperson(s);
-        var cls = active ? 'zc-walker-active' : 'zc-walker-inactive';
+        var cls = active ? 'zc-direction-active' : 'zc-direction-inactive';
         var label = active ? 'Active' : 'Inactive';
-        // Shared marker asset is identical to Movement Map and Mobile Map.
-        // CSS applies green pulse only to active staff; inactive stays static gray.
-        var walker = '<img class="zc-walker-svg" src="/zencore_salesperson_tracking/static/src/img/walking_salesperson_briefcase.svg" ' +
-            'width="3" height="4" alt="Walking salesperson with small hand-held briefcase" />';
-        return '<div class="zc-walker-marker ' + cls + '" role="img" aria-label="' +
+        var heading = Number(s.heading);
+        heading = Number.isFinite(heading) ? ((heading % 360) + 360) % 360 : 0;
+        return '<div class="zc-direction-marker ' + cls + '" role="img" aria-label="' +
             escapeHtml(s.name) + ', ' + label + '" title="' + escapeHtml(s.name) + ' — ' + label + '">' +
-            '<div class="zc-walker-name">' + escapeHtml(s.name) + '</div>' +
-            '<div class="zc-walker-stage"><span class="zc-walker-pulse"></span>' + walker + '</div>' +
+            '<div class="zc-direction-name">' + escapeHtml(s.name) + '</div>' +
+            '<div class="zc-direction-stage"><span class="zc-direction-pulse"></span>' +
+                '<svg class="zc-direction-arrow" viewBox="0 0 32 32" aria-hidden="true" style="transform:rotate(' + heading + 'deg)">' +
+                    '<path d="M16 2 30 28 16 22 2 28Z"></path>' +
+                '</svg>' +
+            '</div>' +
             '</div>';
     }
 
@@ -337,8 +339,8 @@
             trackerBounds.push(latlng);
             seenTrackers[key] = true;
             var live = isLiveSalesperson(s);
-            var iconKey = [s.name, live ? "active" : "inactive"].join("|");
-            var icon = pinIcon(salesmanHtml(s), 72, 55);
+            var iconKey = [s.name, live ? "active" : "inactive", Number(s.heading || 0).toFixed(1)].join("|");
+            var icon = pinIcon(salesmanHtml(s), 76, 62);
             var marker = liveState.salesmanMarkers[key];
             if (!marker) {
                 marker = L.marker(latlng, { icon: icon, keyboard: true }).addTo(liveState.map);
