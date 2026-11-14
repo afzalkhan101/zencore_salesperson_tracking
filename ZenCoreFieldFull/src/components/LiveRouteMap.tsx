@@ -110,9 +110,13 @@ export default function LiveRouteMap({active,online,destination,label}:{active:b
   const recorded=segments.flat();
   // Do not substitute a fresh phone fix for the last recorded salesperson
   // position when tracking is stopped; this marker represents the GPS log.
-  const payload={points:recorded,segments,current:recorded.length?null:(isLive?current:null),destination,label:label||'You',active:isLive};
+  // The screen's tracking state is authoritative for the marker appearance.
+  // A stale local identity can remain briefly after Stop, but it must never
+  // keep the live direction arrow visible on a stopped route.
+  const trackingActive=Boolean(active&&isLive);
+  const payload={points:recorded,segments,current:recorded.length?null:(trackingActive?current:null),destination,label:label||'You',active:trackingActive};
   view.current?.injectJavaScript(`window.updateZenCoreMap && window.updateZenCoreMap(${JSON.stringify(payload)});true;`);
- },[ready,route,current,destination,label,isLive]);
+ },[ready,route,current,destination,label,isLive,active]);
  return <View>
   <View style={styles.frame}>
    <WebView<{}> ref={view} source={{html:HTML}}
