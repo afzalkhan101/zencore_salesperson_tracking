@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="view_zc_approval_policy_list" model="ir.ui.view">
+    <field name="name">zencore.approval.policy.list</field>
+    <field name="model">zencore.approval.policy</field>
+    <field name="arch" type="xml"><list editable="bottom" create="1" delete="0">
+      <field name="company_id"/><field name="role"/>
+      <field name="auto_approve" widget="boolean_toggle"/><field name="active"/>
+    </list></field>
+  </record>
+  <record id="action_zc_approval_policy" model="ir.actions.act_window">
+    <field name="name">Approval Configuration</field>
+    <field name="res_model">zencore.approval.policy</field>
+    <field name="view_mode">list,form</field>
+  </record>
+  <record id="view_zc_users_hierarchy_list" model="ir.ui.view">
+    <field name="name">res.users.zencore.hierarchy.list</field>
+    <field name="model">res.users</field>
+    <field name="arch" type="xml"><list>
+      <field name="name"/><field name="salesperson_role"/>
+      <field name="zc_reports_to_id"/><field name="zc_approval_override"/>
+      <field name="company_id"/>
+    </list></field>
+  </record>
+  <!-- Native Odoo hierarchy renderer: no custom OWL or iframe. -->
+  <record id="view_zc_users_hierarchy_native" model="ir.ui.view">
+    <field name="name">res.users.zencore.native.hierarchy</field>
+    <field name="model">res.users</field>
+    <field name="arch" type="xml">
+      <hierarchy child_field="zc_direct_report_ids" draggable="0">
+        <field name="name"/>
+        <field name="salesperson_role"/>
+        <field name="zc_reports_to_id"/>
+        <templates>
+          <t t-name="hierarchy-box">
+            <div class="o_hierarchy_node_header d-flex justify-content-center align-items-center p-2">
+              <strong><field name="name"/></strong>
+            </div>
+            <div class="o_hierarchy_node_body d-flex flex-column p-2">
+              <field name="salesperson_role"/>
+              <field name="zc_reports_to_id"/>
+            </div>
+          </t>
+        </templates>
+      </hierarchy>
+    </field>
+  </record>
+  <record id="action_zc_hierarchy" model="ir.actions.act_window">
+    <field name="name">Organization Hierarchy</field>
+    <field name="res_model">res.users</field>
+    <field name="view_mode">hierarchy,list,form</field>
+    <field name="domain">[('share','=',False),('zc_chart_visible','=',True)]</field>
+  </record>
+  <record id="action_zc_hierarchy_chart_view" model="ir.actions.act_window.view">
+    <field name="sequence" eval="1"/>
+    <field name="view_mode">hierarchy</field>
+    <field name="view_id" ref="view_zc_users_hierarchy_native"/>
+    <field name="act_window_id" ref="action_zc_hierarchy"/>
+  </record>
+  <record id="action_zc_hierarchy_list_view" model="ir.actions.act_window.view">
+    <field name="sequence" eval="2"/>
+    <field name="view_mode">list</field>
+    <field name="view_id" ref="view_zc_users_hierarchy_list"/>
+    <field name="act_window_id" ref="action_zc_hierarchy"/>
+  </record>
+  <record id="view_zc_reporting_change_wizard_form" model="ir.ui.view">
+    <field name="name">zc.reporting.change.wizard.form</field>
+    <field name="model">zc.reporting.change.wizard</field>
+    <field name="arch" type="xml">
+      <form string="Edit Reporting Line">
+        <group>
+          <field name="user_id"/>
+          <field name="reports_to_id"/>
+          <field name="approval_override"/>
+        </group>
+        <footer>
+          <button name="action_apply" type="object" string="Save" class="btn-primary"/>
+          <button string="Cancel" special="cancel" class="btn-secondary"/>
+        </footer>
+      </form>
+    </field>
+  </record>
+  <record id="view_zc_users_chart_edit_form" model="ir.ui.view">
+    <field name="name">res.users.zc.chart.edit.form</field>
+    <field name="model">res.users</field>
+    <field name="inherit_id" ref="base.view_users_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//sheet" position="inside">
+        <button name="action_zc_configure_team_member" type="object"
+                string="Configure Reporting" class="btn-secondary"
+                groups="zencore_salesperson_tracking.group_salesperson_ceo,zencore_salesperson_tracking.group_salesperson_manager"/>
+      </xpath>
+    </field>
+  </record>
+  <record id="view_zc_company_ceo_approver" model="ir.ui.view">
+    <field name="name">res.company.zc.ceo.approver</field>
+    <field name="model">res.company</field>
+    <field name="inherit_id" ref="base.view_company_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//sheet" position="inside">
+        <group string="ZenCore Tracking Approval" groups="base.group_system">
+          <field name="zc_ceo_approver_id"/>
+        </group>
+      </xpath>
+    </field>
+  </record>
+  <record id="action_zc_my_approvals" model="ir.actions.act_window">
+    <field name="name">My Pending Approvals</field>
+    <field name="res_model">salesperson.visit.plan</field>
+    <field name="view_mode">list,kanban,form</field>
+    <field name="search_view_id" ref="view_zc_visit_plan_search"/>
+    <field name="domain">[('zc_approver_id','=',uid),('state','=','submitted')]</field>
+  </record>
+  <menuitem id="menu_zc_my_approvals" name="My Pending Approvals" parent="menu_salesperson_visit_plan"
+      action="action_zc_my_approvals" sequence="25"
+      groups="zencore_salesperson_tracking.group_salesperson_supervisor,zencore_salesperson_tracking.group_salesperson_manager,zencore_salesperson_tracking.group_salesperson_ceo"/>
+  <!-- Unified Odoo-native organization menu: no OWL chart or duplicated root entries. -->
+  <menuitem id="menu_zc_organization_root" name="Organization"
+            parent="menu_salesperson_tracking_root" sequence="79"
+            groups="zencore_salesperson_tracking.group_salesperson_ceo,zencore_salesperson_tracking.group_salesperson_manager,zencore_salesperson_tracking.group_salesperson_supervisor"/>
+  <record id="action_zc_org_tree_list" model="ir.actions.act_window">
+    <field name="name">Organization Tree</field>
+    <field name="res_model">res.users</field>
+    <field name="view_mode">list,form</field>
+    <field name="view_id" ref="view_zc_users_hierarchy_list"/>
+    <field name="domain">[('share','=',False),('zc_chart_visible','=',True)]</field>
+  </record>
+  <menuitem id="menu_zc_org_tree" name="Organization Tree"
+            parent="menu_zc_organization_root" action="action_zc_org_tree_list"
+            sequence="10" groups="zencore_salesperson_tracking.group_salesperson_ceo,zencore_salesperson_tracking.group_salesperson_manager,zencore_salesperson_tracking.group_salesperson_supervisor"/>
+  <menuitem id="menu_zc_organization" name="Organization Hierarchy"
+            parent="menu_zc_organization_root" action="action_zc_hierarchy"
+            sequence="20" groups="zencore_salesperson_tracking.group_salesperson_ceo,zencore_salesperson_tracking.group_salesperson_manager,zencore_salesperson_tracking.group_salesperson_supervisor"/>
+  <record id="action_zc_departments_hierarchy" model="ir.actions.act_window">
+    <field name="name">Departments</field>
+    <field name="res_model">hr.department</field>
+    <field name="view_mode">hierarchy,list,form</field>
+  </record>
+  <menuitem id="menu_zc_departments" name="Departments"
+            parent="menu_zc_organization_root" action="action_zc_departments_hierarchy"
+            sequence="30" groups="zencore_salesperson_tracking.group_salesperson_ceo,zencore_salesperson_tracking.group_salesperson_manager,zencore_salesperson_tracking.group_salesperson_supervisor"/>
+  <menuitem id="menu_zc_settings_root" name="Settings"
+            parent="menu_salesperson_tracking_root" sequence="90"
+            groups="zencore_salesperson_tracking.group_salesperson_ceo,zencore_salesperson_tracking.group_salesperson_manager"/>
+  <menuitem id="menu_zc_approval_config" name="Approval Configuration"
+            parent="menu_zc_settings_root" action="action_zc_approval_policy"
+            sequence="10" groups="zencore_salesperson_tracking.group_salesperson_ceo,zencore_salesperson_tracking.group_salesperson_manager"/>
+  <!-- Administrative location history and backup tools: CEO / Manager only.
+       The Live Tracking / Movement Map remains available to all four roles. -->
+  <menuitem id="menu_salesperson_location" name="Location Data"
+            parent="menu_zc_settings_root" sequence="20"
+            groups="zencore_salesperson_tracking.group_salesperson_ceo,zencore_salesperson_tracking.group_salesperson_manager"/>
+  <menuitem id="menu_salesperson_location_log" name="Location History"
+            parent="menu_salesperson_location" action="action_salesperson_location_log" sequence="10"
+            groups="zencore_salesperson_tracking.group_salesperson_ceo,zencore_salesperson_tracking.group_salesperson_manager"/>
+  <menuitem id="menu_salesperson_location_backup" name="Backups"
+            parent="menu_salesperson_location" action="action_salesperson_location_backup" sequence="20"
+            groups="zencore_salesperson_tracking.group_salesperson_ceo,zencore_salesperson_tracking.group_salesperson_manager"/>
+
+</odoo>

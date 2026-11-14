@@ -1,0 +1,15 @@
+# Local Python artifacts
+**/__pycache__/
+*.py[cod]
+
+# ZenCore Field mobile development artifacts
+ZenCoreFieldFull/node_modules/
+ZenCoreFieldFull/.expo/
+ZenCoreFieldFull/android/
+ZenCoreFieldFull/ios/
+ZenCoreFieldFull/.env
+ZenCoreFieldFull/.env.local
+
+# Local screen-mirroring download; use the system package instead
+scrcpy-linux-x86_64-v5.0.1/
+scrcpy-linux-x86_64-v5.0.1.tar.gz

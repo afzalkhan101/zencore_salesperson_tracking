@@ -1,0 +1,4 @@
+export type Target = { id:string; customerId?:number; customer:string; customerIds?:number[]; customerNames?:string[]; employeeIds?:number[]; employeeNames?:string[]; expectedTimeMinutes?:number; from:string; to:string; km?:number; notes:string };
+export type Plan = { localId:string; serverId?:number; name:string; date:string; purpose:string; priority:string; targets:Target[]; transport:number; food:number; other:number; state:'draft'|'pending_upload'|'submitted'|'approved'|'in_progress'|'completed'|'rejected'; notes:string };
+export type GpsPoint = { id:string; session:string; trackerId:number; planId:number; latitude:number; longitude:number; accuracy:number; capturedAt:number; status:'pending'|'synced'; };
+export type Customer = {id:number; name:string; street?:string; city?:string; phone?:string; latitude?:number; longitude?:number; visited?:boolean; checkin_time?:string;checkout_time?:string};

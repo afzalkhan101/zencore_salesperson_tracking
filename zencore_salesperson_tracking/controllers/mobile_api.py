@@ -4,7 +4,6 @@ import logging
 from odoo import fields, http, _
 from odoo.exceptions import AccessError
 from odoo.http import request
-
 _logger = logging.getLogger(__name__)
 
 
@@ -36,7 +35,7 @@ class MobileApiController(http.Controller):
         return tracker.user_id.id == user.id
 
     # ── Visit Plans ───────────────────────────────────────────────────────────
-
+    
     @http.route('/mobile/api/plans', type='http', auth='user', csrf=False, methods=['GET'])
     def get_plans(self, **kwargs):
         """Return all plans for current user (all dates, all states)."""

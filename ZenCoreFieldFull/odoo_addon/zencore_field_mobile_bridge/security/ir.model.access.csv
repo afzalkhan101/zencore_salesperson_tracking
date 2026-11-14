@@ -1,0 +1,6 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_zencore_mobile_gps_receipt_admin,zencore mobile gps receipt admin,model_zencore_mobile_gps_receipt,base.group_system,1,0,0,0
+access_zencore_photo_receipt_admin,zencore.photo.receipt.admin,model_zencore_mobile_photo_receipt,base.group_system,1,1,1,1
+access_zc_registration_ceo,zc registration CEO,model_zencore_field_registration,zencore_salesperson_tracking.group_salesperson_ceo,1,1,0,0
+access_zc_registration_manager,zc registration Manager,model_zencore_field_registration,zencore_salesperson_tracking.group_salesperson_manager,1,1,0,0
+access_zc_registration_admin,zc registration system,model_zencore_field_registration,base.group_system,1,1,0,0

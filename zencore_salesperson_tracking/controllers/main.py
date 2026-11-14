@@ -1690,11 +1690,6 @@ class SalespersonTrackingController(http.Controller):
             accuracy  = float(body.get('accuracy', 0))
             distance  = float(body.get('distance', 0))
 
-            # log_time: epoch milliseconds of the TRUE on-device GPS capture
-            # moment, sent by the mobile app (see locationTask.js / odooApi.js).
-            # Queued-while-offline points are flushed together on reconnect,
-            # so without this every queued point would get tracked_at == the
-            # flush moment instead of when it was actually captured.
             log_time = None
             raw_log_time = body.get('log_time')
             if raw_log_time not in (None, '', 0):
@@ -1720,12 +1715,7 @@ class SalespersonTrackingController(http.Controller):
                 distance=distance,
                 log_time=log_time,
             )
-
-            # Reverse-geocode at most once per 30s — mirrors the browser's own
-            # throttled /geocode call. Without this, trackers driven purely by
-            # the mobile app's background pings never get a location_name,
-            # since update_live_location deliberately skips geocoding to avoid
-            # blocking the fast 2-second position writes.
+            
             now = fields.Datetime.now()
             should_geocode = (
                 not tracker.last_geocode_at
