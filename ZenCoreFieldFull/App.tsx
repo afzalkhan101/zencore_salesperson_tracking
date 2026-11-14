@@ -1,6 +1,6 @@
 import React,{useCallback,useEffect,useRef,useState} from 'react';
 import {startAutoSync,triggerAutoSync,type AutoSyncSnapshot} from './src/services/autoSync';
-import {Alert,ActivityIndicator,Animated,Easing,KeyboardAvoidingView,Platform,Pressable,ScrollView,StatusBar,StyleSheet,Text,TextInput,View,Image as RNImage,Linking} from 'react-native';
+import {Alert,ActivityIndicator,Animated,Easing,KeyboardAvoidingView,Modal,Platform,Pressable,ScrollView,StatusBar,StyleSheet,Text,TextInput,View,Image as RNImage,Linking} from 'react-native';
 import {chooseAndQueuePhoto,deleteQueuedPhoto,getVisitPhotos,type VisitPhoto} from './src/services/photoEvidence';
 import {photoPendingCount} from './src/services/storage';
 import GradientBackground from './src/components/GradientBackground';
@@ -25,6 +25,9 @@ const formatMoney=(n:number)=>`৳ ${Number(n||0).toFixed(2)}`;
 const freshPlan=():Plan=>({localId:createId(),name:'New Visit Plan',date:TODAY(),purpose:'followup',priority:'normal',targets:[],transport:0,food:0,other:0,state:'draft',notes:''});
 const safeNum=(s:string)=>Math.max(0,Number(s)||0);
 const icons:Record<Tab,string>={Home:'⌂',Visits:'▣',Tracking:'⌖',Map:'▱',Profile:'♙'};
+type DialogTone='success'|'warning'|'error'|'info';
+type DialogAction={label:string;variant?:'primary'|'light'|'danger';onPress?:()=>void|Promise<void>};
+type DialogState={title:string;message:string;tone:DialogTone;actions:DialogAction[]};
 const evidencePanelStyle={backgroundColor:'#FCFFFD',borderColor:'#CBE9DD',borderWidth:1.5,borderRadius:24,padding:18,shadowColor:'#0B7A62',shadowOpacity:.10,shadowRadius:14,elevation:3};
 function B({children,onPress,variant='primary',disabled=false}:{children:React.ReactNode;onPress:()=>void;variant?:'primary'|'light'|'danger'|'ghost';disabled?:boolean}){
  const label=typeof children==='string'?children:'';
@@ -112,13 +115,18 @@ export default function App(){
  const [trackingNeedsRepair,setTrackingNeedsRepair]=useState(false);
  const [metrics,setMetrics]=useState<TrackingMetrics>({distanceMeters:0,durationMs:0,accuracyMeters:null,latestLat:null,latestLng:null,lastFixAt:null,acceptedFixes:0});
  const [now,setNow]=useState(Date.now());
+ const [dialog,setDialog]=useState<DialogState|null>(null);
  const [profileCustomersOpen,setProfileCustomersOpen]=useState(false);
  const [profile,setProfile]=useState<Odoo.FieldProfile|null>(null);
  const [dashboard,setDashboard]=useState<Odoo.FieldDashboard|null>(null);
  const [localTotalKm,setLocalTotalKm]=useState(0);
  const [todaySummary,setTodaySummary]=useState<Odoo.FieldTodaySummary|null>(null);
  const [approvals,setApprovals]=useState<Odoo.ApprovalRequest[]>([]);
- const notify=(v:string)=>{setMessage(v);Alert.alert('ZenCore Field',v)};
+ const notify=(v:string)=>{
+  setMessage('');
+  const tone:DialogTone=/failed|error|denied|cannot|invalid|required|must |not found|locked|rejected|timeout/i.test(v)?'error':'success';
+  setDialog({title:tone==='success'?'ZenCore Field':'Action needs attention',message:v,tone,actions:[{label:'Continue',variant:'primary'}]});
+ };
  const refresh=useCallback(async()=>{try{
    setPending(await gpsCount());setPendingPhotos(await photoPendingCount());
    const device=await GPS.inspectTracking();
@@ -345,10 +353,10 @@ export default function App(){
      : 'Orphaned GPS capture stopped safely. No Plan ID was available; check Odoo for any remotely active tracker.');
  });
  const confirmStopActivePlan=()=>{
-   Alert.alert('Stop Plan Tracking','Stop GPS capture for this Visit Plan? Unsynced points will remain queued and upload automatically when online.',[
-     {text:'Cancel',style:'cancel'},
-     {text:'Stop Tracking',style:'destructive',onPress:stopActivePlan},
-   ]);
+   setDialog({title:'Stop Plan Tracking',message:'Stop GPS capture for this Visit Plan? Unsynced points will remain queued and upload automatically when online.',tone:'warning',actions:[
+     {label:'Cancel',variant:'light'},
+     {label:'Stop Tracking',variant:'danger',onPress:stopActivePlan},
+   ]});
  };
  const toggleTracking=()=>{
    if(tracking){confirmStopActivePlan();return;}
@@ -542,10 +550,28 @@ export default function App(){
  {!!message&&<Text style={st.message}>{message}</Text>}
  </ScrollView></KeyboardAvoidingView>
  <View style={st.nav}>{(['Home','Visits','Tracking','Map','Profile'] as Tab[]).map(t=><Pressable key={t} style={[st.navItem,tab===t&&st.navActive]} onPress={()=>go(t)}><Text style={[st.navIcon,tab===t&&{color:C.green}]}>{icons[t]}</Text><Text style={[st.navText,tab===t&&{color:C.green}]}>{t}</Text></Pressable>)}</View>
+ <ZenCoreDialog dialog={dialog} onClose={()=>setDialog(null)}/>
  {busy&&<View style={st.busy}><ActivityIndicator color={C.green} size="large"/></View>}
  </View>;
 }
 function Info({label,value}:{label:string;value:string}){return <View style={st.info}><Text style={st.muted}>{label}</Text><Text style={[st.body,{maxWidth:'55%',textAlign:'right'}]}>{value}</Text></View>}
+function ZenCoreDialog({dialog,onClose}:{dialog:DialogState|null;onClose:()=>void}){
+ if(!dialog)return null;
+ const palette=dialog.tone==='success'?{accent:'#2EAB63',soft:'#EAF9EF',icon:'✓'}:
+  dialog.tone==='error'?{accent:'#D94B57',soft:'#FFF0F2',icon:'!'}:
+  dialog.tone==='warning'?{accent:'#D28B2E',soft:'#FFF6E5',icon:'!'}:
+  {accent:'#07518C',soft:'#EAF4FB',icon:'i'};
+ return <Modal transparent visible animationType="fade" onRequestClose={onClose}>
+  <View style={modalSt.backdrop}>
+   <View style={modalSt.card}>
+    <View style={[modalSt.icon,{backgroundColor:palette.soft,borderColor:palette.accent}]}><Text style={[modalSt.iconText,{color:palette.accent}]}>{palette.icon}</Text></View>
+    <Text style={modalSt.title}>{dialog.title}</Text>
+    <Text style={modalSt.message}>{dialog.message}</Text>
+    <View style={modalSt.actions}>{dialog.actions.map((action,index)=><Pressable key={`${action.label}-${index}`} onPress={()=>{onClose();if(action.onPress)void action.onPress();}} style={[modalSt.action,action.variant==='light'&&modalSt.actionLight,action.variant==='danger'&&modalSt.actionDanger]}><Text style={[modalSt.actionText,action.variant!=='primary'&&{color:action.variant==='danger'?'#C83E4C':C.blue}]}>{action.label}</Text></Pressable>)}</View>
+   </View>
+  </View>
+ </Modal>;
+}
 const st=StyleSheet.create({
  root:{flex:1,backgroundColor:C.bg},header:{paddingTop:Platform.OS==='ios'?54:16,paddingBottom:14,paddingHorizontal:20,backgroundColor:'#FBFFFD',flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderBottomColor:C.line,borderBottomWidth:1},brand:{fontSize:24,fontWeight:'900',color:C.blue,letterSpacing:-1},headerSubtitle:{fontSize:11,color:C.muted,marginTop:1},avatar:{height:40,width:40,borderRadius:14,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},scroll:{padding:19,paddingBottom:38},eyebrow:{color:C.green,fontWeight:'800',fontSize:11,marginBottom:6},heading:{fontSize:19,fontWeight:'800',color:C.text,marginBottom:14},hero:{borderRadius:23,padding:21,marginTop:6,overflow:'hidden',shadowColor:'#07518C',shadowOpacity:.22,shadowRadius:18,elevation:5},heroTitle:{color:C.white,fontSize:23,fontWeight:'900',marginTop:17,marginBottom:9,lineHeight:30,maxWidth:'91%'},heroSub:{color:'#DAF6EC',fontSize:11,marginBottom:16,lineHeight:18},metrics:{flexDirection:'row',justifyContent:'space-between',flexWrap:'wrap',marginTop:15,marginBottom:14},metric:{width:'48%',marginBottom:11},metricIcon:{fontSize:22,color:'#329E57',fontWeight:'700'},metricNumber:{fontSize:26,fontWeight:'900',color:C.text,marginBottom:5},panel:{backgroundColor:C.white,padding:16,marginBottom:13,borderRadius:18,borderWidth:1,borderColor:C.line,shadowOpacity:.04,shadowRadius:10,shadowColor:C.blue,elevation:1},muted:{color:C.muted,fontSize:12,lineHeight:19},body:{fontSize:13,fontWeight:'600',color:C.text},btn:{backgroundColor:C.blue,paddingVertical:13,paddingHorizontal:14,borderRadius:12,alignItems:'center',justifyContent:'center',marginVertical:4},btnLight:{backgroundColor:C.mint,borderWidth:1,borderColor:'#D4ECCC'},btnDanger:{backgroundColor:'#FFF0F2'},btnGhost:{backgroundColor:'transparent'},btnLabel:{color:C.white,fontSize:12,fontWeight:'800',textAlign:'center'},badge:{borderRadius:30,paddingHorizontal:9,paddingVertical:6,alignSelf:'flex-start'},badgeText:{fontWeight:'800',fontSize:10},topLine:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',gap:10,marginBottom:7},actions:{flexDirection:'row',gap:9,justifyContent:'space-between'},cardTitle:{fontWeight:'800',fontSize:14,color:C.text,flexShrink:1},info:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',paddingVertical:11,borderBottomColor:C.line,borderBottomWidth:1,gap:10},nav:{backgroundColor:'#FDFFFE',borderTopWidth:1,borderTopColor:C.line,flexDirection:'row',justifyContent:'space-between',paddingBottom:Platform.OS==='ios'?24:9,paddingTop:10,paddingHorizontal:9},navItem:{alignItems:'center',flex:1,paddingVertical:3,borderRadius:12},navActive:{backgroundColor:'#E8F9EC'},navIcon:{fontSize:22,color:'#93A4AA'},navText:{fontSize:10,fontWeight:'700',color:'#93A4AA',marginTop:4},fieldLabel:{fontSize:12,fontWeight:'800',color:'#466879',marginBottom:6},input:{backgroundColor:'#FAFFFC',borderWidth:1,borderColor:'#DAEAE0',borderRadius:12,paddingHorizontal:12,paddingVertical:12,color:C.text,fontSize:13},chips:{flexDirection:'row',flexWrap:'wrap',gap:7,marginBottom:14},chip:{borderRadius:10,backgroundColor:C.mint,borderWidth:1,borderColor:'#CCE9D0',paddingHorizontal:10,paddingVertical:8},chipActive:{backgroundColor:C.blue,borderColor:C.blue},chipText:{color:C.blue,fontSize:11,fontWeight:'700'},help:{fontSize:11,lineHeight:17,color:C.muted,marginTop:10,marginBottom:7},searchRow:{borderBottomColor:C.line,borderBottomWidth:1,paddingVertical:9,flexDirection:'row',justifyContent:'space-between'},targetRow:{borderTopWidth:1,borderTopColor:C.line,marginTop:12,paddingTop:10,flexDirection:'row',alignItems:'center',justifyContent:'space-between'},total:{backgroundColor:C.mint,borderRadius:12,padding:15,flexDirection:'row',justifyContent:'space-between',alignItems:'center'},totalNumber:{color:'#288A3C',fontWeight:'900',fontSize:18},linkText:{fontSize:12,fontWeight:'700',color:C.blue,marginTop:10},largeNumber:{fontSize:42,fontWeight:'900',color:C.deep,marginVertical:8},message:{marginTop:10,fontSize:11,color:C.amber},ambient:{position:'absolute',top:0,left:0,right:0,bottom:0,opacity:.85},
  dailyCard:{borderRadius:22,marginBottom:13},nextCustomerName:{fontSize:17,fontWeight:'800',color:'#172943',marginTop:6},nextCustomerAddress:{fontSize:12,color:'#587789',marginTop:5},nextCustomerPlan:{fontSize:11,color:'#07518C',fontWeight:'700',marginTop:6},dailyAction:{backgroundColor:'#E9F8EF',borderRadius:13,paddingHorizontal:14,paddingVertical:13,flexDirection:'row',justifyContent:'space-between',marginTop:14},dailyActionLabel:{fontSize:12,color:'#07518C',fontWeight:'800'},dailyCount:{color:'#668290',fontSize:11,fontWeight:'700'},scheduleRow:{flexDirection:'row',alignItems:'center',gap:10,paddingVertical:12,borderBottomColor:'#E7F0ED',borderBottomWidth:1},scheduleDot:{height:9,width:9,borderRadius:5},scheduleTitle:{fontSize:12,fontWeight:'800',color:'#172943'},dailyNetworkRow:{flexDirection:'row',alignItems:'center',gap:7,padding:8,marginBottom:3},networkDot:{height:8,width:8,borderRadius:4},networkText:{fontSize:11,color:'#668290'},
@@ -581,4 +607,14 @@ const st=StyleSheet.create({
  pageBannerEyebrow:{color:'#D9F8E5',fontSize:10,fontWeight:'800',letterSpacing:1.4,marginBottom:7},
  pageBannerTitle:{color:'#FFFFFF',fontSize:24,fontWeight:'900',marginBottom:5},pageBannerSub:{color:'#EAF9F6',fontSize:11,lineHeight:16},
  busy:{...StyleSheet.absoluteFill,backgroundColor:'#FFFFFF99',justifyContent:'center',alignItems:'center'}
+});
+const modalSt=StyleSheet.create({
+ backdrop:{flex:1,backgroundColor:'#07152299',justifyContent:'center',alignItems:'center',padding:24},
+ card:{width:'100%',maxWidth:380,backgroundColor:'#FFFFFF',borderRadius:26,padding:24,shadowColor:'#052D48',shadowOpacity:.25,shadowRadius:24,elevation:10},
+ icon:{width:54,height:54,borderRadius:18,borderWidth:1.5,alignItems:'center',justifyContent:'center',alignSelf:'center',marginBottom:14},
+ iconText:{fontSize:27,fontWeight:'900'},title:{fontSize:21,fontWeight:'900',color:'#172943',textAlign:'center',marginBottom:9},
+ message:{fontSize:13,lineHeight:20,color:'#5C7480',textAlign:'center'},actions:{flexDirection:'row',gap:10,marginTop:22},
+ action:{flex:1,minHeight:46,borderRadius:14,backgroundColor:'#07518C',alignItems:'center',justifyContent:'center',paddingHorizontal:12},
+ actionLight:{backgroundColor:'#EAF8EF',borderWidth:1,borderColor:'#CDE9D4'},actionDanger:{backgroundColor:'#FFF0F2',borderWidth:1,borderColor:'#F6C6CC'},
+ actionText:{fontSize:13,fontWeight:'900',color:'#FFFFFF',textAlign:'center'}
 });
