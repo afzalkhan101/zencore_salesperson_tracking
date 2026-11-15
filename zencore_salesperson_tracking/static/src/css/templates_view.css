@@ -624,7 +624,7 @@ body.moving-map-page {
 .zc-route-terminal-icon { background:transparent; border:0; }
 .zc-route-terminal-icon img { width:14px; height:19px; display:block; filter:drop-shadow(0 1px 1px rgba(8,47,73,.28)); }
 .zc-customer-map-icon { background:transparent; border:0; }
-.zc-customer-map-icon svg { width:10px; height:14px; display:block; filter:drop-shadow(0 1px 1px rgba(8,47,73,.26)); }
+.zc-customer-map-icon svg { width:14px; height:19px; display:block; filter:drop-shadow(0 1px 1px rgba(8,47,73,.26)); }
 
 .legend {
     position: absolute;
