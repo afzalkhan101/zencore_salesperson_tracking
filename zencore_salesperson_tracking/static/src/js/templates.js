@@ -1027,8 +1027,8 @@
                 '<path d="M12 31S1 19.3 1 11.8A11 11 0 1 1 23 11.8C23 19.3 12 31 12 31Z" fill="' + fill + '" stroke="' + stroke + '" stroke-width="1.6"/>' +
                 '<circle cx="12" cy="12" r="4.2" fill="#fff" stroke="' + stroke + '" stroke-width="1.45"/>' +
             '</svg>',
-            iconSize: [28, 38],
-            iconAnchor: [14, 36],
+            iconSize: [42, 57],
+            iconAnchor: [21, 54],
         });
     }
 
@@ -1100,8 +1100,8 @@
         return L.divIcon({
             className: 'zc-route-terminal-icon',
             html: '<img src="/zencore_salesperson_tracking/static/src/img/person_location_terminal.svg" alt="Salesperson location" />',
-            iconSize: [28, 38],
-            iconAnchor: [14, 36],
+            iconSize: [42, 57],
+            iconAnchor: [21, 54],
         });
     }
 
