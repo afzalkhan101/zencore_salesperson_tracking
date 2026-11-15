@@ -332,7 +332,7 @@
             seenTrackers[key] = true;
             var live = isLiveSalesperson(s);
             var iconKey = String(s.name || '');
-            var icon = pinIcon(salesmanHtml(s), 76, 76);
+            var icon = pinIcon(salesmanHtml(s), 68, 68);
             var marker = liveState.salesmanMarkers[key];
             if (!marker) {
                 marker = L.marker(latlng, { icon: icon, keyboard: true }).addTo(liveState.map);
@@ -369,7 +369,7 @@
                 .filter(Boolean)
                 .join('|');
             var iconKey = [c.name || '', c.visited ? 'visited' : 'pending', targetNames].join('|');
-            var icon = pinIcon(customerTargetHtml(c), 112, 78);
+            var icon = pinIcon(customerTargetHtml(c), 102, 70);
             var marker = liveState.customerMarkers[key];
             if (!marker) {
                 marker = L.marker([Number(c.lat), Number(c.lng)], {
