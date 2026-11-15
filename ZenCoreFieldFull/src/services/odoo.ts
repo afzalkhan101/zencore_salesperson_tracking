@@ -9,6 +9,7 @@ import * as SecureStore from 'expo-secure-store';
 import type { Plan, Customer } from '../types/models';
 
 const HOST_KEY = 'zencore_odoo_host_v4';
+const DATABASE_KEY = 'zencore_odoo_database_v1';
 const LOGGED_IN_KEY = 'zencore_odoo_session_checked_v4';
 const TIMEOUT_MS = 30000;
 const VERSION = 'ZENCORE_TRANSPORT_V4_NO_COOKIE_MODULE';
@@ -97,6 +98,8 @@ async function sessionInfo(base:string):Promise<SessionInfo> {
   return http<SessionInfo>(base,'/web/session/get_session_info','POST',rpc({}));
 }
 export async function getHost():Promise<string> {return (await SecureStore.getItemAsync(HOST_KEY))||'';}
+/** Connection details are not credentials. Keep the last database visible after logout. */
+export async function getDatabase():Promise<string> {return (await SecureStore.getItemAsync(DATABASE_KEY))||'';}
 /** Legacy UI compatibility: this returns a verified-login marker, NOT an actual cookie. */
 export async function getCookie():Promise<string> {return (await SecureStore.getItemAsync(LOGGED_IN_KEY))==='1'?'native-http-session':'';}
 export async function verifySession():Promise<boolean> {
@@ -127,6 +130,7 @@ export async function login(host:string,database:string,username:string,password
   }
   if (!verified?.uid || verified.uid!==result.uid) throw Error('Credentials accepted but session verification failed. The server session cookie was not retained or database routing changed.');
   await SecureStore.setItemAsync(HOST_KEY,base);
+  await SecureStore.setItemAsync(DATABASE_KEY,db);
   await SecureStore.setItemAsync(LOGGED_IN_KEY,'1');
   return verified.name||result.name||user;
 }
@@ -134,7 +138,6 @@ export async function logout():Promise<void> {
   const base=await getHost();
   if (base) {try {await http(base,'/web/session/destroy','POST',rpc({}));} catch { /* offline sign-out */ }}
   await SecureStore.deleteItemAsync(LOGGED_IN_KEY);
-  await SecureStore.deleteItemAsync(HOST_KEY);
 }
 export async function call<T>(path:string,method:Method='GET',payload?:unknown):Promise<T> {
   const base=await getHost();

@@ -165,7 +165,7 @@ export default function App(){
    setNow(Date.now());
    setQueuedStop(await getPendingStopPlan());
  }catch(e){setMessage(String(e))}},[]);
- useEffect(()=>{let mounted=true;initialize().then(async()=>{if(mounted)setLocalPlans([]);const h=await Odoo.getHost();const sessionOk=await Odoo.verifySession();if(mounted){setHost(h);setConnected(sessionOk);}if(sessionOk){
+ useEffect(()=>{let mounted=true;initialize().then(async()=>{if(mounted)setLocalPlans([]);const [h,savedDatabase]=await Promise.all([Odoo.getHost(),Odoo.getDatabase()]);const sessionOk=await Odoo.verifySession();if(mounted){setHost(h);setDatabase(savedDatabase);setConnected(sessionOk);}if(sessionOk){
   const [p,d,t]=await Promise.allSettled([Odoo.fieldProfile(),Odoo.fieldDashboard(),Odoo.fieldTodaySummary()]);
   if(mounted){if(p.status==='fulfilled'){setProfile(p.value);setUserName(p.value.name);setEmail(p.value.login);const scope=planScope(h,p.value.login);setPlanOwnerKey(scope);setLocalPlans(await getPlans(scope));}if(d.status==='fulfilled')setDashboard(d.value);if(t.status==='fulfilled')setTodaySummary(t.value);}
  }await refresh()}).catch(e=>setMessage(String(e)));
