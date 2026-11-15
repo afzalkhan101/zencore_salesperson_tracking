@@ -1016,6 +1016,22 @@
     // Customer layer rendered FIRST → sits below path and salesperson marker
     const customerLayer = L.layerGroup().addTo(map);
 
+    // This page runs in its own script scope, so it owns the same compact
+    // customer-target marker used by the dashboard and mobile map.
+    function customerTargetIcon(visited) {
+        const fill = visited ? '#10b981' : '#06b6d4';
+        const stroke = visited ? '#047857' : '#073b5c';
+        return L.divIcon({
+            className: 'zc-customer-map-icon',
+            html: '<svg viewBox="0 0 24 32" role="img" aria-label="Customer location">' +
+                '<path d="M12 31S1 19.3 1 11.8A11 11 0 1 1 23 11.8C23 19.3 12 31 12 31Z" fill="' + fill + '" stroke="' + stroke + '" stroke-width="1.6"/>' +
+                '<circle cx="12" cy="12" r="4.2" fill="#fff" stroke="' + stroke + '" stroke-width="1.45"/>' +
+            '</svg>',
+            iconSize: [25, 34],
+            iconAnchor: [12.5, 33],
+        });
+    }
+
     // Same color semantics in Odoo Movement Map and Mobile Live Map.
     // Dashboard map is a live position overview, not a historical GPS polyline.
     const routeLegend = L.control({position: 'topright'});
@@ -1373,7 +1389,7 @@
             .bindPopup(`<b>${c.name}</b><br/>${label}`)
             .addTo(customerLayer);
             drawn++;
-            log('Customer pin: "%s" lat=%.6f lng=%.6f color=%s', c.name, c.lat, c.lng, color);
+            log('Customer target pin: "%s" lat=%.6f lng=%.6f', c.name, c.lat, c.lng);
         });
         log('renderCustomers: %d pins drawn', drawn);
     }
