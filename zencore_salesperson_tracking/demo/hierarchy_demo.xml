@@ -126,7 +126,6 @@
     <field name="customer_ids" eval="[(4, ref('zc_demo_partner_a'))]"/>
     <field name="from_location">ZenCore Demo Office</field>
     <field name="to_location">Customer Location</field>
-    <field name="expected_time_minutes">30</field>
     <field name="expected_km">5.0</field>
     <field name="notes">Demo target only; do not start physical tracking unless testing on a real device.</field>
   </record>
@@ -141,7 +140,6 @@
     <field name="customer_ids" eval="[(4, ref('zc_demo_partner_b'))]"/>
     <field name="from_location">ZenCore Demo Office</field>
     <field name="to_location">Customer Location</field>
-    <field name="expected_time_minutes">30</field>
     <field name="expected_km">5.0</field>
     <field name="notes">Demo target only; do not start physical tracking unless testing on a real device.</field>
   </record>
@@ -156,7 +154,6 @@
     <field name="customer_ids" eval="[(4, ref('zc_demo_partner_c'))]"/>
     <field name="from_location">ZenCore Demo Office</field>
     <field name="to_location">Customer Location</field>
-    <field name="expected_time_minutes">30</field>
     <field name="expected_km">5.0</field>
     <field name="notes">Demo target only; do not start physical tracking unless testing on a real device.</field>
   </record>
@@ -171,7 +168,6 @@
     <field name="customer_ids" eval="[(4, ref('zc_demo_partner_a'))]"/>
     <field name="from_location">ZenCore Demo Office</field>
     <field name="to_location">Customer Location</field>
-    <field name="expected_time_minutes">30</field>
     <field name="expected_km">5.0</field>
     <field name="notes">Demo target only; do not start physical tracking unless testing on a real device.</field>
   </record>
@@ -186,7 +182,6 @@
     <field name="customer_ids" eval="[(4, ref('zc_demo_partner_b'))]"/>
     <field name="from_location">ZenCore Demo Office</field>
     <field name="to_location">Customer Location</field>
-    <field name="expected_time_minutes">30</field>
     <field name="expected_km">5.0</field>
     <field name="notes">Demo target only; do not start physical tracking unless testing on a real device.</field>
   </record>
@@ -201,7 +196,6 @@
     <field name="customer_ids" eval="[(4, ref('zc_demo_partner_c'))]"/>
     <field name="from_location">ZenCore Demo Office</field>
     <field name="to_location">Customer Location</field>
-    <field name="expected_time_minutes">30</field>
     <field name="expected_km">5.0</field>
     <field name="notes">Demo target only; do not start physical tracking unless testing on a real device.</field>
   </record>

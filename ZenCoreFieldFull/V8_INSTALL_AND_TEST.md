@@ -5,7 +5,7 @@
 The Visit Plan editor is now a four-step flow that corresponds to the existing Odoo 19 `salesperson.visit.plan` and `salesperson.visit.plan.line` fields:
 
 1. **Basic Info** — salesperson (assigned from authenticated account), Visit Date, Purpose, Priority, Total Visits (derived from customers).
-2. **Target Lines** — multi-select Odoo Customers, Expected Time (minutes), multi-select accompanying Employees, From Location, To Location, Expected KM (manual), and line Notes. Multiple lines can be added, edited, or removed.
+2. **Target Lines** — multi-select Odoo Customers, multi-select accompanying Employees, From Location, To Location, Expected KM (manual), and line Notes. Multiple lines can be added, edited, or removed.
 3. **Expenses & Notes** — Transport, Food, Other and automatically calculated Total, plus Plan Notes.
 4. **Review** — checks all entered lines, saves a local draft or creates the Odoo Visit Plan directly in `Submitted` state.
 
@@ -24,7 +24,6 @@ Odoo generates the actual plan reference, computes `total_visits` and `total_cos
 | Other | `other_cost` |
 | Total Expenses | `total_cost` — Odoo computed |
 | Plan Notes | `internal_notes` |
-| Time (min) | `target_line_ids.expected_time_minutes` |
 | Accompanies | `target_line_ids.employee_ids` (M2M) |
 | From Location | `target_line_ids.from_location` |
 | To Location | `target_line_ids.to_location` |

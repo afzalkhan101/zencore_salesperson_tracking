@@ -915,7 +915,6 @@ class SalespersonTracker(models.Model):
             self.env["salesperson.tracker.target.line"].create({
                 "tracker_id": self.id,
                 "plan_line_id": plan_line.id,
-                "expected_time_minutes": plan_line.expected_time_minutes,
                 "employee_ids": [(6, 0, plan_line.employee_ids.ids)],
                 "from_location": plan_line.from_location,
                 "to_location": plan_line.to_location,
@@ -1082,6 +1081,8 @@ class SalespersonTrackerTargetLine(models.Model):
     tracker_id = fields.Many2one("salesperson.tracker", required=True, ondelete="cascade")
     plan_line_id = fields.Many2one("salesperson.visit.plan.line", string="Plan Line")
 
+    # Legacy compatibility only; new tracker targets no longer receive or use
+    # an expected-time value.
     expected_time_minutes = fields.Integer(string="Expected Time (min)")
     employee_ids = fields.Many2many("hr.employee", string="Accompanies")
     from_location = fields.Char(string="From Location")

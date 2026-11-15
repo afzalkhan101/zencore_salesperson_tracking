@@ -349,10 +349,9 @@ class ZenCoreFieldMobileBridge(http.Controller):
                     raise ValidationError('One or more customers are unavailable')
                 if employee_ids and len(Employee.search([('id','in',employee_ids), ('company_id','=',request.env.company.id)]))!=len(employee_ids):
                     raise ValidationError('One or more accompanying employees are unavailable')
-                minutes=int(t.get('expectedTimeMinutes') or 0)
                 km=float(t.get('km') or 0)
-                if not (0<=minutes<=1440) or not (0<=km<=10000):
-                    raise ValidationError('Expected time or KM is out of allowed range')
+                if not 0<=km<=10000:
+                    raise ValidationError('Expected KM is out of allowed range')
                 source=str(t.get('from') or '').strip()[:250]
                 destination=str(t.get('to') or '').strip()[:250]
                 if not source or not destination:
@@ -361,7 +360,6 @@ class ZenCoreFieldMobileBridge(http.Controller):
                     'sequence':(len(lines)+1)*10,
                     'customer_ids':[(6,0,customer_ids)],
                     'employee_ids':[(6,0,employee_ids)],
-                    'expected_time_minutes':minutes,
                     'from_location':source,
                     'to_location':destination,
                     'expected_km':km,
@@ -424,7 +422,6 @@ class ZenCoreFieldMobileBridge(http.Controller):
                 'notes':plan.internal_notes or '',
                 'targets':[{
                     'id':line.id,
-                    'expected_time_minutes':line.expected_time_minutes,
                     'employee_ids':line.employee_ids.ids,
                     'employee_names':line.employee_ids.mapped('name'),
                     'customer_ids':line.customer_ids.ids,

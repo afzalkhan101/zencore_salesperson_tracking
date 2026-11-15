@@ -5,7 +5,6 @@ echo 'Checking Visit Plan parity files and routes...'
 grep -q 'VisitPlanEditor' App.tsx
 grep -q 'findEmployees' src/services/odoo.ts
 grep -q '/zencore/field/v4/employees' odoo_addon/zencore_field_mobile_bridge/controllers/mobile.py
-grep -q 'expected_time_minutes' odoo_addon/zencore_field_mobile_bridge/controllers/mobile.py
 grep -q 'employee_ids' odoo_addon/zencore_field_mobile_bridge/controllers/mobile.py
 grep -q 'customer_ids' odoo_addon/zencore_field_mobile_bridge/controllers/mobile.py
 python3 -m compileall -q odoo_addon/zencore_field_mobile_bridge

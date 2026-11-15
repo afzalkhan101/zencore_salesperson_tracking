@@ -208,7 +208,6 @@
                                     <th>Customers</th>
                                     <th>From</th>
                                     <th>To</th>
-                                    <th class="right">Exp. Time (min)</th>
                                     <th class="right">Exp. KM</th>
                                 </tr>
                             </thead>
@@ -223,13 +222,12 @@
                                         </td>
                                         <td><t t-esc="tline.from_location or '—'"/></td>
                                         <td><t t-esc="tline.to_location or '—'"/></td>
-                                        <td class="right"><t t-esc="tline.expected_time_minutes"/></td>
                                         <td class="right"><t t-esc="tline.expected_km"/></td>
                                     </tr>
                                 </t>
                                 <t t-if="not tracker.target_line_ids">
                                     <tr>
-                                        <td colspan="6" style="text-align:center; color:#94a3b8; padding:20px;">
+                                        <td colspan="5" style="text-align:center; color:#94a3b8; padding:20px;">
                                             No target lines defined.
                                         </td>
                                     </tr>

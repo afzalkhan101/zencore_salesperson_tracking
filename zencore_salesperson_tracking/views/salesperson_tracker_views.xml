@@ -57,7 +57,6 @@
                         <page string="Target Lines" name="target_lines">
                             <field name="target_line_ids">
                                 <list>
-                                    <field name="expected_time_minutes" string="Time"/>
                                     <field name="employee_ids" widget="many2many_tags"/>
                                     <field name="from_location"/>
                                     <field name="to_location"/>

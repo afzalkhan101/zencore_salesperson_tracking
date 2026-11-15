@@ -144,7 +144,6 @@
                                     <th>#</th>
                                     <th>Customer(s)</th>
                                     <th>Route</th>
-                                    <th class="center">Est. Time</th>
                                     <th class="right">Est. KM</th>
                                 </tr>
                             </thead>
@@ -164,11 +163,6 @@
                                                 <t t-esc="line.to_location"/>
                                             </span>
                                         </td>
-                                        <td class="center">
-                                            <span class="pill amber">
-                                                <t t-esc="line.expected_time_minutes"/> min
-                                            </span>
-                                        </td>
                                         <td class="right">
                                             <span class="pill blue">
                                                 <t t-esc="line.expected_km"/> km
@@ -178,7 +172,7 @@
                                 </t>
                                 <t t-if="not plan.target_line_ids">
                                     <tr>
-                                        <td colspan="5" style="text-align:center; color:#94a3b8; padding:20px;">
+                                        <td colspan="4" style="text-align:center; color:#94a3b8; padding:20px;">
                                             No target lines added yet.
                                         </td>
                                     </tr>

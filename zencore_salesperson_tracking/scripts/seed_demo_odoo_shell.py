@@ -58,7 +58,7 @@ for key,user,customer,purpose,priority in specs:
         'priority':priority,'internal_notes':marker,
         'target_line_ids':[Command.create({
             'customer_ids':[Command.link(customers[customer].id)],
-            'expected_time_minutes':30, 'expected_km':5.0,
+            'expected_km':5.0,
             'from_location':'ZenCore Demo Office','to_location':'Customer Location',
             'notes':'Demo UAT target; simulated only.'
         })],

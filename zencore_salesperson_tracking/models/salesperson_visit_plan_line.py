@@ -9,7 +9,9 @@ class SalespersonVisitPlanLine(models.Model):
     plan_id = fields.Many2one("salesperson.visit.plan", string="Visit Plan", required=True, ondelete="cascade")
     sequence = fields.Integer(string="Sequence", default=10)
 
-    # Basic Info
+    # Legacy compatibility only. This value is no longer collected, displayed,
+    # reported, or exposed by mobile APIs; retaining the column preserves
+    # historic plan records during module upgrades.
     expected_time_minutes = fields.Integer(string="Expected Time (minutes)")
     employee_ids = fields.Many2many("hr.employee", string="Accompanies")
 
