@@ -17,7 +17,7 @@ import CustomerManager from './src/components/CustomerManager';
 
 type Tab='Home'|'Visits'|'Tracking'|'Map'|'Profile';
 const TODAY=()=>new Date().toISOString().slice(0,10);
-const BUILD_TAG='ZENCORE_FIELD_V33_MOBILE_TERMINAL_MAP';
+const BUILD_TAG='ZENCORE_FIELD_V34_WEAK_PASSWORD_REGISTRATION';
 if (__DEV__) console.log('[ZenCore Build]',BUILD_TAG);
 const createId=()=>`${Date.now()}-${Math.random().toString(36).slice(2)}`;
 const purposes=[{key:'followup',label:'Follow Up'},{key:'order',label:'New Order'},{key:'payment',label:'Payment Collection'},{key:'complaint',label:'Complaint Resolution'},{key:'demo',label:'Product Demo'}];
@@ -556,12 +556,12 @@ export default function App(){
     <Text style={st.fieldLabel}>Role</Text>
     <Text style={[st.body,{marginBottom:12}]}>Salesperson (automatically assigned)</Text>
     <Text style={st.fieldLabel}>Set Password</Text>
-    <TextInput value={regPassword} secureTextEntry onChangeText={setRegPassword} style={[st.input,{marginBottom:12}]} placeholder="At least 10 characters, letters and numbers" placeholderTextColor="#A2B0B6" autoCapitalize="none"/>
+    <TextInput value={regPassword} secureTextEntry onChangeText={setRegPassword} style={[st.input,{marginBottom:12}]} placeholder="Enter a password (e.g. 123)" placeholderTextColor="#A2B0B6" autoCapitalize="none"/>
     <Text style={st.fieldLabel}>Confirm Password</Text>
     <TextInput value={regConfirmPassword} secureTextEntry onChangeText={setRegConfirmPassword} style={[st.input,{marginBottom:12}]} placeholder="Re-enter password" placeholderTextColor="#A2B0B6" autoCapitalize="none"/>
     <B onPress={()=>run(async()=>{
       if(!regName.trim()||!email.trim()||!regPhone.trim())throw Error('Enter your name, email and phone.');
-      if(regPassword.length<10||!/[A-Za-z]/.test(regPassword)||!/\d/.test(regPassword))throw Error('Password must be at least 10 characters with letters and numbers.');
+      if(!regPassword.trim())throw Error('Enter a password.');
       if(regPassword!==regConfirmPassword)throw Error('Passwords do not match.');
       const result=await Odoo.registerOdooAccount(host,database,{name:regName,email,phone:regPhone,password:regPassword,confirm_password:regConfirmPassword});
       setRegPassword('');setRegConfirmPassword('');setAuthPage('login');notify(result);

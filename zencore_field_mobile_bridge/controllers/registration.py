@@ -1,12 +1,4 @@
-# -*- coding: utf-8 -*-
-"""Opt-in public, password-based mobile Salesperson signup.
 
-SECURITY: this endpoint intentionally has no individual account approval. The
-Odoo administrator must explicitly enable the server-side system parameter.
-Never allow the caller to choose privileged groups, company, supervisor, or
-user IDs. Passwords are sent over HTTPS and never stored in registration logs.
-Email ownership is NOT verified in this instant-signup mode.
-"""
 import hashlib
 import json
 import logging
@@ -22,6 +14,7 @@ _PHONE = re.compile(r'[+0-9 ()-]{7,40}')
 
 
 class ZenCorePublicAccount(http.Controller):
+
     @http.route('/zencore/field/v10/register', type='http', auth='public',
                 csrf=False, methods=['POST'])
     def register_salesperson(self, **kwargs):
@@ -68,11 +61,9 @@ class ZenCorePublicAccount(http.Controller):
                               'Self-registration is available for the Salesperson role only.'}, 403)
             if not isinstance(password, str) or not isinstance(confirm, str):
                 return reply({'ok': False, 'message': 'Enter and confirm your password.'}, 400)
-            if (not 10 <= len(password) <= 128 or
-                    not re.search(r'[A-Za-z]', password) or
-                    not re.search(r'\d', password)):
+            if not 1 <= len(password) <= 128 or any(ord(ch) < 32 for ch in password):
                 return reply({'ok': False, 'message':
-                              'Password must be 10–128 characters with letters and numbers.'}, 400)
+                              'Password must be 1–128 characters.'}, 400)
             if password != confirm:
                 return reply({'ok': False, 'message': 'Passwords do not match.'}, 400)
 
@@ -89,13 +80,11 @@ class ZenCorePublicAccount(http.Controller):
                 return reply({'ok': False, 'message':
                               'Too many new accounts from this connection. Try again later.'}, 429)
 
-            # Uniform answer for existing users vs newly registered users.
-            # This prevents a public request from probing registered email IDs.
+
             generic = {'ok': True, 'message':
                        'If this email is available, your Salesperson account is ready. Sign in with your password.'}
             Users = request.env['res.users'].sudo()
-            # Lock the login before checking and creating, preventing concurrent
-            # requests for the same email from racing into duplicate accounts.
+
             lock_num = int.from_bytes(hashlib.sha256(email.encode()).digest()[:8], 'big', signed=True)
             request.env.cr.execute('SELECT pg_advisory_xact_lock(%s)', (lock_num,))
             if Users.search([('login', '=ilike', email)], limit=1):
