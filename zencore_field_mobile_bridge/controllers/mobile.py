@@ -311,7 +311,15 @@ class ZenCoreFieldMobileBridge(http.Controller):
             # HR employee access may be restricted for field staff.
             Employee = request.env['hr.employee'].sudo()
             domain = [('company_id', '=', request.env.company.id)]
-            if q: domain.append(('name', 'ilike', q))
+            if q:
+                # The mobile picker advertises name, phone or email search.
+                # Include the linked login too, so freshly registered mobile
+                # users are immediately discoverable as accompanying staff.
+                domain.extend(['|', '|', '|',
+                               ('name', 'ilike', q),
+                               ('work_email', 'ilike', q),
+                               ('work_phone', 'ilike', q),
+                               ('user_id.login', 'ilike', q)])
             records = Employee.search(domain, order='name,id', limit=limit+1, offset=offset)
             has_more = len(records) > limit
             rows = [{'id': e.id, 'name': e.name} for e in records[:limit]]

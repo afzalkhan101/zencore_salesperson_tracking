@@ -103,6 +103,23 @@ class ZenCorePublicAccount(http.Controller):
             # on the audit record, console or any mobile persistent store.
             with request.env.cr.savepoint():
                 user = Users.with_context(no_reset_password=True).create(values)
+                # A mobile salesperson is also an employee so the account can
+                # immediately be selected as an accompanying employee on Visit
+                # Plans. Reuse an existing employee if another Odoo workflow
+                # created one for this user in the same transaction.
+                Employee = request.env['hr.employee'].sudo()
+                employee = Employee.search([('user_id', '=', user.id)], limit=1)
+                if not employee:
+                    employee_values = {
+                        'name': user.name,
+                        'user_id': user.id,
+                        'company_id': company.id,
+                    }
+                    if 'work_email' in Employee._fields:
+                        employee_values['work_email'] = email
+                    if 'work_phone' in Employee._fields:
+                        employee_values['work_phone'] = phone
+                    Employee.create(employee_values)
                 Registry.create({
                     'name': name, 'email': email, 'phone': phone,
                     'requested_role': 'salesman', 'assigned_role': 'salesman',
