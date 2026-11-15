@@ -157,6 +157,20 @@
     let liveMap = null, liveMarker = null, livePolyline = null, livePath = [];
     let liveCustomerLayer = null;
 
+    function customerTargetIcon(visited) {
+        const fill = visited ? '#10b981' : '#06b6d4';
+        const stroke = visited ? '#047857' : '#073b5c';
+        return L.divIcon({
+            className: 'zc-customer-map-icon',
+            html: '<svg viewBox="0 0 24 32" role="img" aria-label="Customer location">' +
+                '<path d="M12 31S1 19.3 1 11.8A11 11 0 1 1 23 11.8C23 19.3 12 31 12 31Z" fill="' + fill + '" stroke="' + stroke + '" stroke-width="1.6"/>' +
+                '<circle cx="12" cy="12" r="4.2" fill="#fff" stroke="' + stroke + '" stroke-width="1.45"/>' +
+            '</svg>',
+            iconSize: [25, 34],
+            iconAnchor: [12.5, 33],
+        });
+    }
+
     function renderLiveCustomers(custList) {
         if (!liveMap) return;
         if (!liveCustomerLayer) {
@@ -165,11 +179,8 @@
         liveCustomerLayer.clearLayers();
         custList.forEach(c => {
             if (!c.lat || !c.lng) return;
-            const color = c.visited ? '#15803d' : '#3b82f6';
             const label = c.visited ? '✓ Visited' : '○ Planned';
-            L.circleMarker([c.lat, c.lng], {
-                radius: 8, color: '#fff', fillColor: color, fillOpacity: 0.9, weight: 2,
-            })
+            L.marker([c.lat, c.lng], {icon: customerTargetIcon(c.visited)})
             .bindPopup('<b>' + c.name + '</b><br/>' + label)
             .addTo(liveCustomerLayer);
         });
@@ -1357,11 +1368,8 @@
         let drawn = 0;
         custList.forEach(c => {
             if (!c.lat || !c.lng) { warn('Customer "%s" missing coords — skip', c.name); return; }
-            const color   = c.visited ? '#15803d' : '#3b82f6';
             const label   = c.visited ? '✓ Visited' : '○ Planned';
-            L.circleMarker([c.lat, c.lng], {
-                radius: 8, color: '#fff', fillColor: color, fillOpacity: 0.9, weight: 2,
-            })
+            L.marker([c.lat, c.lng], {icon: customerTargetIcon(c.visited)})
             .bindPopup(`<b>${c.name}</b><br/>${label}`)
             .addTo(customerLayer);
             drawn++;

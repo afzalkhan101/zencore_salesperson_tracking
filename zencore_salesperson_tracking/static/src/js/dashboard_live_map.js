@@ -369,7 +369,7 @@
                 .filter(Boolean)
                 .join('|');
             var iconKey = [c.name || '', c.visited ? 'visited' : 'pending', targetNames].join('|');
-            var icon = pinIcon(customerTargetHtml(c), 140, 92);
+            var icon = pinIcon(customerTargetHtml(c), 112, 78);
             var marker = liveState.customerMarkers[key];
             if (!marker) {
                 marker = L.marker([Number(c.lat), Number(c.lng)], {
