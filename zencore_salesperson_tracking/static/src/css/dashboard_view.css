@@ -208,7 +208,7 @@ button, input { font: inherit; }
 .zc-customer-name { max-width:98px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding:2px 5px; border:1px solid rgba(7,59,92,.32); border-radius:6px; background:rgba(255,255,255,.98); color:#082f49; font:800 8px/1.2 sans-serif; box-shadow:0 2px 5px rgba(15,23,42,.18); }
 .zc-customer-assignee { max-width:99px; margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding:2px 5px; border-radius:999px; background:#083b6d; color:#fff; font:700 6px/1.2 sans-serif; box-shadow:0 1px 4px rgba(8,59,109,.24); }
 .zc-customer-pin-stage { position:relative; display:flex; align-items:flex-end; justify-content:center; width:15px; height:12px; margin-top:-1px; }
-.zc-customer-pin-icon { position:relative; z-index:3; width:7px; height:10px; overflow:visible; filter:drop-shadow(0 1px 1px rgba(8,47,73,.28)); }
+.zc-customer-pin-icon { position:relative; z-index:3; width:3.5px; height:5px; overflow:visible; filter:drop-shadow(0 1px 1px rgba(8,47,73,.28)); }
 .zc-customer-pin-icon path { fill:#06b6d4; stroke:#073b5c; stroke-width:1.6px; }
 .zc-customer-pin-icon circle { fill:#fff; stroke:#073b5c; stroke-width:1.45px; }
 .zc-customer-radar { position:absolute; z-index:1; left:50%; bottom:1px; width:7px; height:3px; margin-left:-3.5px; border:1px solid rgba(6,182,212,.8); border-radius:50%; background:rgba(34,211,238,.17); transform-origin:center; }
@@ -245,7 +245,7 @@ button, input { font: inherit; }
 @keyframes zc-direction-radar { 0% { transform:scale(.7); opacity:.9; } 100% { transform:scale(2.9); opacity:0; } }
 @media (prefers-reduced-motion:reduce) { .zc-direction-active .zc-direction-pulse { animation:none !important; } }
 .zc-terminal-marker { position:relative; display:flex; flex-direction:column; align-items:center; width:68px; height:41px; pointer-events:auto; }
-.zc-terminal-marker img { width:7px; height:10px; margin-top:-1px; filter:drop-shadow(0 1px 1px rgba(8,47,73,.28)); }
+.zc-terminal-marker img { width:3.5px; height:5px; margin-top:-1px; filter:drop-shadow(0 1px 1px rgba(8,47,73,.28)); }
 .zc-terminal-name { position:relative; z-index:2; max-width:67px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding:2px 6px; border-radius:7px; background:#64748b; color:#fff; font:700 8px/1.2 sans-serif; box-shadow:0 2px 6px rgba(0,0,0,.16); }
 
 /* Table */
