@@ -20,6 +20,7 @@ const TODAY=()=>new Date().toISOString().slice(0,10);
 const BUILD_TAG='ZENCORE_FIELD_V35_OPEN_SALESPERSON_REGISTRATION';
 if (__DEV__) console.log('[ZenCore Build]',BUILD_TAG);
 const createId=()=>`${Date.now()}-${Math.random().toString(36).slice(2)}`;
+const planScope=(host:string,login:string)=>`v1_${host.trim().toLowerCase()}_${login.trim().toLowerCase()}`;
 const purposes=[{key:'followup',label:'Follow Up'},{key:'order',label:'New Order'},{key:'payment',label:'Payment Collection'},{key:'complaint',label:'Complaint Resolution'},{key:'demo',label:'Product Demo'}];
 const formatMoney=(n:number)=>`৳ ${Number(n||0).toFixed(2)}`;
 const freshPlan=():Plan=>({localId:createId(),name:'New Visit Plan',date:TODAY(),purpose:'followup',priority:'normal',targets:[],transport:0,food:0,other:0,state:'draft',notes:''});
@@ -124,7 +125,7 @@ const visitPlanStatus=(state:string,planId:number|undefined,tracking:boolean,act
  return {label,tone:'gray' as const,hint:'Open plan →'};
 };
 export default function App(){
- const [tab,setTab]=useState<Tab>('Home');const [activePlanId,setActivePlanId]=useState<number|null>(null);const [plans,setLocalPlans]=useState<Plan[]>([]);const [serverPlans,setServerPlans]=useState<Odoo.RemotePlan[]>([]);
+ const [tab,setTab]=useState<Tab>('Home');const [activePlanId,setActivePlanId]=useState<number|null>(null);const [plans,setLocalPlans]=useState<Plan[]>([]);const [planOwnerKey,setPlanOwnerKey]=useState('');const [serverPlans,setServerPlans]=useState<Odoo.RemotePlan[]>([]);
  const [editing,setEditing]=useState<Plan|null>(null);const [detail,setDetail]=useState<Plan|null>(null);const [serverDetail,setServerDetail]=useState<number|null>(null);
  const [customerList,setCustomerList]=useState<Customer[]>([]);const [search,setSearch]=useState('');const [customerPickerOpen,setCustomerPickerOpen]=useState(false);const [customersLoading,setCustomersLoading]=useState(false);const [customersMore,setCustomersMore]=useState(false);const [customersOffset,setCustomersOffset]=useState(0);const [target,setTarget]=useState<Target>({id:createId(),customer:'',from:'',to:'',notes:''});
  const [online,setOnline]=useState<boolean|null>(null);const [pending,setPending]=useState(0);const [tracking,setTracking]=useState(false);const [busy,setBusy]=useState(false);const [message,setMessage]=useState('');
@@ -164,9 +165,9 @@ export default function App(){
    setNow(Date.now());
    setQueuedStop(await getPendingStopPlan());
  }catch(e){setMessage(String(e))}},[]);
- useEffect(()=>{let mounted=true;initialize().then(async()=>{const p=await getPlans();if(mounted)setLocalPlans(p);const h=await Odoo.getHost();const sessionOk=await Odoo.verifySession();if(mounted){setHost(h);setConnected(sessionOk);}if(sessionOk){
+ useEffect(()=>{let mounted=true;initialize().then(async()=>{if(mounted)setLocalPlans([]);const h=await Odoo.getHost();const sessionOk=await Odoo.verifySession();if(mounted){setHost(h);setConnected(sessionOk);}if(sessionOk){
   const [p,d,t]=await Promise.allSettled([Odoo.fieldProfile(),Odoo.fieldDashboard(),Odoo.fieldTodaySummary()]);
-  if(mounted){if(p.status==='fulfilled'){setProfile(p.value);setUserName(p.value.name);}if(d.status==='fulfilled')setDashboard(d.value);if(t.status==='fulfilled')setTodaySummary(t.value);}
+  if(mounted){if(p.status==='fulfilled'){setProfile(p.value);setUserName(p.value.name);setEmail(p.value.login);const scope=planScope(h,p.value.login);setPlanOwnerKey(scope);setLocalPlans(await getPlans(scope));}if(d.status==='fulfilled')setDashboard(d.value);if(t.status==='fulfilled')setTodaySummary(t.value);}
  }await refresh()}).catch(e=>setMessage(String(e)));
  const sub=NetInfo.addEventListener(s=>setOnline(Boolean(s.isConnected&&s.isInternetReachable!==false)));
  const stopAuto=startAutoSync(snapshot=>{if(mounted){setAutoSync(snapshot);setPending(snapshot.pending)}});
@@ -241,7 +242,7 @@ export default function App(){
   void calculate();const timer=setInterval(()=>{void calculate()},15000);
   return()=>{cancelled=true;clearInterval(timer)};
  },[connected,serverPlans]);
- const save=async(p:Plan[])=>{setLocalPlans(p);await setPlans(p)};
+ const save=async(p:Plan[])=>{setLocalPlans(p);await setPlans(p,planOwnerKey||'anonymous')};
  const updateEdit=(patch:Partial<Plan>)=>setEditing(old=>old?{...old,...patch}:old);
  const go=(t:Tab)=>{setTab(t);setEditing(null);setDetail(null);setServerDetail(null)};
  const run=async(action:()=>Promise<void>)=>{if(busy)return;setBusy(true);try{await action()}catch(e){notify(e instanceof Error?e.message:String(e))}finally{setBusy(false);await refresh()}};
@@ -255,9 +256,9 @@ export default function App(){
    setApprovals((await Odoo.getPendingApprovals()).approvals);
    setServerPlans((await Odoo.myVisitPlans()).plans);
  });
- const login=()=>run(async()=>{const name=await Odoo.login(host,database,email,password);setPassword('');setConnected(true);setUserName(name);triggerAutoSync(true);
+ const login=()=>run(async()=>{const name=await Odoo.login(host,database,email,password);setPassword('');setConnected(true);setUserName(name);const scope=planScope(host,email);setPlanOwnerKey(scope);setLocalPlans(await getPlans(scope));triggerAutoSync(true);
   const [p,d,t]=await Promise.allSettled([Odoo.fieldProfile(),Odoo.fieldDashboard(),Odoo.fieldTodaySummary()]);
-  if(p.status==='fulfilled'){setProfile(p.value);setUserName(p.value.name);}
+  if(p.status==='fulfilled'){setProfile(p.value);setUserName(p.value.name);setEmail(p.value.login);const scope=planScope(host,p.value.login);setPlanOwnerKey(scope);setLocalPlans(await getPlans(scope));}
   if(d.status==='fulfilled')setDashboard(d.value);if(t.status==='fulfilled')setTodaySummary(t.value);
   try{const result=await Odoo.myVisitPlans();setServerPlans(result.plans||[]);triggerAutoSync();notify('Connected to Odoo as '+name)}catch(e){notify('Odoo login succeeded, but loading Visit Plans failed: '+(e instanceof Error?e.message:String(e)))}});
  const addTarget=()=>{if(!editing)return;if(!target.customerId){notify('Tap the Customer field and select an Odoo customer from the list.');return}if(!target.from.trim()||!target.to.trim()){notify('Enter both From and To locations.');return}updateEdit({targets:[...editing.targets,target]});setTarget({id:createId(),customer:'',from:'',to:'',notes:''});setSearch('');setCustomerList([]);setCustomerPickerOpen(false)};
@@ -529,7 +530,7 @@ export default function App(){
    <Info label="App Version" value="v1"/>
    <B variant="light" onPress={()=>setProfileCustomersOpen(v=>!v)}>{profileCustomersOpen?'Close Customers':'Customers / Add Customer'}</B>
    <B variant="danger" onPress={()=>{
-      const perform=()=>run(async()=>{await Odoo.logout();setConnected(false);setProfile(null);setDashboard(null);setUserName('');setServerPlans([]);setEmail('');setPassword('');notify('Signed out. Local unsynced records have not been deleted.');});
+      const perform=()=>run(async()=>{await Odoo.logout();setConnected(false);setProfile(null);setDashboard(null);setUserName('');setServerPlans([]);setPlanOwnerKey('');setLocalPlans([]);setEmail('');setPassword('');notify('Signed out. Local unsynced records have not been deleted.');});
       if(tracking||pending>0||pendingPhotos>0){Alert.alert('Sign out?', 'Tracking or unsynced data may need Odoo access. Local records will be preserved, but auto-upload pauses until you sign in again.',[{text:'Cancel',style:'cancel'},{text:'Sign Out',style:'destructive',onPress:perform}]);}
       else perform();
    }}>Sign Out</B>

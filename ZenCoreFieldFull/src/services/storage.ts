@@ -24,8 +24,9 @@ CREATE INDEX IF NOT EXISTS visit_photo_queue ON visit_photos(status,captured_at)
 }
 export async function getValue<T>(key:string,fallback:T):Promise<T>{await initialize(); const x=await (await db()).getFirstAsync<{value:string}>('SELECT value FROM kv WHERE key=?',[key]); if(!x)return fallback; try{return JSON.parse(x.value) as T;}catch{return fallback;}}
 export async function setValue(key:string,value:unknown){await initialize();await (await db()).runAsync('INSERT INTO kv(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value',[key,JSON.stringify(value)]);}
-export const getPlans=()=>getValue<Plan[]>('plans',[]);
-export const setPlans=(p:Plan[])=>setValue('plans',p);
+const planStorageKey=(ownerKey='anonymous')=>`plans:${ownerKey||'anonymous'}`;
+export const getPlans=(ownerKey='anonymous')=>getValue<Plan[]>(planStorageKey(ownerKey),[]);
+export const setPlans=(p:Plan[],ownerKey='anonymous')=>setValue(planStorageKey(ownerKey),p);
 export async function addGpsPoint(point:GpsPoint){await initialize();await (await db()).runAsync('INSERT OR IGNORE INTO gps(id,session,tracker_id,plan_id,latitude,longitude,accuracy,captured_at,status) VALUES(?,?,?,?,?,?,?,?,?)',[point.id,point.session,point.trackerId,point.planId,point.latitude,point.longitude,point.accuracy,point.capturedAt,'pending']);}
 export async function pendingGps(limit=100){await initialize();return (await db()).getAllAsync<GpsPoint>('SELECT id,session,tracker_id as trackerId,plan_id as planId,latitude,longitude,accuracy,captured_at as capturedAt,status FROM gps WHERE status=? ORDER BY captured_at ASC LIMIT ?',['pending',limit]);}
 export async function gpsCount(){await initialize();const v=await (await db()).getFirstAsync<{n:number}>('SELECT COUNT(*) as n FROM gps WHERE status=?',['pending']);return v?.n||0;}
