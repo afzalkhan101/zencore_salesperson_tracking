@@ -470,9 +470,7 @@ export default function App(){
  <View style={st.header}><View><Text style={st.brand}>zen<Text style={{color:C.green}}>core</Text> <Text style={{fontSize:13,color:C.green}}>FIELD</Text></Text><Text style={st.headerSubtitle}>Field Sales Workspace</Text></View><View style={st.avatar}><Text style={{fontWeight:'800',color:C.blue}}>ZF</Text></View></View>
  <KeyboardAvoidingView style={{flex:1}} behavior={Platform.OS==='ios'?'padding':undefined}><ScrollView contentContainerStyle={st.scroll} keyboardShouldPersistTaps="handled"><GradientBackground pointerEvents="none" colors={["#F3FBF7","#EDF9F5","#E9F6FE","#F4FBF8"]} start={{x:0,y:0}} end={{x:1,y:1}} style={st.ambient}/>
  {tab==='Home'&&<>
- <Text style={st.eyebrow}>WELCOME TO ZENCORE FIELD</Text>
- <H>Today's Overview</H>
- <GradientBackground colors={['#063E78','#086B87','#12A077','#62CF49']} start={{x:0,y:0}} end={{x:1,y:1}} style={st.hero}>
+ <GradientBackground colors={['#063E78','#086B87','#12A077','#62CF49']} start={{x:0,y:0}} end={{x:1,y:1}} style={[st.hero,{padding:17,marginTop:0,borderRadius:20}]}>
   <View style={st.heroOrb}/><View style={st.heroOrbSmall}/>
   <View style={st.heroHeaderRow}>
    <View style={{flex:1}}><Text style={st.heroKicker}>ZENCORE FIELD  /  LIVE STATUS</Text>
@@ -480,8 +478,8 @@ export default function App(){
    </View>
    <TrackingPulse active={tracking}/>
   </View>
-  <Text style={st.heroTitle}>{tracking?'Your work route is being recorded':'Ready for your next visit'}</Text>
-  <Text style={st.heroSub}>{tracking&&activePlanId?`Visit Plan #${activePlanId} · GPS tracking active`:'Start tracking from an approved visit plan'}</Text>
+  <Text style={[st.heroTitle,{fontSize:21,lineHeight:27,marginTop:12,marginBottom:6}]}>{tracking?'Your work route is being recorded':'Ready for your next visit'}</Text>
+  <Text style={[st.heroSub,{marginBottom:10}]}>{tracking&&activePlanId?`Visit Plan #${activePlanId} · GPS tracking active`:'Start tracking from an approved visit plan'}</Text>
   <Pressable onPress={()=>go('Tracking')} accessibilityRole="button" accessibilityLabel="Open tracking" style={st.heroButton}><Text style={st.heroButtonText}>Open Tracking</Text><Text style={st.heroButtonArrow}>›</Text></Pressable>
  </GradientBackground>
  <View style={st.metrics}>
@@ -668,8 +666,8 @@ const st=StyleSheet.create({
  profileName:{fontSize:18,fontWeight:'800',color:'#172943',marginBottom:8},
  heroOrb:{position:'absolute',right:-85,top:-125,width:270,height:270,borderRadius:150,backgroundColor:'#FFFFFF1B'},
  heroOrbSmall:{position:'absolute',right:15,bottom:-65,width:150,height:150,borderRadius:80,backgroundColor:'#FFFFFF16'},
- heroButton:{marginTop:12,minHeight:52,backgroundColor:'#E9FBF0',borderRadius:14,flexDirection:'row',alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:'#CBF3DE'},
- heroButtonText:{color:'#064D80',fontSize:14,fontWeight:'800'},heroButtonArrow:{color:'#064D80',position:'absolute',right:19,fontSize:25,fontWeight:'500'},
+ heroButton:{marginTop:8,minHeight:42,width:174,alignSelf:'flex-start',backgroundColor:'#FFFFFF',borderRadius:13,flexDirection:'row',alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:'#E3EEF0'},
+ heroButtonText:{color:'#064D80',fontSize:13,fontWeight:'800'},heroButtonArrow:{color:'#064D80',position:'absolute',right:15,fontSize:22,fontWeight:'500'},
  healthCard:{flexDirection:'row',alignItems:'center',gap:12,borderRadius:17,padding:16,marginBottom:11,borderWidth:1,borderColor:'#D7EAE6'},
  healthDot:{width:11,height:11,borderRadius:6},healthTitle:{fontSize:13,color:'#18283F',fontWeight:'800'},healthSub:{fontSize:11,color:'#68808B',marginTop:5,lineHeight:16},
  healthGrid:{flexDirection:'row',gap:10},healthGridItem:{flex:1},healthChip:{fontSize:10,color:'#247C5A',fontWeight:'700',backgroundColor:'#EAF8EC',paddingHorizontal:9,paddingVertical:5,borderRadius:12},
