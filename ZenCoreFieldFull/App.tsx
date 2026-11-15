@@ -21,6 +21,7 @@ const BUILD_TAG='ZENCORE_FIELD_V37_COMPACT_ODOO_PLANS';
 if (__DEV__) console.log('[ZenCore Build]',BUILD_TAG);
 const createId=()=>`${Date.now()}-${Math.random().toString(36).slice(2)}`;
 const planScope=(host:string,login:string)=>`v1_${host.trim().toLowerCase()}_${login.trim().toLowerCase()}`;
+const onlyOwnerPlans=(items:Odoo.RemotePlan[],userId:number)=>items.filter(plan=>plan.salesperson_id===userId);
 const purposes=[{key:'followup',label:'Follow Up'},{key:'order',label:'New Order'},{key:'payment',label:'Payment Collection'},{key:'complaint',label:'Complaint Resolution'},{key:'demo',label:'Product Demo'}];
 const formatMoney=(n:number)=>`৳ ${Number(n||0).toFixed(2)}`;
 const freshPlan=():Plan=>({localId:createId(),name:'New Visit Plan',date:TODAY(),purpose:'followup',priority:'normal',targets:[],transport:0,food:0,other:0,state:'draft',notes:''});
@@ -147,7 +148,6 @@ export default function App(){
  const [dashboard,setDashboard]=useState<Odoo.FieldDashboard|null>(null);
  const [localTotalKm,setLocalTotalKm]=useState(0);
  const [todaySummary,setTodaySummary]=useState<Odoo.FieldTodaySummary|null>(null);
- const [approvals,setApprovals]=useState<Odoo.ApprovalRequest[]>([]);
  const notify=(v:string)=>{
   setMessage('');
   const tone:DialogTone=/failed|error|denied|cannot|invalid|required|must |not found|locked|rejected|timeout/i.test(v)?'error':'success';
@@ -181,8 +181,8 @@ export default function App(){
      try {const [plansResult,profileResult,dashboardResult,todayResult]=await Promise.allSettled([
       Odoo.myVisitPlans(),Odoo.fieldProfile(),Odoo.fieldDashboard(),Odoo.fieldTodaySummary()]);
       if(cancelled)return;
-      if(plansResult.status==='fulfilled')setServerPlans(plansResult.value.plans||[]);
       if(profileResult.status==='fulfilled'){setProfile(profileResult.value);setUserName(profileResult.value.name);}
+      if(plansResult.status==='fulfilled')setServerPlans(profileResult.status==='fulfilled'?onlyOwnerPlans(plansResult.value.plans||[],profileResult.value.id):[]);
       if(dashboardResult.status==='fulfilled')setDashboard(dashboardResult.value);
       if(todayResult.status==='fulfilled')setTodaySummary(todayResult.value);}
      catch(error){if(__DEV__)console.log('[ZenCore AutoSync] Plan refresh deferred:',error instanceof Error?error.message:String(error))}
@@ -210,7 +210,6 @@ export default function App(){
   }).catch(()=>{});
   return()=>{cancelled=true};
  },[connected,online,activePlanId]);
- useEffect(()=>{if(tab==='Visits'&&connected){Odoo.getPendingApprovals().then(v=>setApprovals(v.approvals)).catch(()=>{});}},[tab,connected]);
  useEffect(()=>{if(tab!=='Visits'||serverDetail===null)return;let alive=true;
   const poll=async()=>{
    try{
@@ -247,20 +246,16 @@ export default function App(){
  const go=(t:Tab)=>{setTab(t);setEditing(null);setDetail(null);setServerDetail(null)};
  const run=async(action:()=>Promise<void>)=>{if(busy)return;setBusy(true);try{await action()}catch(e){notify(e instanceof Error?e.message:String(e))}finally{setBusy(false);await refresh()}};
  const fetchServer=()=>run(async()=>{
-  const [result, pendingApprovals]=await Promise.all([Odoo.myVisitPlans(),Odoo.getPendingApprovals()]);
-  setServerPlans(result.plans);setApprovals(pendingApprovals.approvals);
- });
- const refreshApprovals=()=>run(async()=>setApprovals((await Odoo.getPendingApprovals()).approvals));
- const decidePlan=(id:number,decision:'approve'|'reject')=>run(async()=>{
-   await Odoo.decideApproval(id,decision);
-   setApprovals((await Odoo.getPendingApprovals()).approvals);
-   setServerPlans((await Odoo.myVisitPlans()).plans);
+  const activeProfile=await Odoo.fieldProfile();
+  const result=await Odoo.myVisitPlans();
+  setProfile(activeProfile);setUserName(activeProfile.name);setEmail(activeProfile.login);
+  setServerPlans(onlyOwnerPlans(result.plans||[],activeProfile.id));
  });
  const login=()=>run(async()=>{const name=await Odoo.login(host,database,email,password);setPassword('');setConnected(true);setUserName(name);const scope=planScope(host,email);setPlanOwnerKey(scope);setLocalPlans(await getPlans(scope));triggerAutoSync(true);
   const [p,d,t]=await Promise.allSettled([Odoo.fieldProfile(),Odoo.fieldDashboard(),Odoo.fieldTodaySummary()]);
   if(p.status==='fulfilled'){setProfile(p.value);setUserName(p.value.name);setEmail(p.value.login);const scope=planScope(host,p.value.login);setPlanOwnerKey(scope);setLocalPlans(await getPlans(scope));}
   if(d.status==='fulfilled')setDashboard(d.value);if(t.status==='fulfilled')setTodaySummary(t.value);
-  try{const result=await Odoo.myVisitPlans();setServerPlans(result.plans||[]);triggerAutoSync();notify('Connected to Odoo as '+name)}catch(e){notify('Odoo login succeeded, but loading Visit Plans failed: '+(e instanceof Error?e.message:String(e)))}});
+  try{const result=await Odoo.myVisitPlans();setServerPlans(p.status==='fulfilled'?onlyOwnerPlans(result.plans||[],p.value.id):[]);triggerAutoSync();notify('Connected to Odoo as '+name)}catch(e){setServerPlans([]);notify('Odoo login succeeded, but loading Visit Plans failed: '+(e instanceof Error?e.message:String(e)))}});
  const addTarget=()=>{if(!editing)return;if(!target.customerId){notify('Tap the Customer field and select an Odoo customer from the list.');return}if(!target.from.trim()||!target.to.trim()){notify('Enter both From and To locations.');return}updateEdit({targets:[...editing.targets,target]});setTarget({id:createId(),customer:'',from:'',to:'',notes:''});setSearch('');setCustomerList([]);setCustomerPickerOpen(false)};
  // Load the first 50 readable contacts as soon as the picker opens. A request ID
  // protects against older search responses replacing a newer query.
@@ -299,6 +294,18 @@ export default function App(){
      if(await getPendingStopPlan())throw Error('Previous tracking stop is still pending Odoo confirmation.');
    }
    if(!online || !connected)throw Error('An internet connection and Odoo login are required to switch plans. Existing tracking is not changed.');
+   // Recheck the live Odoo session immediately before a write. This prevents a
+   // plan returned by an earlier account session from ever being started after
+   // a shared phone changes user.
+   const activeProfile=await Odoo.fieldProfile();
+   const selectedPlan=serverPlans.find(plan=>plan.id===planId);
+   if(!selectedPlan || selectedPlan.salesperson_id!==activeProfile.id){
+     const latest=await Odoo.myVisitPlans();
+     setProfile(activeProfile);setUserName(activeProfile.name);setEmail(activeProfile.login);
+     setServerPlans(onlyOwnerPlans(latest.plans||[],activeProfile.id));
+     setServerDetail(null);
+     throw Error('This Visit Plan is not assigned to the currently logged-in account. The plan list was refreshed.');
+   }
    if(prior.active && prior.planId===planId){setTab('Tracking');return;}
    const oldPlanId=prior.active?prior.planId:null;
    const oldTrackerId=prior.active?prior.trackerId:null;
@@ -337,7 +344,7 @@ export default function App(){
    setTrackerId(newTrackerId);setActivePlanId(planId);setTracking(true);
    setTab('Tracking');setTrackingNeedsRepair(false);
    triggerAutoSync(true);
-   try{setServerPlans((await Odoo.myVisitPlans()).plans)}catch(_error){}
+   try{setServerPlans(onlyOwnerPlans((await Odoo.myVisitPlans()).plans,activeProfile.id))}catch(_error){}
    notify(isSwitch?`Previous tracking stopped. Plan #${planId} is now recording.`:`GPS recording started for Plan #${planId}.`);
  });
  const startApprovedPlan=async(planId:number)=>{
