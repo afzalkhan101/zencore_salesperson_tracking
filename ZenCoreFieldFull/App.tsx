@@ -182,7 +182,10 @@ export default function App(){
       Odoo.myVisitPlans(),Odoo.fieldProfile(),Odoo.fieldDashboard(),Odoo.fieldTodaySummary()]);
       if(cancelled)return;
       if(profileResult.status==='fulfilled'){setProfile(profileResult.value);setUserName(profileResult.value.name);}
-      if(plansResult.status==='fulfilled')setServerPlans(profileResult.status==='fulfilled'?onlyOwnerPlans(plansResult.value.plans||[],profileResult.value.id):[]);
+      if(plansResult.status==='fulfilled'){
+       const owned=profileResult.status==='fulfilled'?onlyOwnerPlans(plansResult.value.plans||[],profileResult.value.id):[];
+       setServerPlans(owned);setServerDetail(current=>current!==null&&owned.some(plan=>plan.id===current)?current:null);
+      }
       if(dashboardResult.status==='fulfilled')setDashboard(dashboardResult.value);
       if(todayResult.status==='fulfilled')setTodaySummary(todayResult.value);}
      catch(error){if(__DEV__)console.log('[ZenCore AutoSync] Plan refresh deferred:',error instanceof Error?error.message:String(error))}
@@ -249,7 +252,8 @@ export default function App(){
   const activeProfile=await Odoo.fieldProfile();
   const result=await Odoo.myVisitPlans();
   setProfile(activeProfile);setUserName(activeProfile.name);setEmail(activeProfile.login);
-  setServerPlans(onlyOwnerPlans(result.plans||[],activeProfile.id));
+  const owned=onlyOwnerPlans(result.plans||[],activeProfile.id);
+  setServerPlans(owned);setServerDetail(current=>current!==null&&owned.some(plan=>plan.id===current)?current:null);
  });
  const login=()=>run(async()=>{const name=await Odoo.login(host,database,email,password);setPassword('');setConnected(true);setUserName(name);const scope=planScope(host,email);setPlanOwnerKey(scope);setLocalPlans(await getPlans(scope));triggerAutoSync(true);
   const [p,d,t]=await Promise.allSettled([Odoo.fieldProfile(),Odoo.fieldDashboard(),Odoo.fieldTodaySummary()]);
@@ -324,6 +328,16 @@ export default function App(){
      await GPS.startTracking(result.tracker_id,planId);
    }catch(error){
      const reasons=[error instanceof Error?error.message:String(error)];
+     const ownershipMismatch=/Visit plan not found for your account/i.test(reasons[0]);
+     if(ownershipMismatch){
+       try{
+         const latestProfile=await Odoo.fieldProfile();
+         const latestPlans=await Odoo.myVisitPlans();
+         setProfile(latestProfile);setUserName(latestProfile.name);setEmail(latestProfile.login);
+         setServerPlans(onlyOwnerPlans(latestPlans.plans||[],latestProfile.id));
+       }catch(_refreshError){}
+       setServerDetail(null);setRemoteDetailData(null);setCustomerVisits([]);setCheckinIds({});
+     }
      if(remoteStarted){
        try{await Odoo.stopPlanTracking(planId)}catch(e){reasons.push('New Odoo tracker may remain active; check Odoo before retrying.')}
      }
@@ -339,7 +353,9 @@ export default function App(){
          reasons.push('Automatic recovery failed. Review Tracking screen and Odoo tracker state before starting again.');
        }
      }
-     throw Error(reasons.join(' '));
+     throw Error(ownershipMismatch
+       ? 'Your Odoo account session changed. Only plans assigned to the current account are shown; the list has been refreshed.'
+       : reasons.join(' '));
    }
    setTrackerId(newTrackerId);setActivePlanId(planId);setTracking(true);
    setTab('Tracking');setTrackingNeedsRepair(false);
@@ -400,7 +416,21 @@ export default function App(){
    go('Visits');
  };
  const openServerPlan=(id:number)=>run(async()=>{
+   // Read the current authenticated identity and its plan list first. A phone
+   // can switch accounts while a previous screen is still mounted.
+   const activeProfile=await Odoo.fieldProfile();
+   const latest=await Odoo.myVisitPlans();
+   const owned=onlyOwnerPlans(latest.plans||[],activeProfile.id);
+   setProfile(activeProfile);setUserName(activeProfile.name);setEmail(activeProfile.login);setServerPlans(owned);
+   if(!owned.some(plan=>plan.id===id)){
+     setServerDetail(null);setRemoteDetailData(null);setCustomerVisits([]);setCheckinIds({});
+     throw Error('This Visit Plan is not assigned to the currently logged-in account. The plan list was refreshed.');
+   }
    const detailed=await Odoo.getPlanDetail(id);
+   if(detailed.plan.salesperson_id!==activeProfile.id){
+     setServerDetail(null);setRemoteDetailData(null);setCustomerVisits([]);setCheckinIds({});
+     throw Error('This Visit Plan is not assigned to the currently logged-in account. The plan list was refreshed.');
+   }
    setRemoteDetailData(detailed.plan);
    // Load plan-scoped customer status so automatic server geofence events are
    // reflected in the mobile UI (including an active check-in ID).
@@ -541,7 +571,7 @@ export default function App(){
    <Info label="App Version" value="v1"/>
    <B variant="light" onPress={()=>setProfileCustomersOpen(v=>!v)}>{profileCustomersOpen?'Close Customers':'Customers / Add Customer'}</B>
    <B variant="danger" onPress={()=>{
-      const perform=()=>run(async()=>{await Odoo.logout();setConnected(false);setProfile(null);setDashboard(null);setUserName('');setServerPlans([]);setPlanOwnerKey('');setLocalPlans([]);setEmail('');setPassword('');notify('Signed out. Local unsynced records have not been deleted.');});
+      const perform=()=>run(async()=>{await Odoo.logout();setConnected(false);setProfile(null);setDashboard(null);setUserName('');setServerPlans([]);setServerDetail(null);setRemoteDetailData(null);setCustomerVisits([]);setCheckinIds({});setPlanOwnerKey('');setLocalPlans([]);setEmail('');setPassword('');notify('Signed out. Local unsynced records have not been deleted.');});
       if(tracking||pending>0||pendingPhotos>0){Alert.alert('Sign out?', 'Tracking or unsynced data may need Odoo access. Local records will be preserved, but auto-upload pauses until you sign in again.',[{text:'Cancel',style:'cancel'},{text:'Sign Out',style:'destructive',onPress:perform}]);}
       else perform();
    }}>Sign Out</B>
