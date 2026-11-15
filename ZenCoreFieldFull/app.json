@@ -6,7 +6,7 @@
     "version": "1.4.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/zencore-field-app-icon.png",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.zencore.field",
@@ -32,7 +32,7 @@
       ],
       "adaptiveIcon": {
         "backgroundColor": "#E8F8ED",
-        "foregroundImage": "./assets/android-icon-foreground.png"
+        "foregroundImage": "./assets/zencore-field-app-icon.png"
       }
     },
     "plugins": [
