@@ -31,6 +31,8 @@ const HTML = `<!DOCTYPE html><html lang="en"><head><meta name="viewport" content
  const headingBetween=(a,b)=>{if(!a||!b||(a.latitude===b.latitude&&a.longitude===b.longitude))return 0;const fromLat=a.latitude*Math.PI/180,toLat=b.latitude*Math.PI/180,dLng=(b.longitude-a.longitude)*Math.PI/180;const x=Math.sin(dLng)*Math.cos(toLat),y=Math.cos(fromLat)*Math.sin(toLat)-Math.sin(fromLat)*Math.cos(toLat)*Math.cos(dLng);return (Math.atan2(x,y)*180/Math.PI+360)%360;};
  const directionArrow=(latlng,heading,label,active)=>{const safeHeading=Number.isFinite(heading)?((heading%360)+360)%360:0;const state=active?'active':'offline';return L.marker(latlng,{icon:L.divIcon({className:'zc-live-direction-icon',html:'<div class="zc-live-direction '+state+'"><div class="zc-live-name">'+escapeHtml(label||'You')+'</div><div class="zc-live-arrow-stage"><span class="zc-live-pulse"></span><svg class="zc-live-arrow" viewBox="0 0 32 32" style="transform:rotate('+safeHeading+'deg)" aria-hidden="true"><path d="M16 2 30 28 16 22 2 28Z"></path></svg></div></div>',iconSize:[82,65],iconAnchor:[41,53]})});};
  const terminalPerson=(latlng,label)=>L.marker(latlng,{icon:L.divIcon({className:'zc-live-terminal-icon',html:'<div class="zc-live-terminal"><div class="zc-live-terminal-name">'+escapeHtml(label||'You')+'</div><svg width="14" height="19" viewBox="0 0 48 64" aria-label="Last recorded location"><path d="M24 62 13.5 45h21z" fill="#123b62"/><ellipse cx="24" cy="42" rx="20" ry="8" fill="#d7f6ef" stroke="#0f766e" stroke-width="2.4"/><circle cx="24" cy="13" r="7" fill="#0f172a"/><path d="M16.5 24.5c0-4.1 3.3-7.4 7.5-7.4s7.5 3.3 7.5 7.4v17.7c0 2.1-1.7 3.8-3.8 3.8h-1.3V31.5h-4.8V46h-1.3c-2.1 0-3.8-1.7-3.8-3.8z" fill="#0f172a"/><path d="M18.2 28.5h11.6" stroke="#334155" stroke-width="1.3" opacity=".75"/></svg></div>',iconSize:[70,39],iconAnchor:[35,32]})});
+ const terminalGraphic='<svg width="28" height="38" viewBox="0 0 48 64" role="img" aria-label="Current salesperson location"><path d="M24 62 13.5 45h21z" fill="#123b62"/><ellipse cx="24" cy="42" rx="20" ry="8" fill="#d7f6ef" stroke="#0f766e" stroke-width="2.4"/><circle cx="24" cy="13" r="7" fill="#0f172a"/><path d="M16.5 24.5c0-4.1 3.3-7.4 7.5-7.4s7.5 3.3 7.5 7.4v17.7c0 2.1-1.7 3.8-3.8 3.8h-1.3V31.5h-4.8V46h-1.3c-2.1 0-3.8-1.7-3.8-3.8z" fill="#0f172a"/><path d="M18.2 28.5h11.6" stroke="#334155" stroke-width="1.3" opacity=".75"/></svg>';
+ const terminalPersonIcon=(latlng,label)=>L.marker(latlng,{icon:L.divIcon({className:'zc-live-terminal-icon',html:'<div class="zc-live-terminal"><div class="zc-live-terminal-name">'+escapeHtml(label||'You')+'</div>'+terminalGraphic+'</div>',iconSize:[80,65],iconAnchor:[40,56]})}).addTo(map);
  window.updateZenCoreMap=function(payload){
   try{
    const points=Array.isArray(payload.points)?payload.points.filter(p=>Number.isFinite(p.latitude)&&Number.isFinite(p.longitude)&&Math.abs(p.latitude)<=90&&Math.abs(p.longitude)<=180):[];
@@ -63,7 +65,8 @@ const HTML = `<!DOCTYPE html><html lang="en"><head><meta name="viewport" content
    // tracking it moves with the latest GPS fix; after Stop it remains on the
    // final recorded fix.
    if(live){
-    last=terminalPerson(live,payload.label);
+    if(last){map.removeLayer(last);last=null;}
+    last=terminalPersonIcon(live,payload.label);
     // Keep the mobile tracking marker visually consistent with Odoo's
     // person/location terminal while making it readable on a phone map.
     const terminalSvg=last.getElement()?.querySelector('svg');
