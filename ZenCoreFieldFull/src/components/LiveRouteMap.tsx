@@ -9,7 +9,7 @@ import {getLastTrackingIdentity, getRecordedRoute, getTrackingIdentity, type Rou
 // Map tiles are for interactive viewing only; this app never bulk-downloads tiles.
 const HTML = `<!DOCTYPE html><html lang="en"><head><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no"/>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="anonymous" />
-<style>html,body,#map{height:100%;width:100%;margin:0;background:#e8f4ed;font-family:sans-serif}#notice{position:absolute;top:12px;left:12px;right:12px;z-index:999;background:#fff;padding:10px;border-radius:9px;font-size:12px;color:#184a68;box-shadow:0 2px 8px #0001} .leaflet-control-attribution{font-size:10px!important}.zc-walker{background:transparent;border:0}.zc-walker-pin{width:36px;height:54px;display:block;background:transparent;border:0;filter:drop-shadow(0 1px 1px #1234)}.zc-walker-pin img{display:block;width:36px;height:54px;object-fit:contain}.zc-mobile-customer-target{background:transparent;border:0}#zc-route-legend{position:absolute;bottom:27px;left:10px;z-index:500;display:flex;flex-direction:column;gap:7px;background:rgba(255,255,255,.95);border-radius:10px;padding:9px 11px;box-shadow:0 1px 8px #2342;pointer-events:none;font-size:11px;color:#24334d}#zc-route-legend .row{display:flex;align-items:center;gap:8px}#zc-route-legend .blue{width:28px;border-top:5px solid #0860F9;border-radius:5px}#zc-route-legend .dots{width:28px;border-top:5px dotted #F5B400}</style></head><body>
+<style>html,body,#map{height:100%;width:100%;margin:0;background:#e8f4ed;font-family:sans-serif}#map{touch-action:none;-webkit-user-select:none;user-select:none}#notice{position:absolute;top:12px;left:12px;right:12px;z-index:999;background:#fff;padding:10px;border-radius:9px;font-size:12px;color:#184a68;box-shadow:0 2px 8px #0001} .leaflet-control-attribution{font-size:10px!important}.zc-walker{background:transparent;border:0}.zc-walker-pin{width:36px;height:54px;display:block;background:transparent;border:0;filter:drop-shadow(0 1px 1px #1234)}.zc-walker-pin img{display:block;width:36px;height:54px;object-fit:contain}.zc-mobile-customer-target{background:transparent;border:0}#zc-route-legend{position:absolute;bottom:27px;left:10px;z-index:500;display:flex;flex-direction:column;gap:7px;background:rgba(255,255,255,.95);border-radius:10px;padding:9px 11px;box-shadow:0 1px 8px #2342;pointer-events:none;font-size:11px;color:#24334d}#zc-route-legend .row{display:flex;align-items:center;gap:8px}#zc-route-legend .blue{width:28px;border-top:5px solid #0860F9;border-radius:5px}#zc-route-legend .dots{width:28px;border-top:5px dotted #F5B400}</style></head><body>
 <style>.zc-live-direction-icon{background:transparent;border:0}.zc-live-direction{position:relative;display:flex;flex-direction:column;align-items:center;width:82px;height:65px}.zc-live-name{max-width:78px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:3px 8px;border-radius:8px;background:#102d4d;color:#fff;font:700 10px/1.2 sans-serif;box-shadow:0 2px 7px #1235}.zc-live-arrow-stage{position:relative;display:grid;place-items:center;width:36px;height:39px}.zc-live-arrow{position:relative;z-index:2;width:30px;height:32px;overflow:visible;transform-origin:50% 50%;filter:drop-shadow(0 2px 2px #1235)}.zc-live-arrow path{fill:#2563eb;stroke:#fff;stroke-width:2.25px;stroke-linejoin:round}.zc-live-pulse{position:absolute;z-index:1;bottom:3px;left:50%;width:18px;height:8px;margin-left:-9px;border:2px solid #2dd4bf;border-radius:50%;background:#2dd4bf2d;box-shadow:0 0 5px #0d948699;transform-origin:center}.zc-live-direction.active .zc-live-pulse{animation:zc-live-radar 1.8s ease-out infinite}.zc-live-direction.offline .zc-live-arrow{opacity:.6;filter:grayscale(1) drop-shadow(0 1px 1px #0003)}.zc-live-direction.offline .zc-live-name{background:#6b7280}.zc-live-direction.offline .zc-live-pulse{display:none}@keyframes zc-live-radar{0%{transform:scale(.7);opacity:.9}100%{transform:scale(2.9);opacity:0}}@media (prefers-reduced-motion:reduce){.zc-live-direction.active .zc-live-pulse{animation:none}}</style>
 <style>.zc-live-terminal-icon{background:transparent;border:0}.zc-live-terminal{position:relative;display:flex;flex-direction:column;align-items:center;width:70px;height:39px}.zc-live-terminal img{width:14px;height:19px;margin-top:-1px;filter:drop-shadow(0 1px 1px #1235)}.zc-live-terminal-name{position:relative;z-index:2;max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:2px 7px;border-radius:8px;background:#64748b;color:#fff;font:700 9px/1.2 sans-serif;box-shadow:0 2px 7px #1235}</style>
 <div id="map"></div><div id="notice">Loading OpenStreetMap…</div><div id="zc-route-legend" style="display:none"><div class="row"><span class="blue"></span><span>Recorded GPS route</span></div><div class="row"><span class="dots"></span><span>Disconnected · no GPS</span></div></div>
@@ -18,7 +18,7 @@ const HTML = `<!DOCTYPE html><html lang="en"><head><meta name="viewport" content
 (function(){
  const tell=(type,message)=>window.ReactNativeWebView&&window.ReactNativeWebView.postMessage(JSON.stringify({type,message}));
  if(typeof L==='undefined'){document.getElementById('notice').textContent='Map library needs an internet connection.';tell('error','Leaflet failed to load');return;}
- const map=L.map('map',{zoomControl:true,attributionControl:true}).setView([0,0],2);
+ const map=L.map('map',{zoomControl:true,attributionControl:true,dragging:true,touchZoom:true,doubleClickZoom:true,scrollWheelZoom:true,zoomAnimation:true,fadeAnimation:true,markerZoomAnimation:true,inertia:true,inertiaDeceleration:2800,inertiaMaxSpeed:1800}).setView([0,0],2);
  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap contributors'}).addTo(map);
  const lines=L.layerGroup().addTo(map);
  let last=null,first=null,target=null,initial=true,following=true;
@@ -80,7 +80,7 @@ const HTML = `<!DOCTYPE html><html lang="en"><head><meta name="viewport" content
    if(live||coords.length){notice.style.display='none';}else{notice.style.display='block';notice.textContent='Waiting for location. Open a Visit Plan to record a route.';}
    if(initial){if(coords.length>1){map.fitBounds(L.latLngBounds(coords).pad(.25),{maxZoom:16});initial=false;}
      else if(live){map.setView(live,15);initial=false;}}
-   else if(live&&following){map.panTo(live,{animate:false});}
+   else if(live&&following){map.panTo(live,{animate:true,duration:.45,easeLinearity:.25,noMoveStart:true});}
    tell('updated',String(points.length));
   }catch(err){tell('error',String(err));}
  };
@@ -89,7 +89,7 @@ const HTML = `<!DOCTYPE html><html lang="en"><head><meta name="viewport" content
 </script></body></html>`;
 
 type Point={latitude:number;longitude:number;heading?:number|null};
-export default function LiveRouteMap({active,online,destination,label}:{active:boolean;online:boolean|null;destination?:Point|null;label?:string}){
+export default function LiveRouteMap({active,online,destination,label,onInteractionChange}:{active:boolean;online:boolean|null;destination?:Point|null;label?:string;onInteractionChange?:(active:boolean)=>void}){
  const view=useRef<WebView<{}>>(null);
  const [route,setRoute]=useState<RouteFix[]>([]);
  const [current,setCurrent]=useState<Point|null>(null);
@@ -134,7 +134,10 @@ export default function LiveRouteMap({active,online,destination,label}:{active:b
    <WebView<{}> ref={view} source={{html:HTML}}
     originWhitelist={['*']} javaScriptEnabled domStorageEnabled
     mixedContentMode="never" setSupportMultipleWindows={false}
-    cacheEnabled
+    cacheEnabled nestedScrollEnabled
+    onTouchStart={()=>onInteractionChange?.(true)}
+    onTouchEnd={()=>onInteractionChange?.(false)}
+    onTouchCancel={()=>onInteractionChange?.(false)}
     userAgent="ZenCoreField/2.2 (ReactNativeWebView; interactive map)"
     onMessage={event=>{try{const msg=JSON.parse(event.nativeEvent.data);if(msg.type==='ready'){setReady(true);setError('')}else if(msg.type==='error'){setError(msg.message)}}catch{}}}
     onError={e=>setError(e.nativeEvent.description||'Map WebView failed')}
