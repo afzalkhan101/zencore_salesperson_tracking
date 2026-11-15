@@ -17,6 +17,10 @@ class SalespersonVisitPlanLine(models.Model):
 
     # Route Info
     from_location = fields.Char(string="From Location")
+    from_latitude = fields.Float(string="From Latitude", digits=(10, 7))
+    from_longitude = fields.Float(string="From Longitude", digits=(10, 7))
+    # Filled automatically from the selected customer. Kept for historic route
+    # compatibility, but never entered or shown as a separate form field.
     to_location = fields.Char(string="To Location")
     expected_km = fields.Float(string="Expected KM", digits=(16, 2))
 

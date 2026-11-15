@@ -207,7 +207,7 @@ export const switchPlanTracking = (planId:number) => call<{
 export type RemotePlanDetail = RemotePlan & {
  priority:string; transport:number;food:number;other:number;total_cost:number;notes:string;
  targets:{id:number; employee_ids:number[];employee_names:string[];
- customer_ids:number[];customer_names:string[];customer_locations?:{id:number;latitude:number|null;longitude:number|null}[];from_location:string;to_location:string;
+ customer_ids:number[];customer_names:string[];customer_locations?:{id:number;latitude:number|null;longitude:number|null}[];from_location:string;from_latitude?:number;from_longitude?:number;to_location?:string;
  expected_km:number;notes:string}[];
 };
 export const getPlanDetail=(id:number)=>call<{ok:boolean;plan:RemotePlanDetail}>(`/zencore/field/v4/plans/${id}`);

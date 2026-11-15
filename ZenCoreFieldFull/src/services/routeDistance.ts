@@ -1,5 +1,6 @@
 /** Route preview: address lookup is initiated after address entry, never autocomplete. */
 export type RoadDistance = {km:number; fromLabel:string; toLabel:string};
+export type RoutePoint = {latitude:number;longitude:number;label:string};
 const addressCache = new Map<string,{lat:number;lon:number;label:string}>();
 const distanceCache = new Map<string,RoadDistance>();
 let previousGeocodeAt=0;
@@ -32,4 +33,20 @@ export async function calculateRoadKm(from:string,to:string):Promise<RoadDistanc
  const meters=Number(result?.routes?.[0]?.distance);
  if(result?.code!=='Ok'||!Number.isFinite(meters)||meters<0)throw Error('Road route not available for these addresses');
  const answer={km:Math.round(meters/10)/100,fromLabel:a.label,toLabel:b.label};distanceCache.set(key,answer);return answer;
+}
+export async function calculateRoadKmForPoints(from:RoutePoint,to:RoutePoint):Promise<RoadDistance>{
+ if(!Number.isFinite(from.latitude)||!Number.isFinite(from.longitude)||!Number.isFinite(to.latitude)||!Number.isFinite(to.longitude))throw Error('Select valid map locations first.');
+ const endpoint=(process.env.EXPO_PUBLIC_ZC_ROUTING_URL||'https://router.project-osrm.org/route/v1/driving').replace(/\/$/,'');
+ const result=await getJson(`${endpoint}/${from.longitude},${from.latitude};${to.longitude},${to.latitude}?overview=false&steps=false`,15000);
+ const meters=Number(result?.routes?.[0]?.distance);
+ if(result?.code!=='Ok'||!Number.isFinite(meters)||meters<0)throw Error('Road route is not available for these locations.');
+ return {km:Math.round(meters/10)/100,fromLabel:from.label,toLabel:to.label};
+}
+export async function findAddressLocation(address:string):Promise<RoutePoint>{
+ const point=await geocode(address);
+ return {latitude:point.lat,longitude:point.lon,label:point.label};
+}
+export async function reverseLocation(latitude:number,longitude:number):Promise<RoutePoint>{
+ const data=await getJson(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18&lat=${latitude}&lon=${longitude}`);
+ return {latitude,longitude,label:String(data?.display_name||`Lat ${latitude.toFixed(6)}, Lng ${longitude.toFixed(6)}`)};
 }

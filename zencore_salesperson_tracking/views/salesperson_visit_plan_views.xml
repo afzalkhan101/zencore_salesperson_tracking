@@ -75,7 +75,6 @@
                                 <list editable="bottom" string="Target Lines">
                                     <field name="employee_ids" widget="many2many_tags"/>
                                     <field name="from_location" placeholder="From"/>
-                                    <field name="to_location" placeholder="To"/>
                                     <field name="expected_km" string="KM"/>
                                     <field name="customer_ids" widget="many2many_tags" placeholder="Customers"/>
                                     <field name="notes"/>

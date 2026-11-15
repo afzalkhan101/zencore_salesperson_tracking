@@ -353,14 +353,28 @@ class ZenCoreFieldMobileBridge(http.Controller):
                 if not 0<=km<=10000:
                     raise ValidationError('Expected KM is out of allowed range')
                 source=str(t.get('from') or '').strip()[:250]
-                destination=str(t.get('to') or '').strip()[:250]
-                if not source or not destination:
-                    raise ValidationError('Both From and To Location are required')
+                try:
+                    from_latitude=float(t.get('fromLatitude'))
+                    from_longitude=float(t.get('fromLongitude'))
+                except (TypeError, ValueError):
+                    raise ValidationError('Choose a valid From Location on the map or enter latitude and longitude')
+                if not source or not (-90 <= from_latitude <= 90 and -180 <= from_longitude <= 180):
+                    raise ValidationError('Choose a valid From Location on the map or enter latitude and longitude')
+                partners=Partner.search([('id','in',customer_ids)])
+                primary=partners.filtered(lambda p: p.id == customer_ids[0])
+                primary=primary[:1]
+                lat=primary.partner_latitude if 'partner_latitude' in primary._fields else False
+                lng=primary.partner_longitude if 'partner_longitude' in primary._fields else False
+                if lat in (False, None) or lng in (False, None):
+                    raise ValidationError('The first selected customer needs a saved map location before this plan can be created')
+                destination=', '.join(part for part in [primary.name, primary.street, primary.city, primary.country_id.name] if part)[:250]
                 lines.append((0,0,{
                     'sequence':(len(lines)+1)*10,
                     'customer_ids':[(6,0,customer_ids)],
                     'employee_ids':[(6,0,employee_ids)],
                     'from_location':source,
+                    'from_latitude':from_latitude,
+                    'from_longitude':from_longitude,
                     'to_location':destination,
                     'expected_km':km,
                     'notes':str(t.get('notes') or '')[:1000],
@@ -432,7 +446,8 @@ class ZenCoreFieldMobileBridge(http.Controller):
                         'longitude':partner.partner_longitude if 'partner_longitude' in partner._fields else None,
                     } for partner in line.customer_ids],
                     'from_location':line.from_location or '',
-                    'to_location':line.to_location or '',
+                    'from_latitude':line.from_latitude,
+                    'from_longitude':line.from_longitude,
                     'expected_km':line.expected_km,
                     'notes':line.notes or '',
                 } for line in plan.target_line_ids],

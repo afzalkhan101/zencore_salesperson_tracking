@@ -143,7 +143,7 @@
                                 <tr>
                                     <th>#</th>
                                     <th>Customer(s)</th>
-                                    <th>Route</th>
+                                    <th>From Location</th>
                                     <th class="right">Est. KM</th>
                                 </tr>
                             </thead>
@@ -157,11 +157,7 @@
                                             <t t-esc="', '.join(line.customer_ids.mapped('name'))"/>
                                         </td>
                                         <td>
-                                            <span class="route-chip">
-                                                <t t-esc="line.from_location"/>
-                                                <span class="route-arrow">→</span>
-                                                <t t-esc="line.to_location"/>
-                                            </span>
+                                            <span class="route-chip"><t t-esc="line.from_location"/></span>
                                         </td>
                                         <td class="right">
                                             <span class="pill blue">

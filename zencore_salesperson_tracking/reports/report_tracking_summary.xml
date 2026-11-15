@@ -207,7 +207,6 @@
                                     <th>#</th>
                                     <th>Customers</th>
                                     <th>From</th>
-                                    <th>To</th>
                                     <th class="right">Exp. KM</th>
                                 </tr>
                             </thead>
@@ -221,13 +220,12 @@
                                             <t t-esc="', '.join(tline.customer_ids.mapped('name'))"/>
                                         </td>
                                         <td><t t-esc="tline.from_location or '—'"/></td>
-                                        <td><t t-esc="tline.to_location or '—'"/></td>
                                         <td class="right"><t t-esc="tline.expected_km"/></td>
                                     </tr>
                                 </t>
                                 <t t-if="not tracker.target_line_ids">
                                     <tr>
-                                        <td colspan="5" style="text-align:center; color:#94a3b8; padding:20px;">
+                                        <td colspan="4" style="text-align:center; color:#94a3b8; padding:20px;">
                                             No target lines defined.
                                         </td>
                                     </tr>

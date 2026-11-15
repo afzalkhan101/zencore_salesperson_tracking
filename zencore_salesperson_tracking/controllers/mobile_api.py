@@ -514,7 +514,6 @@ class MobileApiController(http.Controller):
             target_lines = [{
                 'id': tl.id,
                 'from_location': tl.from_location or '',
-                'to_location': tl.to_location or '',
                 'expected_km': tl.expected_km or 0,
                 'customers': [{'id': c.id, 'name': c.name} for c in tl.customer_ids],
                 'notes': tl.notes or '',
