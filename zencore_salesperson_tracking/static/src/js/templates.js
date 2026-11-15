@@ -1017,18 +1017,18 @@
     const customerLayer = L.layerGroup().addTo(map);
 
     // This page runs in its own script scope, so it owns the same compact
-    // customer-target marker used by the dashboard and mobile map.
+    // customer-target marker used by the movement map.
     function customerTargetIcon(visited) {
         const fill = visited ? '#10b981' : '#06b6d4';
         const stroke = visited ? '#047857' : '#073b5c';
         return L.divIcon({
-            className: 'zc-customer-map-icon',
+            className: 'zc-route-customer-map-icon',
             html: '<svg viewBox="0 0 24 32" role="img" aria-label="Customer location">' +
                 '<path d="M12 31S1 19.3 1 11.8A11 11 0 1 1 23 11.8C23 19.3 12 31 12 31Z" fill="' + fill + '" stroke="' + stroke + '" stroke-width="1.6"/>' +
                 '<circle cx="12" cy="12" r="4.2" fill="#fff" stroke="' + stroke + '" stroke-width="1.45"/>' +
             '</svg>',
-            iconSize: [14, 19],
-            iconAnchor: [7, 18],
+            iconSize: [28, 38],
+            iconAnchor: [14, 36],
         });
     }
 
@@ -1100,8 +1100,8 @@
         return L.divIcon({
             className: 'zc-route-terminal-icon',
             html: '<img src="/zencore_salesperson_tracking/static/src/img/person_location_terminal.svg" alt="Salesperson location" />',
-            iconSize: [14, 19],
-            iconAnchor: [7, 17],
+            iconSize: [28, 38],
+            iconAnchor: [14, 36],
         });
     }
 
