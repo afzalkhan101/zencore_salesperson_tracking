@@ -62,7 +62,14 @@ const HTML = `<!DOCTYPE html><html lang="en"><head><meta name="viewport" content
    // Keep the person-and-location terminal visible in every state.  During
    // tracking it moves with the latest GPS fix; after Stop it remains on the
    // final recorded fix.
-   if(live){last=terminalPerson(live,payload.label);}
+   if(live){
+    last=terminalPerson(live,payload.label);
+    // Keep the mobile tracking marker visually consistent with Odoo's
+    // person/location terminal while making it readable on a phone map.
+    const terminalSvg=last.getElement()?.querySelector('svg');
+    if(terminalSvg){terminalSvg.setAttribute('width','28');terminalSvg.setAttribute('height','38');}
+    last.setZIndexOffset(1000);
+   }
    if(payload.destination&&Number.isFinite(payload.destination.latitude)&&Number.isFinite(payload.destination.longitude)){
       target=customerTarget([payload.destination.latitude,payload.destination.longitude]);
    }
