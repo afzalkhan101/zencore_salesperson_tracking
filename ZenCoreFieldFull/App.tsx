@@ -17,7 +17,7 @@ import CustomerManager from './src/components/CustomerManager';
 
 type Tab='Home'|'Visits'|'Tracking'|'Map'|'Profile';
 const TODAY=()=>new Date().toISOString().slice(0,10);
-const BUILD_TAG='ZENCORE_FIELD_V34_WEAK_PASSWORD_REGISTRATION';
+const BUILD_TAG='ZENCORE_FIELD_V35_OPEN_SALESPERSON_REGISTRATION';
 if (__DEV__) console.log('[ZenCore Build]',BUILD_TAG);
 const createId=()=>`${Date.now()}-${Math.random().toString(36).slice(2)}`;
 const purposes=[{key:'followup',label:'Follow Up'},{key:'order',label:'New Order'},{key:'payment',label:'Payment Collection'},{key:'complaint',label:'Complaint Resolution'},{key:'demo',label:'Product Demo'}];

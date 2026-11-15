@@ -23,13 +23,10 @@ class ZenCorePublicAccount(http.Controller):
         def reply(data, status=200):
             return request.make_response(json.dumps(data), headers=headers, status=status)
 
-        # Global admin policy, NOT per-account manager/CEO approval.
-        enabled = request.env['ir.config_parameter'].sudo().get_param(
-            'zencore_field_mobile_bridge.registration_enabled', 'False'
-        ).lower() in ('true', '1', 'yes')
-        if not enabled:
-            return reply({'ok': False, 'message':
-                          'Self-registration is disabled on this Odoo server. Contact your administrator.'}, 403)
+        # Mobile self-registration is intentionally open for this deployment.
+        # Accounts are still provisioned as Salesperson users only; the
+        # essential input, duplicate-account and abuse-rate checks below stay
+        # in place so malformed requests cannot create arbitrary Odoo users.
 
         try:
             raw = request.httprequest.get_data(cache=False, as_text=False)

@@ -19,9 +19,9 @@
 
 ## Mobile self-registration
 
-When the configuration parameter
-`zencore_field_mobile_bridge.registration_enabled` is enabled, the mobile app
-creates an active internal user with exactly these baseline permissions:
+The mobile app creates an active internal user directly; no administrator
+toggle or approval queue is required for account creation. Each account gets
+exactly these baseline permissions:
 
 - `base.group_user`
 - `zencore_salesperson_tracking.group_salesperson_salesman`
@@ -48,14 +48,11 @@ and the existing per-IP rate limit remain enabled.
      -u zencore_salesperson_tracking,zencore_field_mobile_bridge
    ```
 
-2. In Odoo, enable self-registration only if this is an intended public flow:
-   **Settings → Technical → System Parameters** → set
-   `zencore_field_mobile_bridge.registration_enabled` to `True`.
-3. Configure a company CEO manual approver when manual approval needs a fixed
+2. Configure a company CEO manual approver when manual approval needs a fixed
    fallback. If no reporting manager and no unique/configured CEO exists, a
    plan can still be submitted but is deliberately left without an approver;
    this avoids inventing privilege or silently auto-approving it.
-4. In the Expo app, open **Profile**. It shows the server-authoritative Role
+3. In the Expo app, open **Profile**. It shows the server-authoritative Role
    and Reports To name (or `Not assigned`).
 
 ## Test checklist

@@ -11,7 +11,7 @@
 ## Before testing (Odoo.sh staging)
 1. **Back up staging**. Upload the `zencore_field_mobile_bridge` addon from `odoo_addon/` or the bridge-only ZIP and update the existing addon in your repository. `zencore_salesperson_tracking` remains the same version from V29.
 2. Push changes and **Apps → ZenCore Field Mobile Bridge → Upgrade**. New bridge version `19.0.15.0.0`.
-3. As an Odoo System Administrator, open **Settings → Technical → Parameters → System Parameters** and set `zencore_field_mobile_bridge.registration_enabled` = `True`. This is a **one-time server policy**, not per-user approval. It is OFF by default to prevent unapproved public exposure.
+3. Self-registration is enabled by the mobile bridge route in this deployment; no System Parameter toggle or per-user approval is required.
 4. Optionally set `zencore_field_mobile_bridge.default_supervisor_user_id` to the integer ID of a supervisor belonging to the same Odoo company. If exactly one eligible supervisor exists, the backend auto-assigns that supervisor even without this parameter. If there are several, an Admin/Manager must configure reporting later; new account creation/login still works, but manual Visit Plan submission may require a supervisor.
 5. **Security:** Opening registration on an Internet-facing Odoo URL lets anyone who knows your URL and database name create a real internal Salesperson user. Internal Odoo licenses/seats may be consumed; email ownership is NOT verified. For production, use email OTP/invitation and stronger IP/account rate limiting, or leave registration OFF.
 
@@ -28,7 +28,7 @@ npx expo start --dev-client --clear
 Do NOT uninstall the current app or clear storage: unsynced GPS/photo data can be lost.
 
 ## Acceptance tests
-1. New email, name, valid phone, matching 10+-character letter-and-number password → generic confirmation → user can sign in immediately; `res.users` shows a new active **Salesperson** account.
+1. New email, name, valid phone, matching non-empty password (including `123`) → generic confirmation → user can sign in immediately; `res.users` shows a new active **Salesperson** account.
 2. Odoo user has only `base.group_user` + field Salesperson group, not CEO/Manager/Supervisor or System Administrator.
 3. User can create personal Visit Plan, select customers, and upload GPS/photos under own account. Starting GPS still requires an approved plan.
 4. A second registration with the same email does not create a second user or change the original password. The response is intentionally generic to avoid account enumeration.
