@@ -284,10 +284,24 @@
     padding: 0 2px;
 }
 
-.o_form_view.o_zc_report_wizard .o_list_view {
-    overflow: hidden;
+.o_form_view.o_zc_report_wizard .o_list_renderer {
+    /* Keep wide report tables readable without clipping their header row. */
+    overflow-x: auto !important;
+    overflow-y: visible !important;
     border: 1px solid #dcebed;
     border-radius: 12px;
+}
+
+.o_form_view.o_zc_report_wizard .o_list_view {
+    /* Odoo's embedded list header can be positioned above this element. */
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+}
+
+.o_form_view.o_zc_report_wizard .o_list_view .o_list_table {
+    min-width: 1260px;
+    margin: 0;
 }
 
 .o_form_view.o_zc_report_wizard .o_list_view thead {
@@ -295,10 +309,29 @@
 }
 
 .o_form_view.o_zc_report_wizard .o_list_view th {
+    height: auto !important;
+    min-height: 42px;
+    padding: 11px 12px !important;
     color: #547083;
     font-size: 11px;
     font-weight: 800;
+    line-height: 1.25;
     text-transform: uppercase;
+    vertical-align: middle;
+    white-space: nowrap !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+}
+
+.o_form_view.o_zc_report_wizard .o_list_view th .o_column_title {
+    overflow: visible !important;
+    text-overflow: clip !important;
+    white-space: nowrap !important;
+}
+
+.o_form_view.o_zc_report_wizard .o_list_view td {
+    padding: 10px 12px;
+    vertical-align: middle;
 }
 
 @media (max-width: 992px) {
