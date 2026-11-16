@@ -1,6 +1,7 @@
 import React,{useCallback,useEffect,useRef,useState} from 'react';
 import {startAutoSync,triggerAutoSync,type AutoSyncSnapshot} from './src/services/autoSync';
 import {Alert,ActivityIndicator,Animated,Easing,KeyboardAvoidingView,Modal,Platform,Pressable,ScrollView,StatusBar,StyleSheet,Text,TextInput,View,Image as RNImage,Linking} from 'react-native';
+import {SafeAreaProvider,useSafeAreaInsets} from 'react-native-safe-area-context';
 import {chooseAndQueuePhoto,deleteQueuedPhoto,getVisitPhotos,type VisitPhoto} from './src/services/photoEvidence';
 import {photoPendingCount} from './src/services/storage';
 import GradientBackground from './src/components/GradientBackground';
@@ -125,7 +126,8 @@ const visitPlanStatus=(state:string,planId:number|undefined,tracking:boolean,act
  const label=normalized?normalized.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()):'Not Started';
  return {label,tone:'gray' as const,hint:'Open plan →'};
 };
-export default function App(){
+function ZenCoreFieldApp(){
+ const insets=useSafeAreaInsets();
  const [tab,setTab]=useState<Tab>('Home');const [activePlanId,setActivePlanId]=useState<number|null>(null);const [plans,setLocalPlans]=useState<Plan[]>([]);const [planOwnerKey,setPlanOwnerKey]=useState('');const [serverPlans,setServerPlans]=useState<Odoo.RemotePlan[]>([]);
  const [editing,setEditing]=useState<Plan|null>(null);const [detail,setDetail]=useState<Plan|null>(null);const [serverDetail,setServerDetail]=useState<number|null>(null);
  const [customerList,setCustomerList]=useState<Customer[]>([]);const [search,setSearch]=useState('');const [customerPickerOpen,setCustomerPickerOpen]=useState(false);const [customersLoading,setCustomersLoading]=useState(false);const [customersMore,setCustomersMore]=useState(false);const [customersOffset,setCustomersOffset]=useState(0);const [target,setTarget]=useState<Target>({id:createId(),customer:'',from:'',to:'',notes:''});
@@ -619,10 +621,13 @@ export default function App(){
  </>}
  {!!message&&<Text style={st.message}>{message}</Text>}
  </ScrollView></KeyboardAvoidingView>
- <View style={st.nav}>{(['Home','Visits','Tracking','Map','Profile'] as Tab[]).map(t=><Pressable key={t} style={[st.navItem,tab===t&&st.navActive]} onPress={()=>go(t)}><Text style={[st.navIcon,tab===t&&{color:C.green}]}>{icons[t]}</Text><Text style={[st.navText,tab===t&&{color:C.green}]}>{t}</Text></Pressable>)}</View>
+ <View style={[st.nav,{paddingBottom:Math.max(insets.bottom,9)+6}]}>{(['Home','Visits','Tracking','Map','Profile'] as Tab[]).map(t=><Pressable key={t} style={[st.navItem,tab===t&&st.navActive]} onPress={()=>go(t)}><Text style={[st.navIcon,tab===t&&{color:C.green}]}>{icons[t]}</Text><Text style={[st.navText,tab===t&&{color:C.green}]}>{t}</Text></Pressable>)}</View>
  <ZenCoreDialog dialog={dialog} onClose={()=>setDialog(null)}/>
  {busy&&<View style={st.busy}><ActivityIndicator color={C.green} size="large"/></View>}
  </View>;
+}
+export default function App(){
+ return <SafeAreaProvider><ZenCoreFieldApp/></SafeAreaProvider>;
 }
 function Info({label,value}:{label:string;value:string}){return <View style={st.info}><Text style={st.muted}>{label}</Text><View style={infoValueStyle}><Text style={[st.body,{textAlign:'right'}]} numberOfLines={2}>{value}</Text></View></View>}
 function ZenCoreDialog({dialog,onClose}:{dialog:DialogState|null;onClose:()=>void}){
