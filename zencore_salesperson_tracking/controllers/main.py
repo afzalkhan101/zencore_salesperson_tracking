@@ -77,9 +77,15 @@ class SalespersonTrackingController(http.Controller):
         """
         source = str(kwargs.get("source") or "").strip().lower()
         requested_path = str(kwargs.get("return_to") or "").strip()
+        tracking_url = "/odoo/action-%s" % request.env.ref(
+            "zencore_salesperson_tracking.action_salesperson_tracker_kanban"
+        ).id
         allowed_sources = {
             "dashboard": ("/salesperson/dashboard", "Dashboard"),
             "live": ("/salesperson_tracking/live", "Live Tracking"),
+            # Maps opened from the backend Live Tracking kanban/form must
+            # return to that Odoo view, not to the standalone /live controls.
+            "tracking": (tracking_url, "Live Tracking"),
         }
         prefix, label = allowed_sources.get(source, (None, None))
         if prefix:
@@ -95,9 +101,6 @@ class SalespersonTrackingController(http.Controller):
                 return requested_path, label
             return prefix, label
 
-        tracking_url = "/odoo/action-%s" % request.env.ref(
-            "zencore_salesperson_tracking.action_salesperson_tracker_kanban"
-        ).id
         return tracking_url, "Tracking"
 
     def _check_access(self):

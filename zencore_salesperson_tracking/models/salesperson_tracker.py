@@ -1078,7 +1078,7 @@ class SalespersonTracker(models.Model):
             "tag": "salesperson_iframe_action",
             "name": "Movement Map",
             "params": {
-                "url": f"/salesperson_tracking/moving_map/{self.id}?_={int(time.time())}",
+                "url": f"/salesperson_tracking/moving_map/{self.id}?source=tracking&_={int(time.time())}",
                 "title": "Movement Map",
             },
         }

@@ -193,7 +193,7 @@
                                 </div>
                             </div>
                             <div class="zc-tracker-actions" onclick="event.stopPropagation()">
-                                <a t-attf-href="/salesperson_tracking/moving_map/#{record.id.raw_value}?source=live"
+                                <a t-attf-href="/salesperson_tracking/moving_map/#{record.id.raw_value}?source=tracking"
                                    class="zc-tracker-map-link" target="_blank">⌖ Open Movement Map</a>
                             </div>
                         </article>
