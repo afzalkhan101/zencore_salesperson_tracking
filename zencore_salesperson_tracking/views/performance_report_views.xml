@@ -138,6 +138,10 @@
 
     <menuitem id="menu_salesperson_reports_root" name="Reports" parent="menu_salesperson_tracking_root" sequence="34" groups="zencore_salesperson_tracking.group_salesperson_ceo,zencore_salesperson_tracking.group_salesperson_manager,zencore_salesperson_tracking.group_salesperson_supervisor"/>
     <menuitem id="menu_salesperson_performance_report" name="Performance Report" parent="menu_salesperson_reports_root" action="action_salesperson_performance_report" sequence="10" groups="zencore_salesperson_tracking.group_salesperson_ceo,zencore_salesperson_tracking.group_salesperson_manager,zencore_salesperson_tracking.group_salesperson_supervisor"/>
-    <!-- Reporting hierarchy lives with monitoring reports, not under the intentionally-hidden Organization navigation. -->
-    <menuitem id="menu_zc_reporting_hierarchy" name="Reporting Hierarchy" parent="menu_salesperson_reports_root" action="action_zc_hierarchy" sequence="5" groups="zencore_salesperson_tracking.group_salesperson_ceo,zencore_salesperson_tracking.group_salesperson_manager,zencore_salesperson_tracking.group_salesperson_supervisor"/>
+    <!-- The hierarchy action is retained for internal use, but it is not a
+         report navigation item.  Keep the historical menu record hidden on
+         existing databases during module upgrades. -->
+    <record id="menu_zc_reporting_hierarchy" model="ir.ui.menu">
+        <field name="groups_id" eval="[(6, 0, [ref('base.group_no_one')])]"/>
+    </record>
 </odoo>
