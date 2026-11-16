@@ -981,12 +981,11 @@
             event.preventDefault();
             const targetUrl = mapBackBtn.href;
             try {
-                // When embedded, navigate the Odoo client instead of the map iframe.
-                if (window.parent && window.parent !== window) {
-                    window.parent.location.assign(targetUrl);
-                } else {
-                    window.location.assign(targetUrl);
-                }
+                // Keep the Odoo web client intact. The map runs inside its own
+                // iframe, so only this frame must change page. Redirecting the
+                // parent would replace Odoo's shell and make the user appear
+                // to have left Odoo completely.
+                window.location.assign(targetUrl);
             } catch (error) {
                 window.location.assign(targetUrl);
             }
