@@ -575,7 +575,7 @@ export default function App(){
       else perform();
    }}>Sign Out</B>
    </Panel>
-   {profileCustomersOpen&&<CustomerManager onClose={()=>setProfileCustomersOpen(false)} onSaved={()=>{setCustomerList([]);setCustomersOffset(0);setCustomersMore(false);}}/>}
+   {profileCustomersOpen&&<CustomerManager onClose={()=>setProfileCustomersOpen(false)} onSaved={()=>{setCustomerList([]);setCustomersOffset(0);setCustomersMore(false);}} onMapInteractionChange={setMapInteracting}/>}
   </>:<>
    {authPage==='login'?<Panel>
     <Text style={st.cardTitle}>Connect to Odoo</Text>
