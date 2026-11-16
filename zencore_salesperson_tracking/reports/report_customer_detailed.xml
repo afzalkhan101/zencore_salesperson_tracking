@@ -74,6 +74,30 @@
                         .cdr-subtitle {font-weight:700; color:#173f73; margin-bottom:5px; font-size:10px;}
                         .cdr-photo {max-width:120px; max-height:92px; border:1px solid #cddced; border-radius:4px; padding:2px; background:#fff;}
                         .cdr-footer {margin-top:10px; border-top:1px solid #7a3fb0; padding-top:6px; color:#52709a; font-size:8.5px;}
+
+                        /* Print in a deliberately neutral palette.  These
+                           final declarations also cover the legacy semantic
+                           class names used by the detailed report. */
+                        .cdr-page {color:#1f1f1f; background:#fff;}
+                        .cdr-header {border-color:#cfcfcf; background:#fff;}
+                        .cdr-company-name,.cdr-title,.cdr-title .accent,.cdr-track,.cdr-meta strong,.cdr-value,.cdr-kpi-value,.cdr-detail-head,.cdr-subtitle {color:#171717;}
+                        .cdr-company-tag,.cdr-eyebrow,.cdr-meta,.cdr-label,.cdr-kpi-label,.cdr-footer {color:#5b5b5b;}
+                        .cdr-track-line {border-top-color:#222;}
+                        .cdr-meta,.cdr-split {border-color:#d0d0d0;}
+                        .cdr-section {background:#222; color:#fff;}
+                        .cdr-section-soft {background:#efefef; color:#222; border-color:#cfcfcf;}
+                        .cdr-card,.cdr-kpi-wrap,.cdr-detail {border-color:#cfcfcf; background:#fff;}
+                        .cdr-icon,.cdr-kpi-icon,.cdr-kpi.green .cdr-kpi-icon,.cdr-kpi.orange .cdr-kpi-icon,.cdr-kpi.purple .cdr-kpi-icon,.cdr-kpi.pink .cdr-kpi-icon,.cdr-kpi.teal .cdr-kpi-icon {color:#333;}
+                        .cdr-kpi,.cdr-kpi.blue,.cdr-kpi.green,.cdr-kpi.orange,.cdr-kpi.purple,.cdr-kpi.pink,.cdr-kpi.teal {background:#f6f6f6; border-color:#d4d4d4;}
+                        .cdr-table {border-color:#cfcfcf;}
+                        .cdr-table th {background:#efefef; color:#222; border-color:#c8c8c8;}
+                        .cdr-table td {border-color:#dedede; color:#222;}
+                        .cdr-status,.cdr-status.completed,.cdr-status.pending,.cdr-status.progress {background:#f1f1f1; color:#222; border:1px solid #c8c8c8;}
+                        .cdr-stars {color:#222;}
+                        .cdr-detail-head {background:#f2f2f2; border-bottom-color:#cfcfcf;}
+                        .cdr-subbox {border-color:#d4d4d4; background:#fafafa;}
+                        .cdr-photo {border-color:#c8c8c8;}
+                        .cdr-footer {border-top-color:#222;}
                     </style>
 
                     <div class="page cdr-page">
@@ -122,7 +146,7 @@
                             </div>
                         </div>
 
-                        <div class="cdr-section-soft">Summary <span style="float:right;font-size:9px;font-weight:400;color:#5b6f90;">Key highlights from the selected period</span></div>
+                        <div class="cdr-section-soft">Summary <span style="float:right;font-size:9px;font-weight:400;color:#555;">Key highlights from the selected period</span></div>
                         <div class="cdr-kpi-wrap">
                             <div class="row" style="margin:0 -2px;">
                                 <div class="col" style="padding:2px;"><div class="cdr-kpi blue"><div class="cdr-kpi-icon">●●●</div><div class="cdr-kpi-value" t-esc="doc.total_visits"/><div class="cdr-kpi-label">Total Visits</div></div></div>
@@ -191,8 +215,8 @@
                                         <t t-else=""><div class="cdr-company-name" t-esc="env.company.name"/></t>
                                     </div>
                                     <div class="col-5 text-center">
-                                        <div style="font-size:19px;font-weight:700;color:#1260a9;">Detailed Visit Information</div>
-                                        <div style="font-size:10px;color:#5d7395;" t-esc="doc.partner_id.name"/>
+                                        <div style="font-size:19px;font-weight:700;color:#171717;">Detailed Visit Information</div>
+                                        <div style="font-size:10px;color:#555;" t-esc="doc.partner_id.name"/>
                                     </div>
                                     <div class="col-3">
                                         <div class="cdr-meta"><strong>Period</strong><div><span t-field="doc.date_from"/> - <span t-field="doc.date_to"/></div></div>

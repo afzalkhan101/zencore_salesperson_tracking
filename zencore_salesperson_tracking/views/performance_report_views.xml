@@ -33,11 +33,12 @@
                             <field name="date_from" readonly="report_type in ('monthly', 'weekly') or (report_type in ('individual', 'multiple') and period_preset != 'custom')"/>
                             <field name="date_to" readonly="report_type in ('monthly', 'weekly') or (report_type in ('individual', 'multiple') and period_preset != 'custom')"/>
                         </group>
-                        <group string="People &amp; filters" class="o_zc_report_filter_group">
+                        <group string="Scope &amp; filters" class="o_zc_report_filter_group">
                             <field name="individual_user_id" options="{'no_create': True}" invisible="report_type != 'individual'" required="report_type == 'individual'"/>
-                            <field name="user_ids" widget="many2many_tags" options="{'no_create': True}" invisible="report_type == 'individual'"/>
-                            <field name="sale_team_id" options="{'no_create': True}"/>
-                            <field name="partner_id" options="{'no_create': True}"/>
+                            <field name="salesperson_scope" invisible="report_type == 'individual'"/>
+                            <field name="user_ids" widget="many2many_tags" options="{'no_create': True}" invisible="report_type == 'individual' or salesperson_scope == 'all'" required="report_type == 'multiple' and salesperson_scope == 'selected'"/>
+                            <field name="customer_scope"/>
+                            <field name="partner_id" options="{'no_create': True}" invisible="customer_scope == 'all'" required="customer_scope == 'selected'"/>
                             <field name="visit_status"/>
                             <field name="visit_purpose"/>
                             <field name="tracking_status"/>
@@ -78,7 +79,7 @@
                     <notebook invisible="not line_ids" class="o_zc_report_notebook">
                         <page string="Salesperson summary">
                             <field name="line_ids" nolabel="1" readonly="1">
-                                <list create="0" delete="0" edit="0" decoration-success="completion_percent &gt;= 80" decoration-warning="completion_percent &lt; 80 and completion_percent &gt;= 50" decoration-danger="completion_percent &lt; 50">
+                                <list create="0" delete="0" edit="0">
                                     <field name="user_id"/>
                                     <field name="planned_visits"/>
                                     <field name="completed_visits"/>
@@ -108,7 +109,7 @@
                         </page>
                         <page string="Visit details">
                             <field name="visit_line_ids" nolabel="1" readonly="1">
-                                <list create="0" delete="0" edit="0" decoration-success="status == 'completed'" decoration-info="status == 'in_progress'">
+                                <list create="0" delete="0" edit="0">
                                     <field name="visit_date"/>
                                     <field name="user_id"/>
                                     <field name="partner_id"/>

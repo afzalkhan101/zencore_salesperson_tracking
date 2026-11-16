@@ -317,3 +317,124 @@
     .o_zc_report_actions { flex-wrap: wrap; }
     .o_zc_report_actions .ms-auto { margin-left: 0 !important; }
 }
+
+/* Monochrome report presentation ------------------------------------------
+ * Keep this final override block after the shared report layout rules.  It
+ * deliberately removes visual status colours from analytical reports; report
+ * figures remain the focus and PDFs use the same neutral language.
+ */
+.o_form_view.o_zc_report_wizard .o_form_sheet_bg {
+    background: linear-gradient(180deg, #f3f3f3 0, #fff 420px);
+}
+
+.o_zc_report_hero,
+.o_zc_customer_report_hero {
+    border: 1px solid #202020;
+    border-radius: 14px;
+    background: #202020;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, .12);
+}
+
+.o_zc_report_hero::after { border-color: rgba(255, 255, 255, .10); }
+.o_zc_report_eyebrow { color: #d8d8d8; }
+.o_zc_report_hero p { color: #e2e2e2; }
+.o_zc_report_hero_icon {
+    border-color: #bdbdbd;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, .08);
+    color: #fff;
+}
+
+.o_zc_report_section_number {
+    border: 1px solid #c9c9c9;
+    border-radius: 9px;
+    background: #f0f0f0;
+    color: #202020;
+}
+
+.o_zc_report_section_intro h2,
+.o_zc_report_table_heading h2 { color: #191919; }
+.o_zc_report_section_intro p,
+.o_zc_report_table_heading p { color: #626262; }
+
+.o_form_view.o_zc_report_wizard .o_zc_report_filter_grid {
+    border-color: #d1d1d1;
+    border-radius: 13px;
+    background: #fff;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, .04);
+}
+
+.o_form_view.o_zc_report_wizard .o_zc_report_filter_group {
+    border-radius: 9px;
+    background: #f7f7f7;
+}
+
+.o_form_view.o_zc_report_wizard .o_zc_report_filter_group > .o_horizontal_separator { color: #1c1c1c; }
+.o_form_view.o_zc_report_wizard .o_zc_report_filter_group .o_form_label { color: #484848; }
+.o_form_view.o_zc_report_wizard .o_zc_report_filter_group input[type="radio"] { accent-color: #202020; }
+
+.o_zc_report_actions {
+    border-color: #d1d1d1;
+    border-radius: 11px;
+    background: #fff;
+}
+
+.o_zc_report_actions .btn-primary,
+.o_zc_report_actions .btn-success {
+    border-color: #202020;
+    background: #202020;
+    color: #fff;
+}
+
+.o_zc_report_actions .btn-secondary {
+    border-color: #a9a9a9;
+    background: #f5f5f5;
+    color: #222;
+}
+
+.o_zc_report_action_hint { color: #666; }
+
+.o_zc_kpi_card {
+    border-color: #cdcdcd;
+    border-top: 3px solid #333;
+    border-radius: 10px;
+    box-shadow: 0 3px 9px rgba(0, 0, 0, .03);
+}
+
+.o_zc_kpi_card > span { color: #606060; }
+.o_zc_kpi_card .o_field_widget,
+.o_zc_kpi_card .o_field_widget .o_field_value { color: #171717; }
+
+.o_zc_kpi_card--blue,
+.o_zc_kpi_card--green,
+.o_zc_kpi_card--amber,
+.o_zc_kpi_card--purple,
+.o_zc_kpi_card--neutral { border-top-color: #333; }
+
+.o_zc_kpi_card--blue .o_field_widget,
+.o_zc_kpi_card--blue .o_field_value,
+.o_zc_kpi_card--green .o_field_widget,
+.o_zc_kpi_card--green .o_field_value,
+.o_zc_kpi_card--amber .o_field_widget,
+.o_zc_kpi_card--amber .o_field_value,
+.o_zc_kpi_card--purple .o_field_widget,
+.o_zc_kpi_card--purple .o_field_value { color: #171717; }
+
+.o_form_view.o_zc_report_wizard .o_zc_report_notebook {
+    border-color: #d1d1d1;
+    border-radius: 11px;
+}
+
+.o_form_view.o_zc_report_wizard .o_zc_report_notebook .nav-tabs { background: #f4f4f4; }
+.o_form_view.o_zc_report_wizard .o_zc_report_notebook .nav-link { color: #565656; }
+.o_form_view.o_zc_report_wizard .o_zc_report_notebook .nav-link.active {
+    border-bottom-color: #222;
+    color: #111;
+}
+
+.o_form_view.o_zc_report_wizard .o_list_view {
+    border-color: #d1d1d1;
+    border-radius: 10px;
+}
+.o_form_view.o_zc_report_wizard .o_list_view thead { background: #f1f1f1; }
+.o_form_view.o_zc_report_wizard .o_list_view th { color: #444; }

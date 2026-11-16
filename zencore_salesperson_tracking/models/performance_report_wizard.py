@@ -47,7 +47,17 @@ class SalespersonPerformanceReportWizard(models.TransientModel):
         "res.users", "salesperson_performance_report_user_rel", "wizard_id", "user_id",
         string="Salespersons", domain="[('salesperson_role', '=', 'salesman')]",
     )
+    salesperson_scope = fields.Selection([
+        ("all", "All Salespersons"),
+        ("selected", "Selected Salespersons"),
+    ], string="Salespersons", required=True, default="all",
+       help="Use all salespersons you are authorised to monitor, or choose specific salespersons.")
     sale_team_id = fields.Many2one("crm.team", string="Sales Team")
+    customer_scope = fields.Selection([
+        ("all", "All Customers"),
+        ("selected", "Selected Customer"),
+    ], string="Customer", required=True, default="all",
+       help="Use all customers, or limit the report to one customer.")
     partner_id = fields.Many2one("res.partner", string="Customer")
     visit_status = fields.Selection([
         ("all", "All"),
@@ -126,6 +136,30 @@ class SalespersonPerformanceReportWizard(models.TransientModel):
                 self.date_from = prev_last.replace(day=1)
                 self.date_to = prev_last
 
+    @api.onchange("salesperson_scope")
+    def _onchange_salesperson_scope(self):
+        for wizard in self:
+            if wizard.salesperson_scope == "all":
+                wizard.user_ids = [(5, 0, 0)]
+
+    @api.onchange("user_ids")
+    def _onchange_user_ids(self):
+        for wizard in self:
+            if wizard.user_ids and wizard.report_type != "individual":
+                wizard.salesperson_scope = "selected"
+
+    @api.onchange("customer_scope")
+    def _onchange_customer_scope(self):
+        for wizard in self:
+            if wizard.customer_scope == "all":
+                wizard.partner_id = False
+
+    @api.onchange("partner_id")
+    def _onchange_partner_id(self):
+        for wizard in self:
+            if wizard.partner_id:
+                wizard.customer_scope = "selected"
+
     @api.constrains("date_from", "date_to")
     def _check_dates(self):
         for wizard in self:
@@ -140,12 +174,16 @@ class SalespersonPerformanceReportWizard(models.TransientModel):
             if not self.individual_user_id:
                 raise ValidationError(_("Please select a salesperson for the Individual report."))
             users = self.individual_user_id
-        elif self.report_type == "multiple":
+        elif self.report_type == "multiple" and self.salesperson_scope == "selected":
             if not self.user_ids:
                 raise ValidationError(_("Please select at least one salesperson for the Multiple Salespersons report."))
             users = self.user_ids
         else:
-            users = self.user_ids or User.search([("id", "in", list(report_team_user_ids(self.env))), ("salesperson_role", "=", "salesman"), ("active", "=", True)])
+            users = self.user_ids if self.salesperson_scope == "selected" and self.user_ids else User.search([
+                ("id", "in", list(report_team_user_ids(self.env))),
+                ("salesperson_role", "=", "salesman"),
+                ("active", "=", True),
+            ])
         if self.sale_team_id:
             users = users.filtered(lambda u: u.sale_team_id == self.sale_team_id)
         permitted = report_team_user_ids(self.env)
@@ -261,6 +299,8 @@ class SalespersonPerformanceReportWizard(models.TransientModel):
     def action_generate_report(self):
         self.ensure_one()
         check_report_access(self.env)
+        if self.customer_scope == "selected" and not self.partner_id:
+            raise ValidationError(_("Please select a customer, or choose All Customers."))
         users = self._selected_users()
         self.line_ids.unlink()
         self.day_line_ids.unlink()
@@ -371,6 +411,10 @@ class SalespersonPerformanceReportWizard(models.TransientModel):
         self.day_line_ids.unlink()
         self.visit_line_ids.unlink()
         self.write({
+            "salesperson_scope": "all",
+            "customer_scope": "all",
+            "user_ids": [(5, 0, 0)],
+            "partner_id": False,
             "total_salespersons": 0,
             "total_planned_visits": 0,
             "total_completed_visits": 0,
