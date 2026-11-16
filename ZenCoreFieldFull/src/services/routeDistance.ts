@@ -1,8 +1,10 @@
 /** Route preview: address lookup is initiated after address entry, never autocomplete. */
 export type RoadDistance = {km:number; fromLabel:string; toLabel:string};
+export type RoadRoute = RoadDistance & {minutes:number;points:{latitude:number;longitude:number}[]};
 export type RoutePoint = {latitude:number;longitude:number;label:string};
 const addressCache = new Map<string,{lat:number;lon:number;label:string}>();
 const distanceCache = new Map<string,RoadDistance>();
+const routeCache = new Map<string,RoadRoute>();
 let previousGeocodeAt=0;
 const sleep=(ms:number)=>new Promise<void>(resolve=>setTimeout(resolve,ms));
 const normalize=(s:string)=>s.trim().replace(/\s+/g,' ').toLowerCase();
@@ -35,12 +37,22 @@ export async function calculateRoadKm(from:string,to:string):Promise<RoadDistanc
  const answer={km:Math.round(meters/10)/100,fromLabel:a.label,toLabel:b.label};distanceCache.set(key,answer);return answer;
 }
 export async function calculateRoadKmForPoints(from:RoutePoint,to:RoutePoint):Promise<RoadDistance>{
+ const route=await getRoadRouteForPoints(from,to);
+ return {km:route.km,fromLabel:route.fromLabel,toLabel:route.toLabel};
+}
+export async function getRoadRouteForPoints(from:RoutePoint,to:RoutePoint):Promise<RoadRoute>{
  if(!Number.isFinite(from.latitude)||!Number.isFinite(from.longitude)||!Number.isFinite(to.latitude)||!Number.isFinite(to.longitude))throw Error('Select valid map locations first.');
+ const key=`${from.latitude.toFixed(6)},${from.longitude.toFixed(6)}|${to.latitude.toFixed(6)},${to.longitude.toFixed(6)}`;
+ const cached=routeCache.get(key);if(cached)return cached;
  const endpoint=(process.env.EXPO_PUBLIC_ZC_ROUTING_URL||'https://router.project-osrm.org/route/v1/driving').replace(/\/$/,'');
- const result=await getJson(`${endpoint}/${from.longitude},${from.latitude};${to.longitude},${to.latitude}?overview=false&steps=false`,15000);
+ const result=await getJson(`${endpoint}/${from.longitude},${from.latitude};${to.longitude},${to.latitude}?overview=full&geometries=geojson&steps=false`,15000);
  const meters=Number(result?.routes?.[0]?.distance);
  if(result?.code!=='Ok'||!Number.isFinite(meters)||meters<0)throw Error('Road route is not available for these locations.');
- return {km:Math.round(meters/10)/100,fromLabel:from.label,toLabel:to.label};
+ const coordinates=result?.routes?.[0]?.geometry?.coordinates;
+ const points=Array.isArray(coordinates)?coordinates.map((pair:any)=>({latitude:Number(pair?.[1]),longitude:Number(pair?.[0])})).filter(point=>Number.isFinite(point.latitude)&&Number.isFinite(point.longitude)):[];
+ if(points.length<2)throw Error('Road route geometry is not available for this location.');
+ const route={km:Math.round(meters/10)/100,minutes:Math.max(1,Math.round(Number(result.routes[0]?.duration||0)/60)),fromLabel:from.label,toLabel:to.label,points};
+ routeCache.set(key,route);return route;
 }
 export async function findAddressLocation(address:string):Promise<RoutePoint>{
  const point=await geocode(address);
