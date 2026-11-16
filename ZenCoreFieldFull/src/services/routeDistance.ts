@@ -1,6 +1,7 @@
 /** Route preview: address lookup is initiated after address entry, never autocomplete. */
 export type RoadDistance = {km:number; fromLabel:string; toLabel:string};
-export type RoadRoute = RoadDistance & {minutes:number;points:{latitude:number;longitude:number}[]};
+export type TravelMode = 'walk'|'bike'|'car';
+export type RoadRoute = RoadDistance & {mode:TravelMode;minutes:number;points:{latitude:number;longitude:number}[]};
 export type RoutePoint = {latitude:number;longitude:number;label:string};
 const addressCache = new Map<string,{lat:number;lon:number;label:string}>();
 const distanceCache = new Map<string,RoadDistance>();
@@ -36,22 +37,27 @@ export async function calculateRoadKm(from:string,to:string):Promise<RoadDistanc
  if(result?.code!=='Ok'||!Number.isFinite(meters)||meters<0)throw Error('Road route not available for these addresses');
  const answer={km:Math.round(meters/10)/100,fromLabel:a.label,toLabel:b.label};distanceCache.set(key,answer);return answer;
 }
+const routingEndpoint=(mode:TravelMode)=>{
+ if(mode==='walk')return (process.env.EXPO_PUBLIC_ZC_WALK_ROUTING_URL||'https://routing.openstreetmap.de/routed-foot/route/v1/driving').replace(/\/$/,'');
+ if(mode==='bike')return (process.env.EXPO_PUBLIC_ZC_BIKE_ROUTING_URL||'https://routing.openstreetmap.de/routed-bike/route/v1/driving').replace(/\/$/,'');
+ return (process.env.EXPO_PUBLIC_ZC_ROUTING_URL||'https://router.project-osrm.org/route/v1/driving').replace(/\/$/,'');
+};
 export async function calculateRoadKmForPoints(from:RoutePoint,to:RoutePoint):Promise<RoadDistance>{
- const route=await getRoadRouteForPoints(from,to);
+ const route=await getRoadRouteForPoints(from,to,'car');
  return {km:route.km,fromLabel:route.fromLabel,toLabel:route.toLabel};
 }
-export async function getRoadRouteForPoints(from:RoutePoint,to:RoutePoint):Promise<RoadRoute>{
+export async function getRoadRouteForPoints(from:RoutePoint,to:RoutePoint,mode:TravelMode='car'):Promise<RoadRoute>{
  if(!Number.isFinite(from.latitude)||!Number.isFinite(from.longitude)||!Number.isFinite(to.latitude)||!Number.isFinite(to.longitude))throw Error('Select valid map locations first.');
- const key=`${from.latitude.toFixed(6)},${from.longitude.toFixed(6)}|${to.latitude.toFixed(6)},${to.longitude.toFixed(6)}`;
+ const key=`${mode}|${from.latitude.toFixed(6)},${from.longitude.toFixed(6)}|${to.latitude.toFixed(6)},${to.longitude.toFixed(6)}`;
  const cached=routeCache.get(key);if(cached)return cached;
- const endpoint=(process.env.EXPO_PUBLIC_ZC_ROUTING_URL||'https://router.project-osrm.org/route/v1/driving').replace(/\/$/,'');
+ const endpoint=routingEndpoint(mode);
  const result=await getJson(`${endpoint}/${from.longitude},${from.latitude};${to.longitude},${to.latitude}?overview=full&geometries=geojson&steps=false`,15000);
  const meters=Number(result?.routes?.[0]?.distance);
  if(result?.code!=='Ok'||!Number.isFinite(meters)||meters<0)throw Error('Road route is not available for these locations.');
  const coordinates=result?.routes?.[0]?.geometry?.coordinates;
  const points=Array.isArray(coordinates)?coordinates.map((pair:any)=>({latitude:Number(pair?.[1]),longitude:Number(pair?.[0])})).filter(point=>Number.isFinite(point.latitude)&&Number.isFinite(point.longitude)):[];
  if(points.length<2)throw Error('Road route geometry is not available for this location.');
- const route={km:Math.round(meters/10)/100,minutes:Math.max(1,Math.round(Number(result.routes[0]?.duration||0)/60)),fromLabel:from.label,toLabel:to.label,points};
+ const route={mode,km:Math.round(meters/10)/100,minutes:Math.max(1,Math.round(Number(result.routes[0]?.duration||0)/60)),fromLabel:from.label,toLabel:to.label,points};
  routeCache.set(key,route);return route;
 }
 export async function findAddressLocation(address:string):Promise<RoutePoint>{
