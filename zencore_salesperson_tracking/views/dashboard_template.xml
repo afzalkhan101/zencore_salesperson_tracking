@@ -135,7 +135,7 @@
 
         <t t-else="">
             <div class="kpi-grid is-report">
-                <div class="kpi-card kpi-green">
+                <div class="kpi-card kpi-report-card kpi-green">
                     <div class="kpi-icon">✓</div>
                     <div class="kpi-body">
                         <div class="kpi-label">Completed Visits</div>
@@ -143,7 +143,7 @@
                         <div class="kpi-sub"><span id="kpi-visit-rate" t-esc="summary['visit_rate']"/>% visit rate</div>
                     </div>
                 </div>
-                <div class="kpi-card kpi-red">
+                <div class="kpi-card kpi-report-card kpi-red">
                     <div class="kpi-icon">×</div>
                     <div class="kpi-body">
                         <div class="kpi-label">Missed Visits</div>
