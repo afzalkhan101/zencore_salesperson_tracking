@@ -64,5 +64,14 @@
               sequence="1"
               groups="zencore_salesperson_tracking.group_salesperson_manager,zencore_salesperson_tracking.group_salesperson_ceo,zencore_salesperson_tracking.group_salesperson_supervisor"/>
 
+    <!-- Keep administrative tools together so the primary navigation remains
+         focused on daily field work.  Child menu definitions live in their
+         respective feature XML files. -->
+    <menuitem id="menu_zc_configuration_root"
+              name="Configuration"
+              parent="menu_salesperson_tracking_root"
+              sequence="90"
+              groups="zencore_salesperson_tracking.group_salesperson_ceo,zencore_salesperson_tracking.group_salesperson_manager,base.group_system"/>
+
               
 </odoo>
