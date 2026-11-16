@@ -1,0 +1,52 @@
+/* ZenCore Live Tracking kanban: route and outcome intelligence from mobile GPS visits. */
+.o_zc_tracking_kanban {
+    --zc-track-planned: #d99008;
+    --zc-track-live: #159447;
+    --zc-track-offline: #64748b;
+    --zc-track-completed: #159447;
+    --zc-track-failed: #dc3545;
+}
+.o_zc_tracking_kanban .o_kanban_record { min-width: 300px; padding: 0 !important; border: 0 !important; background: transparent !important; box-shadow: none !important; }
+.o_zc_tracking_kanban .o_zc_tracking_card { --zc-track-state: var(--zc-track-planned); overflow: hidden; min-height: 330px; border: 1px solid #d8e4ea; border-radius: 14px; background: #fff; box-shadow: 0 3px 12px rgba(15, 56, 82, .08); transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
+.o_zc_tracking_kanban .o_zc_tracking_card:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--zc-track-state) 34%, #d8e4ea); box-shadow: 0 10px 22px rgba(15, 56, 82, .14); }
+.o_zc_tracking_kanban .zc-tracker-state-live { --zc-track-state: var(--zc-track-live); }
+.o_zc_tracking_kanban .zc-tracker-state-offline { --zc-track-state: var(--zc-track-offline); }
+.o_zc_tracking_kanban .zc-tracker-state-completed { --zc-track-state: var(--zc-track-completed); }
+.o_zc_tracking_kanban .zc-tracker-state-failed { --zc-track-state: var(--zc-track-failed); }
+.o_zc_tracking_kanban .zc-tracker-status-bar { height: 7px; background: var(--zc-track-state); }
+.o_zc_tracking_kanban .zc-tracker-card-body { padding: 12px; }
+.o_zc_tracking_kanban .zc-tracker-card-head, .o_zc_tracking_kanban .zc-tracker-salesperson, .o_zc_tracking_kanban .zc-tracker-stop, .o_zc_tracking_kanban .zc-tracker-stats { display: flex; align-items: center; }
+.o_zc_tracking_kanban .zc-tracker-card-head { justify-content: space-between; gap: 8px; }
+.o_zc_tracking_kanban .zc-tracker-reference { overflow: hidden; color: #122b43; font-size: 13px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
+.o_zc_tracking_kanban .zc-tracker-state { display: inline-flex; align-items: center; flex: 0 0 auto; gap: 4px; border-radius: 999px; padding: 4px 8px; background: color-mix(in srgb, var(--zc-track-state) 12%, white); color: var(--zc-track-state); font-size: 9px; font-weight: 800; letter-spacing: .03em; text-transform: uppercase; white-space: nowrap; }
+.o_zc_tracking_kanban .zc-tracker-live-dot { width: 6px; height: 6px; border-radius: 50%; background: #22c55e; animation: zcTrackerPulse 1.4s infinite; }
+.o_zc_tracking_kanban .zc-tracker-salesperson { gap: 7px; margin: 10px 0 8px; color: #19344d; font-size: 12px; font-weight: 700; }
+.o_zc_tracking_kanban .zc-tracker-avatar { display: inline-grid; width: 28px; height: 28px; flex: 0 0 28px; place-items: center; border-radius: 50%; background: linear-gradient(135deg, #ddecff, #ecf8f4); color: #0b5e88; font-size: 10px; font-weight: 800; }
+.o_zc_tracking_kanban .zc-tracker-meta { display: flex; flex-wrap: wrap; gap: 6px 11px; padding-bottom: 9px; color: #60788b; font-size: 10px; font-weight: 600; }
+.o_zc_tracking_kanban .zc-tracker-outcome { font-weight: 800; }
+.o_zc_tracking_kanban .zc-tracker-outcome.completed, .o_zc_tracking_kanban .zc-tracker-outcome.live { color: #159447; }
+.o_zc_tracking_kanban .zc-tracker-outcome.failed { color: #c52b3d; }
+.o_zc_tracking_kanban .zc-tracker-outcome.pending { color: #a85d00; }
+.o_zc_tracking_kanban .zc-tracker-route { overflow: hidden; border: 1px solid #e1eaee; border-radius: 10px; background: #fbfdfe; }
+.o_zc_tracking_kanban .zc-tracker-route-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 7px 9px; background: #edf4f7; color: #25425a; font-size: 9px; font-weight: 800; letter-spacing: .035em; text-transform: uppercase; }
+.o_zc_tracking_kanban .zc-tracker-route-head span:last-child { color: #678092; font-size: 8.5px; }
+.o_zc_tracking_kanban .zc-tracker-stop { position: relative; align-items: flex-start; gap: 7px; min-height: 53px; padding: 8px; border-top: 1px solid #eaf0f3; }
+.o_zc_tracking_kanban .zc-tracker-stop:first-of-type { border-top: 0; }
+.o_zc_tracking_kanban .zc-tracker-stop-icon { padding-top: 2px; color: var(--zc-track-state); font-size: 14px; line-height: 1; }
+.o_zc_tracking_kanban .zc-tracker-stop-copy { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: 1px; }
+.o_zc_tracking_kanban .zc-tracker-stop-copy strong { overflow: hidden; color: #172f47; font-size: 11px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
+.o_zc_tracking_kanban .zc-tracker-stop-address { overflow: hidden; color: #71879a; font-size: 9px; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
+.o_zc_tracking_kanban .zc-tracker-stop-time { color: #6d8495; font-size: 9px; line-height: 1.25; }
+.o_zc_tracking_kanban .zc-tracker-stop-status { font-weight: 800; }
+.o_zc_tracking_kanban .zc-tracker-stop-pending { color: #8795a2; }
+.o_zc_tracking_kanban .zc-tracker-stop-checked_in { color: #0f8d8d; }
+.o_zc_tracking_kanban .zc-tracker-stop-completed { color: #159447; }
+.o_zc_tracking_kanban .zc-tracker-distance { flex: 0 0 auto; margin-top: 2px; border-radius: 7px; padding: 4px 5px; background: #eef4f7; color: #38556d; font-size: 9px; font-weight: 800; white-space: nowrap; }
+.o_zc_tracking_kanban .zc-tracker-more-stops, .o_zc_tracking_kanban .zc-tracker-route-empty { padding: 8px 9px; color: #71879a; font-size: 9px; font-style: italic; }
+.o_zc_tracking_kanban .zc-tracker-stats { justify-content: space-between; gap: 8px; margin-top: 9px; border-radius: 8px; padding: 7px 9px; background: #f5f9fb; color: #668094; font-size: 9px; }
+.o_zc_tracking_kanban .zc-tracker-stats span { display: flex; flex-direction: column; gap: 1px; }
+.o_zc_tracking_kanban .zc-tracker-stats b { color: #183b59; font-size: 11px; }
+.o_zc_tracking_kanban .zc-tracker-actions { padding: 9px 12px 12px; border-top: 1px solid #e7eef2; }
+.o_zc_tracking_kanban .zc-tracker-map-link { display: flex; align-items: center; justify-content: center; width: 100%; border-radius: 8px; padding: 8px 10px; background: var(--zc-track-state); color: #fff !important; font-size: 11px; font-weight: 800; text-decoration: none; }
+@keyframes zcTrackerPulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .45; transform: scale(.72); } }
+@media (max-width: 640px) { .o_zc_tracking_kanban .o_kanban_record { min-width: 100%; } }

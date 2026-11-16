@@ -57,6 +57,16 @@ class SalespersonTracker(models.Model):
     total_visits = fields.Integer(string="Total Visits", compute="_compute_counts", store=True)
     total_visited = fields.Integer(string="Visited", compute="_compute_counts", store=True)
     skipped_visits = fields.Integer(string="Skipped Visits", compute="_compute_counts", store=True)
+    kanban_salesperson_initials = fields.Char(
+        string="Kanban Salesperson Initials", compute="_compute_kanban_route_data"
+    )
+    kanban_route_data = fields.Json(
+        string="Kanban Customer Route", compute="_compute_kanban_route_data",
+        help="Read-only customer route, distance, and visit outcome data for Live Tracking cards.",
+    )
+    kanban_route_extra_count = fields.Integer(
+        string="Additional Kanban Stops", compute="_compute_kanban_route_data"
+    )
 
     # Timing
     checkin_time = fields.Datetime(string="First Check-In")
@@ -195,6 +205,93 @@ class SalespersonTracker(models.Model):
             self.visited_line_ids.filtered(lambda visit: visit.checkout_time)
         )
         return bool(planned_count and completed_count >= planned_count)
+
+    @api.depends(
+        "user_id.name",
+        "plan_id.target_line_ids.sequence",
+        "plan_id.target_line_ids.expected_km",
+        "plan_id.target_line_ids.customer_ids",
+        "plan_id.target_line_ids.customer_ids.name",
+        "plan_id.target_line_ids.customer_ids.street",
+        "plan_id.target_line_ids.customer_ids.street2",
+        "plan_id.target_line_ids.customer_ids.city",
+        "plan_id.target_line_ids.customer_ids.state_id",
+        "plan_id.target_line_ids.customer_ids.zip",
+        "plan_id.target_line_ids.customer_ids.country_id",
+        "visited_line_ids.partner_id",
+        "visited_line_ids.checkout_time",
+        "current_checkin_id.partner_id",
+        "current_checkin_id.checkin_time",
+        "current_checkin_id.state",
+    )
+    def _compute_kanban_route_data(self):
+        """Build a concise, data-rich customer route for Live Tracking cards.
+
+        The card intentionally uses the tracker\'s own checked-out lines and
+        current check-in, so monitoring always reflects the actual mobile GPS
+        visit flow rather than only the planned route.
+        """
+        for tracker in self:
+            display_name = tracker.user_id.name or "?"
+            tracker.kanban_salesperson_initials = (
+                "".join(piece[:1] for piece in display_name.split()[:2]).upper() or "?"
+            )
+
+            completed_by_partner = {}
+            for visit in tracker.visited_line_ids.filtered(lambda line: line.checkout_time):
+                completed_by_partner.setdefault(visit.partner_id.id, visit)
+
+            active_checkin = tracker.current_checkin_id
+            raw_stops = []
+            seen_partner_ids = set()
+            route_lines = tracker.plan_id.target_line_ids.sorted(
+                lambda route_line: (route_line.sequence, route_line.id)
+            )
+            for line in route_lines:
+                for partner in line.customer_ids:
+                    if partner.id in seen_partner_ids:
+                        continue
+                    seen_partner_ids.add(partner.id)
+                    address = ", ".join(filter(None, [
+                        partner.street,
+                        partner.street2,
+                        partner.city,
+                        partner.state_id.name,
+                        partner.zip,
+                        partner.country_id.name,
+                    ]))
+                    completed_visit = completed_by_partner.get(partner.id)
+                    status_label = "Pending"
+                    status_class = "pending"
+                    visit_time = "Not visited"
+                    if completed_visit:
+                        local_time = fields.Datetime.context_timestamp(
+                            tracker, completed_visit.checkout_time
+                        )
+                        time_label = local_time.strftime("%I:%M %p").lstrip("0") if local_time else ""
+                        status_label = "Completed"
+                        status_class = "completed"
+                        visit_time = "%s · Checked out" % time_label if time_label else "Checked out"
+                    elif active_checkin and active_checkin.partner_id == partner and active_checkin.state == "checked_in":
+                        local_time = fields.Datetime.context_timestamp(
+                            tracker, active_checkin.checkin_time
+                        )
+                        time_label = local_time.strftime("%I:%M %p").lstrip("0") if local_time else ""
+                        status_label = "At customer"
+                        status_class = "checked_in"
+                        visit_time = "%s · Checked in" % time_label if time_label else "Checked in"
+
+                    raw_stops.append({
+                        "name": partner.display_name or partner.name or "Customer",
+                        "address": address or "Address not available",
+                        "distance": "%.2f km" % line.expected_km if line.expected_km else "Distance unavailable",
+                        "status_label": status_label,
+                        "status_class": status_class,
+                        "visit_time": visit_time,
+                    })
+
+            tracker.kanban_route_data = raw_stops[:3]
+            tracker.kanban_route_extra_count = max(len(raw_stops) - 3, 0)
 
     @api.depends("transport_cost", "food_cost", "other_cost")
     def _compute_costs(self):
