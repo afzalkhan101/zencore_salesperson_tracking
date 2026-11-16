@@ -83,7 +83,7 @@ class SalespersonTrackingController(http.Controller):
         return user
 
     def _ensure_tracker_access(self, user, tracker, write=False):
-        """Authorize the tracking owner for writes and reporting subtree for reads.
+        """Authorize the tracking owner for writes and permitted monitoring reads.
 
         Tracker endpoints use sudo() for operational data. Check ownership before
         sudo reads/writes so arbitrary tracker IDs cannot disclose team GPS.
@@ -96,6 +96,15 @@ class SalespersonTrackingController(http.Controller):
             raise AccessError(_("You may only update your own tracking session."))
         if user.salesperson_role not in ('ceo', 'manager', 'supervisor'):
             raise AccessError(_("You cannot view another person's GPS data."))
+        # Managers are company-level operational monitors.  Their reporting
+        # line can legitimately be empty (for example when they report to a
+        # CEO but have no direct reports), so do not make Movement Map access
+        # depend on the reporting subtree.  This is read-only access here;
+        # tracker writes remain owner-only above.  Never cross companies.
+        if user.salesperson_role == 'manager':
+            manager_company_ids = set(user.company_ids.ids)
+            if tracker.user_id.company_id.id in manager_company_ids:
+                return tracker
         if tracker.user_id.id not in user.sudo().zc_team_user_ids.ids:
             raise AccessError(_("This tracking session is outside your reporting team."))
         return tracker
