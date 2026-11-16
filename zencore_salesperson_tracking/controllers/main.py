@@ -2,6 +2,7 @@ import base64
 import json
 import math
 from datetime import date, datetime, timedelta
+from urllib.parse import urlsplit
 from pytz import timezone, utc
 
 from odoo import fields, http, _
@@ -66,6 +67,38 @@ def _tracker_visited_partner_ids(tracker):
 
 
 class SalespersonTrackingController(http.Controller):
+
+    def _movement_map_back_target(self, kwargs):
+        """Return an approved internal destination for Movement Map's Back button.
+
+        The map is opened from both the manager dashboard and the Live Tracking
+        page. Never trust an arbitrary URL query parameter here: accepting an
+        external value would turn the Back button into an open redirect.
+        """
+        source = str(kwargs.get("source") or "").strip().lower()
+        requested_path = str(kwargs.get("return_to") or "").strip()
+        allowed_sources = {
+            "dashboard": ("/salesperson/dashboard", "Dashboard"),
+            "live": ("/salesperson_tracking/live", "Live Tracking"),
+        }
+        prefix, label = allowed_sources.get(source, (None, None))
+        if prefix:
+            parsed = urlsplit(requested_path)
+            if (
+                requested_path.startswith(prefix)
+                and not requested_path.startswith("//")
+                and not parsed.scheme
+                and not parsed.netloc
+                and "\r" not in requested_path
+                and "\n" not in requested_path
+            ):
+                return requested_path, label
+            return prefix, label
+
+        tracking_url = "/odoo/action-%s" % request.env.ref(
+            "zencore_salesperson_tracking.action_salesperson_tracker_kanban"
+        ).id
+        return tracking_url, "Tracking"
 
     def _check_access(self):
         user = request.env.user
@@ -426,6 +459,7 @@ class SalespersonTrackingController(http.Controller):
 
         customers_b64 = base64.b64encode(json.dumps(customers).encode()).decode()
         last_seen_display_map = _localize_dt(tracker.last_seen, tz_name) if tracker.last_seen else '—'
+        back_url, back_label = self._movement_map_back_target(kwargs)
 
         values = {
             "tracker": tracker,
@@ -437,7 +471,8 @@ class SalespersonTrackingController(http.Controller):
             "last_seen_display": last_seen_display_map,
             "last_known_lat": tracker.last_latitude or 0,
             "last_known_lng": tracker.last_longitude or 0,
-            "tracking_cards_url": "/odoo/action-%s" % request.env.ref("zencore_salesperson_tracking.action_salesperson_tracker_kanban").id,
+            "back_url": back_url,
+            "back_label": back_label,
         }
         return self._no_cache(request.render("zencore_salesperson_tracking.moving_map_page", values))
 

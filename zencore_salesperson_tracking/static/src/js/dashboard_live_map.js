@@ -51,7 +51,9 @@
     }
 
     function openMovementMap(trackerId) {
-        window.location.href = '/salesperson_tracking/moving_map/' + encodeURIComponent(trackerId) + '?_=' + Date.now();
+        var returnTo = window.location.pathname + window.location.search;
+        window.location.href = '/salesperson_tracking/moving_map/' + encodeURIComponent(trackerId) +
+            '?source=dashboard&return_to=' + encodeURIComponent(returnTo) + '&_=' + Date.now();
     }
 
     function focusSalesman(trackerId) {

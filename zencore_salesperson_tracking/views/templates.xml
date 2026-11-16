@@ -23,7 +23,7 @@
 
                 <!-- Tracking JS -->
                 <script defer="defer"
-                        src="/zencore_salesperson_tracking/static/src/js/templates.js?v=32.0.0"></script>
+                        src="/zencore_salesperson_tracking/static/src/js/templates.js?v=33.0.0"></script>
             </head>
             <body class="live-tracking-page">
                 <div id="trackingRoot" 
@@ -188,16 +188,16 @@
 
                 <!-- Moving Map JS -->
                 <script defer="defer"
-                        src="/zencore_salesperson_tracking/static/src/js/templates.js?v=32.0.0"></script>
+                        src="/zencore_salesperson_tracking/static/src/js/templates.js?v=33.0.0"></script>
             </head>
             <body class="moving-map-page">
                 <div id="mapRoot" t-att-data-points="points_b64" t-att-data-customers="customers_b64" t-att-data-status="tracking_status" t-att-data-tracker-id="tracker_id" style="display:none"/>
 
                 <div class="top-bar">
                     <div class="top-bar-left">
-                        <a id="mapBackBtn" class="map-back-btn" t-att-href="tracking_cards_url" title="Return to Live Tracking cards" aria-label="Back to Live Tracking">
+                        <a id="mapBackBtn" class="map-back-btn" t-att-href="back_url" t-att-title="'Back to ' + back_label" t-att-aria-label="'Back to ' + back_label">
                             <span class="map-back-icon" aria-hidden="true">&#8592;</span>
-                            <span class="map-back-text">Tracking</span>
+                            <span class="map-back-text" t-out="back_label"/>
                         </a>
                         <div>
                             <h1 class="map-title">

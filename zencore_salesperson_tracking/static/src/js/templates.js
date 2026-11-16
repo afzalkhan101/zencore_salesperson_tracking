@@ -935,7 +935,9 @@
     // 1-minute-then-stop problem caused by navigating away from this page.
     const fullMapBtn = document.getElementById('fullMapBtn');
     if (fullMapBtn) {
-        const mapUrl = '/salesperson_tracking/moving_map/' + trackerId;
+        const returnTo = window.location.pathname + window.location.search;
+        const mapUrl = '/salesperson_tracking/moving_map/' + trackerId +
+            '?source=live&return_to=' + encodeURIComponent(returnTo);
         fullMapBtn.addEventListener('click', function(e) {
             e.preventDefault();
             const w = window.open(mapUrl, '_blank', 'noopener');
@@ -968,8 +970,8 @@
         return;
     }
 
-    // Always return to the Live Tracking card action, not browser history.
-    // History may point outside Odoo when the map was opened in a new tab.
+    // The server only emits a safe internal URL based on the page that opened
+    // this map (Dashboard, Live Tracking, or the tracking cards fallback).
     const mapBackBtn = document.getElementById('mapBackBtn');
     if (mapBackBtn) {
         mapBackBtn.addEventListener('click', function (event) {
