@@ -75,10 +75,6 @@
 
                 <form class="date-range-form" id="zc-date-form" method="get" action="/salesperson/dashboard">
                     <input id="zc-date-mode" type="hidden" t-att-value="'single' if date_from_str == date_to_str else 'range'"/>
-                    <div class="zc-date-filter-label">
-                        <span class="zc-date-filter-kicker">Custom period</span>
-                        <span class="zc-date-filter-caption">Choose one day or a date range</span>
-                    </div>
                     <div class="zc-date-mode-switch" role="group" aria-label="Date filter mode">
                         <button type="button" data-date-mode="single"
                                 t-att-class="'selected' if date_from_str == date_to_str else ''"
