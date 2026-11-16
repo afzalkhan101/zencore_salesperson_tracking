@@ -142,6 +142,6 @@
          report navigation item.  Keep the historical menu record hidden on
          existing databases during module upgrades. -->
     <record id="menu_zc_reporting_hierarchy" model="ir.ui.menu">
-        <field name="groups_id" eval="[(6, 0, [ref('base.group_no_one')])]"/>
+        <field name="group_ids" eval="[(6, 0, [ref('base.group_no_one')])]"/>
     </record>
 </odoo>
