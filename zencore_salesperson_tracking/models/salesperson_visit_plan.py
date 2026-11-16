@@ -61,6 +61,16 @@ class SalespersonVisitPlan(models.Model):
         string="Customers", compute="_compute_customer_names",
         help="Unique planned customers across all target lines.",
     )
+    kanban_salesperson_initials = fields.Char(
+        string="Kanban Salesperson Initials", compute="_compute_kanban_route_data"
+    )
+    kanban_route_data = fields.Json(
+        string="Kanban Customer Route", compute="_compute_kanban_route_data",
+        help="Read-only customer, address, route distance, and mobile visit data for the kanban card.",
+    )
+    kanban_route_extra_count = fields.Integer(
+        string="Additional Kanban Stops", compute="_compute_kanban_route_data"
+    )
 
     @api.depends("target_line_ids", "target_line_ids.customer_ids", "target_line_ids.customer_ids.name")
     def _compute_customer_names(self):
@@ -70,6 +80,86 @@ class SalespersonVisitPlan(models.Model):
             plan.customer_names = (
                 ", ".join(names[:3]) + (" +%d more" % (len(names) - 3) if len(names) > 3 else "")
             ) if names else False
+
+    @api.depends(
+        "user_id.name",
+        "state",
+        "target_line_ids.sequence",
+        "target_line_ids.expected_km",
+        "target_line_ids.customer_ids",
+        "target_line_ids.customer_ids.name",
+        "target_line_ids.customer_ids.street",
+        "target_line_ids.customer_ids.street2",
+        "target_line_ids.customer_ids.city",
+        "target_line_ids.customer_ids.state_id",
+        "target_line_ids.customer_ids.zip",
+        "target_line_ids.customer_ids.country_id",
+    )
+    def _compute_kanban_route_data(self):
+        """Create a compact, read-only route feed for the backend kanban card.
+
+        Mobile check-ins are matched by the exact plan tracker and customer, so
+        the card reflects real submitted mobile data without writing any new
+        visit records. Three stops are rendered on a card; the remainder is
+        represented by a concise count to keep the kanban scannable.
+        """
+        plan_ids = self.ids
+        latest_checkins = {}
+        if plan_ids:
+            checkins = self.env["salesperson.checkin"].sudo().search(
+                [("tracker_id.plan_id", "in", plan_ids)],
+                order="checkin_time desc, id desc",
+            )
+            for checkin in checkins:
+                key = (checkin.tracker_id.plan_id.id, checkin.partner_id.id)
+                latest_checkins.setdefault(key, checkin)
+
+        for plan in self:
+            raw_stops = []
+            seen_partner_ids = set()
+            for line in plan.target_line_ids.sorted(lambda route_line: (route_line.sequence, route_line.id)):
+                for partner in line.customer_ids:
+                    if partner.id in seen_partner_ids:
+                        continue
+                    seen_partner_ids.add(partner.id)
+                    checkin = latest_checkins.get((plan.id, partner.id))
+                    address = ", ".join(filter(None, [
+                        partner.street,
+                        partner.street2,
+                        partner.city,
+                        partner.state_id.name,
+                        partner.zip,
+                        partner.country_id.name,
+                    ]))
+                    status_label = "Pending"
+                    status_class = "pending"
+                    visit_time = "Not visited"
+                    if checkin:
+                        timestamp = checkin.checkout_time or checkin.checkin_time
+                        local_timestamp = fields.Datetime.context_timestamp(plan, timestamp) if timestamp else False
+                        time_label = local_timestamp.strftime("%I:%M %p").lstrip("0") if local_timestamp else ""
+                        if checkin.state == "checked_out":
+                            status_label = "Completed"
+                            status_class = "completed"
+                            visit_time = "%s · Checked out" % time_label if time_label else "Completed"
+                        else:
+                            status_label = "Checked in"
+                            status_class = "checked_in"
+                            visit_time = "%s · At customer" % time_label if time_label else "Checked in"
+                    raw_stops.append({
+                        "name": partner.display_name or partner.name or "Customer",
+                        "address": address or "Address not available",
+                        "distance": ("%.2f km" % line.expected_km) if line.expected_km else "Distance unavailable",
+                        "status_label": status_label,
+                        "status_class": status_class,
+                        "visit_time": visit_time,
+                    })
+
+            display_name = plan.user_id.name or "?"
+            initials = "".join(piece[:1] for piece in display_name.split()[:2]).upper() or "?"
+            plan.kanban_salesperson_initials = initials
+            plan.kanban_route_data = raw_stops[:3]
+            plan.kanban_route_extra_count = max(len(raw_stops) - 3, 0)
 
 
     # Expenses

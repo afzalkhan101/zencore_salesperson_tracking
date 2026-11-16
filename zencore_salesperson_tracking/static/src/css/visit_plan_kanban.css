@@ -1,0 +1,74 @@
+/* ZenCore Visit Plan kanban: compact route intelligence from mobile plan/check-in data. */
+.o_zc_visit_plan_kanban {
+    --zc-draft: #64748b;
+    --zc-submitted: #d99008;
+    --zc-approved: #2563eb;
+    --zc-progress: #0f8d8d;
+    --zc-completed: #159447;
+    --zc-rejected: #dc3545;
+}
+.o_zc_visit_plan_kanban .o_kanban_record {
+    min-width: 290px;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+.o_zc_visit_plan_kanban .o_zc_visit_card {
+    --zc-state: var(--zc-draft);
+    overflow: hidden;
+    height: 100%;
+    min-height: 292px;
+    border: 1px solid #d8e4ea;
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: 0 3px 12px rgba(15, 56, 82, .08);
+    transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+.o_zc_visit_plan_kanban .o_zc_visit_card:hover {
+    transform: translateY(-2px);
+    border-color: color-mix(in srgb, var(--zc-state) 34%, #d8e4ea);
+    box-shadow: 0 10px 22px rgba(15, 56, 82, .14);
+}
+.o_zc_visit_plan_kanban .zc-plan-state-draft { --zc-state: var(--zc-draft); }
+.o_zc_visit_plan_kanban .zc-plan-state-submitted { --zc-state: var(--zc-submitted); }
+.o_zc_visit_plan_kanban .zc-plan-state-approved { --zc-state: var(--zc-approved); }
+.o_zc_visit_plan_kanban .zc-plan-state-in_progress { --zc-state: var(--zc-progress); }
+.o_zc_visit_plan_kanban .zc-plan-state-completed { --zc-state: var(--zc-completed); }
+.o_zc_visit_plan_kanban .zc-plan-state-rejected { --zc-state: var(--zc-rejected); }
+.o_zc_visit_plan_kanban .zc-plan-status-bar { height: 7px; background: var(--zc-state); }
+.o_zc_visit_plan_kanban .zc-plan-card-body { padding: 12px; }
+.o_zc_visit_plan_kanban .zc-plan-card-head,
+.o_zc_visit_plan_kanban .zc-plan-salesperson,
+.o_zc_visit_plan_kanban .zc-plan-card-footer,
+.o_zc_visit_plan_kanban .zc-plan-stop { display: flex; align-items: center; }
+.o_zc_visit_plan_kanban .zc-plan-card-head { justify-content: space-between; gap: 8px; }
+.o_zc_visit_plan_kanban .zc-plan-reference { overflow: hidden; color: #122b43; font-size: 13px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
+.o_zc_visit_plan_kanban .zc-plan-state { flex: 0 0 auto; border-radius: 999px; padding: 4px 8px; background: color-mix(in srgb, var(--zc-state) 12%, white); color: var(--zc-state); font-size: 9px; font-weight: 800; letter-spacing: .03em; text-transform: uppercase; white-space: nowrap; }
+.o_zc_visit_plan_kanban .zc-plan-salesperson { gap: 7px; margin: 10px 0 8px; color: #19344d; font-size: 12px; font-weight: 700; }
+.o_zc_visit_plan_kanban .zc-plan-avatar { display: inline-grid; width: 28px; height: 28px; flex: 0 0 28px; place-items: center; border-radius: 50%; background: linear-gradient(135deg, #ddecff, #ecf8f4); color: #0b5e88; font-size: 10px; font-weight: 800; }
+.o_zc_visit_plan_kanban .zc-plan-meta { display: flex; flex-wrap: wrap; gap: 6px 11px; padding-bottom: 9px; color: #60788b; font-size: 10px; font-weight: 600; }
+.o_zc_visit_plan_kanban .zc-plan-meta span { display: inline-flex; align-items: center; gap: 4px; }
+.o_zc_visit_plan_kanban .zc-plan-route { overflow: hidden; border: 1px solid #e1eaee; border-radius: 10px; background: #fbfdfe; }
+.o_zc_visit_plan_kanban .zc-plan-route-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 7px 9px; background: #edf4f7; color: #25425a; font-size: 9px; font-weight: 800; letter-spacing: .035em; text-transform: uppercase; }
+.o_zc_visit_plan_kanban .zc-plan-route-head span:last-child { color: #678092; font-size: 8.5px; }
+.o_zc_visit_plan_kanban .zc-plan-stop { position: relative; align-items: flex-start; gap: 7px; min-height: 53px; padding: 8px 8px 7px; border-top: 1px solid #eaf0f3; }
+.o_zc_visit_plan_kanban .zc-plan-stop:first-of-type { border-top: 0; }
+.o_zc_visit_plan_kanban .zc-plan-stop-icon { padding-top: 2px; color: var(--zc-state); font-size: 14px; line-height: 1; }
+.o_zc_visit_plan_kanban .zc-plan-stop-copy { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: 1px; }
+.o_zc_visit_plan_kanban .zc-plan-stop-copy strong { overflow: hidden; color: #172f47; font-size: 11px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
+.o_zc_visit_plan_kanban .zc-plan-stop-address { overflow: hidden; color: #71879a; font-size: 9px; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
+.o_zc_visit_plan_kanban .zc-plan-stop-time { color: #6d8495; font-size: 9px; line-height: 1.25; }
+.o_zc_visit_plan_kanban .zc-stop-status { font-weight: 800; }
+.o_zc_visit_plan_kanban .zc-stop-pending { color: #8795a2; }
+.o_zc_visit_plan_kanban .zc-stop-checked_in { color: #0f8d8d; }
+.o_zc_visit_plan_kanban .zc-stop-completed { color: #159447; }
+.o_zc_visit_plan_kanban .zc-plan-distance { flex: 0 0 auto; margin-top: 2px; border-radius: 7px; padding: 4px 5px; background: #eef4f7; color: #38556d; font-size: 9px; font-weight: 800; white-space: nowrap; }
+.o_zc_visit_plan_kanban .zc-plan-more-stops,
+.o_zc_visit_plan_kanban .zc-plan-route-empty { padding: 8px 9px; color: #71879a; font-size: 9px; font-style: italic; }
+.o_zc_visit_plan_kanban .zc-plan-card-footer { justify-content: space-between; gap: 8px; margin-top: 9px; padding-top: 8px; border-top: 1px solid #e7eef1; color: #5f7789; font-size: 9.5px; font-weight: 600; }
+.o_zc_visit_plan_kanban .zc-plan-approver { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.o_zc_visit_plan_kanban .zc-plan-route-mark { display: inline-grid; width: 25px; height: 25px; flex: 0 0 25px; place-items: center; border: 1px solid #cfdfe6; border-radius: 7px; color: #0d668d; font-size: 14px; }
+@media (max-width: 640px) {
+    .o_zc_visit_plan_kanban .o_kanban_record { min-width: 100%; }
+}

@@ -151,19 +151,57 @@
       <field name="name">salesperson.visit.plan.kanban.hierarchy</field>
       <field name="model">salesperson.visit.plan</field>
       <field name="arch" type="xml">
-        <kanban>
+        <kanban class="o_zc_visit_plan_kanban">
           <field name="name"/><field name="user_id"/><field name="state"/>
           <field name="visit_date"/><field name="zc_approver_id"/>
           <field name="total_visits"/><field name="purpose"/>
+          <field name="kanban_salesperson_initials"/><field name="kanban_route_data"/>
+          <field name="kanban_route_extra_count"/>
           <templates><t t-name="card">
-            <div class="oe_kanban_global_click p-3">
-              <strong><field name="name"/></strong>
-              <div><field name="user_id"/></div>
-              <div><field name="visit_date"/> · <field name="purpose"/></div>
-              <div>Approver: <field name="zc_approver_id"/></div>
-              <div>Customers: <field name="total_visits"/></div>
-              <div><field name="state" widget="badge"/></div>
-            </div>
+            <article t-attf-class="oe_kanban_global_click o_zc_visit_card zc-plan-state-#{record.state.raw_value or 'draft'}">
+              <div class="zc-plan-status-bar"/>
+              <div class="zc-plan-card-body">
+                <div class="zc-plan-card-head">
+                  <strong class="zc-plan-reference"><field name="name"/></strong>
+                  <span class="zc-plan-state"><field name="state"/></span>
+                </div>
+                <div class="zc-plan-salesperson">
+                  <span class="zc-plan-avatar"><field name="kanban_salesperson_initials"/></span>
+                  <span><field name="user_id"/></span>
+                </div>
+                <div class="zc-plan-meta">
+                  <span>▣ <field name="visit_date"/></span>
+                  <span>⌾ <field name="purpose"/></span>
+                </div>
+
+                <section class="zc-plan-route">
+                  <div class="zc-plan-route-head">
+                    <span>Customer Route</span>
+                    <span><field name="total_visits"/> stop<t t-if="record.total_visits.raw_value != 1">s</t></span>
+                  </div>
+                  <t t-if="record.kanban_route_data.raw_value">
+                    <t t-foreach="record.kanban_route_data.raw_value" t-as="stop">
+                      <div class="zc-plan-stop">
+                        <span class="zc-plan-stop-icon">⌖</span>
+                        <div class="zc-plan-stop-copy">
+                          <strong t-esc="stop.get('name')"/>
+                          <span class="zc-plan-stop-address" t-esc="stop.get('address')"/>
+                          <span class="zc-plan-stop-time">◷ <t t-esc="stop.get('visit_time')"/> · <b t-attf-class="zc-stop-status zc-stop-#{stop.get('status_class', 'pending')}" t-esc="stop.get('status_label')"/></span>
+                        </div>
+                        <span class="zc-plan-distance" t-esc="stop.get('distance')"/>
+                      </div>
+                    </t>
+                    <div t-if="record.kanban_route_extra_count.raw_value" class="zc-plan-more-stops">+<field name="kanban_route_extra_count"/> more customer<t t-if="record.kanban_route_extra_count.raw_value != 1">s</t></div>
+                  </t>
+                  <div t-else="" class="zc-plan-route-empty">No customer locations added yet.</div>
+                </section>
+
+                <div class="zc-plan-card-footer">
+                  <span class="zc-plan-approver">♙ Approver: <t t-if="record.zc_approver_id.raw_value"><field name="zc_approver_id"/></t><t t-else="">Not assigned</t></span>
+                  <span class="zc-plan-route-mark" title="Customer route">⌑</span>
+                </div>
+              </div>
+            </article>
           </t></templates>
         </kanban>
       </field>
