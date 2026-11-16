@@ -262,7 +262,6 @@
                                 <th>First Start</th>
                                 <th>Last Update</th>
                                 <t t-if="is_live"><th>GPS Health</th></t>
-                                <t t-if="is_live"><th>Status</th></t>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -298,12 +297,6 @@
                                         <td>
                                             <span class="gps-health-pill" t-attf-style="--gps-color:#{r['gps_health_color']}">
                                                 <i></i><span class="gps-health-text" t-esc="r['gps_health']"/>
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <span class="status-pill rep-status-cell">
-                                                <i class="status-dot" t-attf-style="background:#{r['status_color']}"></i>
-                                                <span t-esc="r['status_label']"/>
                                             </span>
                                         </td>
                                     </t>
