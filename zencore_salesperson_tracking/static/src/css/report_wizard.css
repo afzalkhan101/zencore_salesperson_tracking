@@ -1,0 +1,319 @@
+/* ZenCore reporting workspace ------------------------------------------------
+ * Keep the report wizard readable on wide screens and compact enough for the
+ * standard Odoo form layout.  All visual rules are scoped to these wizards so
+ * that core Odoo forms and unrelated modules remain untouched.
+ */
+.o_form_view.o_zc_report_wizard .o_form_sheet_bg {
+    background: linear-gradient(180deg, #f4fbfc 0, #ffffff 420px);
+}
+
+.o_form_view.o_zc_report_wizard .o_form_sheet {
+    max-width: 1320px;
+    padding: 28px 34px 38px;
+    border: 0;
+    background: transparent;
+}
+
+.o_zc_report_hero {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    min-height: 152px;
+    margin: 0 0 26px;
+    padding: 28px 32px;
+    overflow: hidden;
+    color: #fff;
+    border-radius: 18px;
+    background: linear-gradient(128deg, #063d69 0%, #096c91 58%, #0b8a82 100%);
+    box-shadow: 0 14px 32px rgba(6, 61, 105, .18);
+}
+
+.o_zc_customer_report_hero {
+    background: linear-gradient(128deg, #073f60 0%, #08728a 56%, #0a9878 100%);
+}
+
+.o_zc_report_hero::after {
+    position: absolute;
+    top: -110px;
+    right: 7%;
+    width: 270px;
+    height: 270px;
+    content: "";
+    border: 42px solid rgba(255, 255, 255, .12);
+    border-radius: 50%;
+}
+
+.o_zc_report_hero > div,
+.o_zc_report_hero_icon {
+    position: relative;
+    z-index: 1;
+}
+
+.o_zc_report_eyebrow {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .14em;
+    color: rgba(255, 255, 255, .78);
+}
+
+.o_zc_report_hero h1 {
+    margin: 0 0 7px;
+    color: #fff;
+    font-size: 30px;
+    font-weight: 750;
+    line-height: 1.15;
+}
+
+.o_zc_report_hero p {
+    max-width: 720px;
+    margin: 0;
+    color: rgba(255, 255, 255, .86);
+    font-size: 14px;
+}
+
+.o_zc_report_hero_icon {
+    display: grid;
+    width: 62px;
+    height: 62px;
+    flex: 0 0 auto;
+    place-items: center;
+    border: 1px solid rgba(255, 255, 255, .42);
+    border-radius: 17px;
+    background: rgba(255, 255, 255, .12);
+    font-size: 26px;
+}
+
+.o_zc_report_section_intro {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 24px 0 14px;
+}
+
+.o_zc_report_section_number {
+    display: grid;
+    width: 32px;
+    height: 32px;
+    flex: 0 0 auto;
+    place-items: center;
+    border-radius: 10px;
+    background: #e5f7f4;
+    color: #087a73;
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.o_zc_report_section_intro h2,
+.o_zc_report_table_heading h2 {
+    margin: 0;
+    color: #18324b;
+    font-size: 18px;
+    font-weight: 750;
+}
+
+.o_zc_report_section_intro p,
+.o_zc_report_table_heading p {
+    margin: 3px 0 0;
+    color: #6e8293;
+    font-size: 13px;
+}
+
+.o_form_view.o_zc_report_wizard .o_zc_report_filter_grid {
+    margin: 0;
+    padding: 8px;
+    border: 1px solid #d9ebed;
+    border-radius: 15px;
+    background: rgba(255, 255, 255, .92);
+    box-shadow: 0 5px 18px rgba(18, 76, 88, .05);
+}
+
+.o_form_view.o_zc_report_wizard .o_zc_report_filter_group {
+    margin: 0;
+    padding: 17px 18px 9px;
+    border: 0;
+    border-radius: 11px;
+    background: #f7fbfc;
+}
+
+.o_form_view.o_zc_report_wizard .o_zc_report_filter_group > .o_horizontal_separator {
+    margin: 0 0 13px;
+    color: #174d63;
+    font-size: 13px;
+    font-weight: 750;
+}
+
+.o_form_view.o_zc_report_wizard .o_zc_report_filter_group .o_cell {
+    padding-bottom: 8px;
+}
+
+.o_form_view.o_zc_report_wizard .o_zc_report_filter_group .o_form_label {
+    color: #527083;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.o_form_view.o_zc_report_wizard .o_zc_report_filter_group .o_field_widget {
+    min-width: 0;
+}
+
+.o_zc_report_actions {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-height: 54px;
+    margin: 18px 0 2px;
+    padding: 9px 10px;
+    border: 1px solid #dcebed;
+    border-radius: 12px;
+    background: #fff;
+}
+
+.o_zc_report_actions .btn {
+    padding: 8px 13px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.o_zc_report_actions .btn-primary {
+    border-color: #087b86;
+    background: #087b86;
+}
+
+.o_zc_report_actions .btn-success {
+    border-color: #168254;
+    background: #168254;
+}
+
+.o_zc_report_action_hint {
+    margin-left: 4px;
+    color: #718694;
+    font-size: 12px;
+}
+
+.o_zc_report_results {
+    margin-top: 26px;
+}
+
+.o_zc_report_results_intro {
+    margin-top: 0;
+}
+
+.o_zc_kpi_grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(130px, 1fr));
+    gap: 10px;
+}
+
+.o_zc_kpi_grid--customer {
+    grid-template-columns: repeat(4, minmax(140px, 1fr));
+}
+
+.o_zc_kpi_card {
+    min-height: 86px;
+    padding: 14px 15px 12px;
+    border: 1px solid #dce9ed;
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 4px 12px rgba(17, 54, 70, .04);
+}
+
+.o_zc_kpi_card > span {
+    display: block;
+    margin-bottom: 7px;
+    color: #688092;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.o_zc_kpi_card .o_field_widget,
+.o_zc_kpi_card .o_field_widget .o_field_value {
+    color: #18324b;
+    font-size: 22px;
+    font-weight: 780;
+    line-height: 1;
+}
+
+.o_zc_kpi_card--blue { border-top: 3px solid #2f6bea; }
+.o_zc_kpi_card--green { border-top: 3px solid #19a56f; }
+.o_zc_kpi_card--amber { border-top: 3px solid #e2a217; }
+.o_zc_kpi_card--purple { border-top: 3px solid #805ad5; }
+.o_zc_kpi_card--neutral { border-top: 3px solid #78909c; }
+
+.o_zc_kpi_card--blue .o_field_widget, .o_zc_kpi_card--blue .o_field_value { color: #2463dc; }
+.o_zc_kpi_card--green .o_field_widget, .o_zc_kpi_card--green .o_field_value { color: #118656; }
+.o_zc_kpi_card--amber .o_field_widget, .o_zc_kpi_card--amber .o_field_value { color: #ae7500; }
+.o_zc_kpi_card--purple .o_field_widget, .o_zc_kpi_card--purple .o_field_value { color: #6943ba; }
+
+.o_form_view.o_zc_report_wizard .o_zc_report_notebook {
+    margin-top: 25px;
+    border: 1px solid #dcebed;
+    border-radius: 13px;
+    background: #fff;
+    overflow: hidden;
+}
+
+.o_form_view.o_zc_report_wizard .o_zc_report_notebook .nav-tabs {
+    padding: 0 12px;
+    background: #f6fafb;
+}
+
+.o_form_view.o_zc_report_wizard .o_zc_report_notebook .nav-link {
+    padding: 13px 16px 10px;
+    color: #597386;
+    font-size: 12px;
+    font-weight: 750;
+}
+
+.o_form_view.o_zc_report_wizard .o_zc_report_notebook .nav-link.active {
+    border-bottom-color: #087b86;
+    color: #087b86;
+}
+
+.o_form_view.o_zc_report_wizard .o_notebook_content {
+    padding: 0;
+}
+
+.o_zc_report_table_heading {
+    margin: 27px 0 12px;
+    padding: 0 2px;
+}
+
+.o_form_view.o_zc_report_wizard .o_list_view {
+    overflow: hidden;
+    border: 1px solid #dcebed;
+    border-radius: 12px;
+}
+
+.o_form_view.o_zc_report_wizard .o_list_view thead {
+    background: #f3f8fa;
+}
+
+.o_form_view.o_zc_report_wizard .o_list_view th {
+    color: #547083;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+@media (max-width: 992px) {
+    .o_zc_kpi_grid,
+    .o_zc_kpi_grid--customer { grid-template-columns: repeat(3, minmax(130px, 1fr)); }
+    .o_zc_report_action_hint { display: none; }
+}
+
+@media (max-width: 620px) {
+    .o_form_view.o_zc_report_wizard .o_form_sheet { padding: 16px; }
+    .o_zc_report_hero { min-height: 130px; padding: 22px; }
+    .o_zc_report_hero h1 { font-size: 25px; }
+    .o_zc_report_hero_icon { display: none; }
+    .o_zc_kpi_grid,
+    .o_zc_kpi_grid--customer { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
+    .o_zc_report_actions { flex-wrap: wrap; }
+    .o_zc_report_actions .ms-auto { margin-left: 0 !important; }
+}

@@ -4,52 +4,79 @@
         <field name="name">salesperson.performance.report.wizard.form</field>
         <field name="model">salesperson.performance.report.wizard</field>
         <field name="arch" type="xml">
-            <form string="Salesperson Performance Report" create="0" edit="1">
+            <form string="Performance Report" create="0" edit="1" class="o_zc_report_wizard">
                 <sheet>
-                    <div class="oe_title">
-                        <h1>Salesperson Performance Report</h1>
-                        <p class="text-muted">Monthly, weekly, individual and multiple-salesperson performance analysis.</p>
+                    <field name="name" invisible="1"/>
+                    <div class="o_zc_report_hero o_zc_performance_report_hero">
+                        <div>
+                            <span class="o_zc_report_eyebrow">ZENCORE FIELD / ANALYTICS</span>
+                            <h1>Salesperson Performance</h1>
+                            <p>Plan visits, field activity, distance and outcomes in one clear report.</p>
+                        </div>
+                        <span class="o_zc_report_hero_icon fa fa-line-chart" aria-label="Performance analytics" title="Performance analytics"/>
                     </div>
 
-                    <group string="Report Type &amp; Filters" col="4">
-                        <field name="report_type" widget="radio" options="{'horizontal': true}"/>
-                        <field name="month_date" invisible="report_type != 'monthly'"/>
-                        <field name="week_start" invisible="report_type != 'weekly'"/>
-                        <field name="period_preset" invisible="report_type not in ('individual', 'multiple')"/>
-                        <field name="date_from" readonly="report_type in ('monthly', 'weekly') or (report_type in ('individual', 'multiple') and period_preset != 'custom')"/>
-                        <field name="date_to" readonly="report_type in ('monthly', 'weekly') or (report_type in ('individual', 'multiple') and period_preset != 'custom')"/>
-                        <field name="individual_user_id" options="{'no_create': True}" invisible="report_type != 'individual'" required="report_type == 'individual'"/>
-                        <field name="user_ids" widget="many2many_tags" options="{'no_create': True}" invisible="report_type == 'individual'"/>
-                        <field name="sale_team_id" options="{'no_create': True}"/>
-                        <field name="partner_id" options="{'no_create': True}"/>
-                        <field name="visit_status"/>
-                        <field name="visit_purpose"/>
-                        <field name="tracking_status"/>
+                    <div class="o_zc_report_section_intro">
+                        <span class="o_zc_report_section_number">01</span>
+                        <div>
+                            <h2>Build your report</h2>
+                            <p>Choose a period and the field team data you want to review.</p>
+                        </div>
+                    </div>
+
+                    <group class="o_zc_report_filter_grid" col="2">
+                        <group string="Report period" class="o_zc_report_filter_group">
+                            <field name="report_type" widget="radio" options="{'horizontal': true}"/>
+                            <field name="month_date" invisible="report_type != 'monthly'"/>
+                            <field name="week_start" invisible="report_type != 'weekly'"/>
+                            <field name="period_preset" invisible="report_type not in ('individual', 'multiple')"/>
+                            <field name="date_from" readonly="report_type in ('monthly', 'weekly') or (report_type in ('individual', 'multiple') and period_preset != 'custom')"/>
+                            <field name="date_to" readonly="report_type in ('monthly', 'weekly') or (report_type in ('individual', 'multiple') and period_preset != 'custom')"/>
+                        </group>
+                        <group string="People &amp; filters" class="o_zc_report_filter_group">
+                            <field name="individual_user_id" options="{'no_create': True}" invisible="report_type != 'individual'" required="report_type == 'individual'"/>
+                            <field name="user_ids" widget="many2many_tags" options="{'no_create': True}" invisible="report_type == 'individual'"/>
+                            <field name="sale_team_id" options="{'no_create': True}"/>
+                            <field name="partner_id" options="{'no_create': True}"/>
+                            <field name="visit_status"/>
+                            <field name="visit_purpose"/>
+                            <field name="tracking_status"/>
+                        </group>
                     </group>
 
-                    <div class="d-flex gap-2 mb-3">
-                        <button name="action_generate_report" type="object" string="Generate Report" class="btn-primary" icon="fa-search"/>
-                        <button name="action_reset" type="object" string="Reset" class="btn-secondary" icon="fa-refresh"/>
-                        <button name="action_print_pdf" type="object" string="Print PDF" class="btn-success ms-auto" icon="fa-print" invisible="not line_ids"/>
+                    <div class="o_zc_report_actions">
+                        <button name="action_generate_report" type="object" string="Generate report" class="btn-primary" icon="fa-search"/>
+                        <button name="action_reset" type="object" string="Reset filters" class="btn-secondary" icon="fa-refresh"/>
+                        <span class="o_zc_report_action_hint">Results use only the users and records you are allowed to monitor.</span>
+                        <button name="action_print_pdf" type="object" string="Print PDF" class="btn-secondary ms-auto" icon="fa-print" invisible="not line_ids"/>
                         <button name="action_export_excel" type="object" string="Export Excel" class="btn-success" icon="fa-file-excel-o" invisible="not line_ids"/>
                     </div>
 
-                    <group string="Summary" col="5" invisible="not line_ids">
-                        <field name="total_salespersons" readonly="1"/>
-                        <field name="total_planned_visits" readonly="1"/>
-                        <field name="total_completed_visits" readonly="1"/>
-                        <field name="total_pending_visits" readonly="1"/>
-                        <field name="completion_percent" readonly="1" widget="percentage"/>
-                        <field name="total_distance_km" readonly="1"/>
-                        <field name="total_tracking_minutes" readonly="1"/>
-                        <field name="total_visit_minutes" readonly="1"/>
-                        <field name="total_idle_minutes" readonly="1"/>
-                        <field name="total_expense" readonly="1"/>
-                        <field name="average_rating" readonly="1"/>
-                    </group>
+                    <div class="o_zc_report_results" invisible="not line_ids">
+                        <div class="o_zc_report_section_intro o_zc_report_results_intro">
+                            <span class="o_zc_report_section_number">02</span>
+                            <div>
+                                <h2>Performance snapshot</h2>
+                                <p>Summary for the selected period and reporting scope.</p>
+                            </div>
+                        </div>
+                        <div class="o_zc_kpi_grid">
+                            <div class="o_zc_kpi_card o_zc_kpi_card--neutral"><span>Salespeople</span><field name="total_salespersons" nolabel="1" readonly="1"/></div>
+                            <div class="o_zc_kpi_card o_zc_kpi_card--blue"><span>Planned visits</span><field name="total_planned_visits" nolabel="1" readonly="1"/></div>
+                            <div class="o_zc_kpi_card o_zc_kpi_card--green"><span>Completed</span><field name="total_completed_visits" nolabel="1" readonly="1"/></div>
+                            <div class="o_zc_kpi_card o_zc_kpi_card--amber"><span>Pending</span><field name="total_pending_visits" nolabel="1" readonly="1"/></div>
+                            <div class="o_zc_kpi_card o_zc_kpi_card--purple"><span>Completion rate</span><field name="completion_percent" nolabel="1" readonly="1" widget="percentage"/></div>
+                            <div class="o_zc_kpi_card"><span>Distance (km)</span><field name="total_distance_km" nolabel="1" readonly="1"/></div>
+                            <div class="o_zc_kpi_card"><span>Tracking (min)</span><field name="total_tracking_minutes" nolabel="1" readonly="1"/></div>
+                            <div class="o_zc_kpi_card"><span>Visit time (min)</span><field name="total_visit_minutes" nolabel="1" readonly="1"/></div>
+                            <div class="o_zc_kpi_card"><span>Idle time (min)</span><field name="total_idle_minutes" nolabel="1" readonly="1"/></div>
+                            <div class="o_zc_kpi_card"><span>Expense</span><field name="total_expense" nolabel="1" readonly="1"/></div>
+                            <div class="o_zc_kpi_card"><span>Average rating</span><field name="average_rating" nolabel="1" readonly="1"/></div>
+                        </div>
+                    </div>
 
-                    <notebook invisible="not line_ids">
-                        <page string="Salesperson Summary">
+                    <notebook invisible="not line_ids" class="o_zc_report_notebook">
+                        <page string="Salesperson summary">
                             <field name="line_ids" nolabel="1" readonly="1">
                                 <list create="0" delete="0" edit="0" decoration-success="completion_percent &gt;= 80" decoration-warning="completion_percent &lt; 80 and completion_percent &gt;= 50" decoration-danger="completion_percent &lt; 50">
                                     <field name="user_id"/>
@@ -60,13 +87,13 @@
                                     <field name="distance_km"/>
                                     <field name="tracking_minutes"/>
                                     <field name="visit_minutes"/>
-                                    <field name="idle_minutes"/>
-                                    <field name="expense"/>
-                                    <field name="average_rating"/>
+                                    <field name="idle_minutes" optional="hide"/>
+                                    <field name="expense" optional="hide"/>
+                                    <field name="average_rating" optional="hide"/>
                                 </list>
                             </field>
                         </page>
-                        <page string="Day-wise Summary">
+                        <page string="Daily summary">
                             <field name="day_line_ids" nolabel="1" readonly="1">
                                 <list create="0" delete="0" edit="0">
                                     <field name="date"/>
@@ -79,7 +106,7 @@
                                 </list>
                             </field>
                         </page>
-                        <page string="Visit Details">
+                        <page string="Visit details">
                             <field name="visit_line_ids" nolabel="1" readonly="1">
                                 <list create="0" delete="0" edit="0" decoration-success="status == 'completed'" decoration-info="status == 'in_progress'">
                                     <field name="visit_date"/>
@@ -92,7 +119,7 @@
                                     <field name="distance_km" optional="hide"/>
                                     <field name="status" widget="badge"/>
                                     <field name="outcome"/>
-                                    <field name="rating"/>
+                                    <field name="rating" optional="hide"/>
                                 </list>
                             </field>
                         </page>
@@ -109,25 +136,8 @@
         <field name="target">current</field>
     </record>
 
-    <menuitem id="menu_salesperson_reports_root"
-              name="Reports"
-              parent="menu_salesperson_tracking_root"
-              sequence="34"
-              groups="zencore_salesperson_tracking.group_salesperson_ceo,zencore_salesperson_tracking.group_salesperson_manager,zencore_salesperson_tracking.group_salesperson_supervisor"/>
-
-    <menuitem id="menu_salesperson_performance_report"
-              name="Performance Report"
-              parent="menu_salesperson_reports_root"
-              action="action_salesperson_performance_report"
-              sequence="10"
-              groups="zencore_salesperson_tracking.group_salesperson_ceo,zencore_salesperson_tracking.group_salesperson_manager,zencore_salesperson_tracking.group_salesperson_supervisor"/>
-
-    <!-- Reporting hierarchy lives with monitoring reports, not under the
-         intentionally-hidden Organization navigation. -->
-    <menuitem id="menu_zc_reporting_hierarchy"
-              name="Reporting Hierarchy"
-              parent="menu_salesperson_reports_root"
-              action="action_zc_hierarchy"
-              sequence="5"
-              groups="zencore_salesperson_tracking.group_salesperson_ceo,zencore_salesperson_tracking.group_salesperson_manager,zencore_salesperson_tracking.group_salesperson_supervisor"/>
+    <menuitem id="menu_salesperson_reports_root" name="Reports" parent="menu_salesperson_tracking_root" sequence="34" groups="zencore_salesperson_tracking.group_salesperson_ceo,zencore_salesperson_tracking.group_salesperson_manager,zencore_salesperson_tracking.group_salesperson_supervisor"/>
+    <menuitem id="menu_salesperson_performance_report" name="Performance Report" parent="menu_salesperson_reports_root" action="action_salesperson_performance_report" sequence="10" groups="zencore_salesperson_tracking.group_salesperson_ceo,zencore_salesperson_tracking.group_salesperson_manager,zencore_salesperson_tracking.group_salesperson_supervisor"/>
+    <!-- Reporting hierarchy lives with monitoring reports, not under the intentionally-hidden Organization navigation. -->
+    <menuitem id="menu_zc_reporting_hierarchy" name="Reporting Hierarchy" parent="menu_salesperson_reports_root" action="action_zc_hierarchy" sequence="5" groups="zencore_salesperson_tracking.group_salesperson_ceo,zencore_salesperson_tracking.group_salesperson_manager,zencore_salesperson_tracking.group_salesperson_supervisor"/>
 </odoo>

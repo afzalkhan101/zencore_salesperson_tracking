@@ -9,6 +9,16 @@ from .report_security import check_report_access, report_team_user_ids, check_re
 class SalespersonPerformanceReportWizard(models.TransientModel):
     _name = "salesperson.performance.report.wizard"
     _description = "Salesperson Performance Report"
+    _rec_name = "name"
+
+    # A proper record name keeps the Odoo breadcrumb human-readable while the
+    # transient form is open (instead of showing ``NewId_...``).
+    name = fields.Char(
+        string="Report Name",
+        required=True,
+        readonly=True,
+        default=lambda self: _("Salesperson Performance Report"),
+    )
 
     report_type = fields.Selection([
         ("monthly", "Monthly Report"),

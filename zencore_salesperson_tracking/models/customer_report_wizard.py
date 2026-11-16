@@ -9,6 +9,16 @@ from .report_security import check_report_access, report_team_user_ids, check_re
 class SalespersonCustomerReportWizard(models.TransientModel):
     _name = "salesperson.customer.report.wizard"
     _description = "Customer Detailed Visit Report"
+    _rec_name = "name"
+
+    # This is deliberately hidden from the wizard body; it supplies a useful
+    # breadcrumb label for the transient record in the Odoo client.
+    name = fields.Char(
+        string="Report Name",
+        required=True,
+        readonly=True,
+        default=lambda self: _("Customer Detailed Report"),
+    )
 
     partner_id = fields.Many2one(
         "res.partner",
