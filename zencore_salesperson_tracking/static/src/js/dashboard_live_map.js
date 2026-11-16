@@ -463,7 +463,7 @@
                 '<td><span class="gps-health-pill"><i></i><span class="gps-health-text">' + escapeHtml(r.gps_health) + '</span></span></td>' +
                 '<td><span class="status-pill rep-status-cell"><i class="status-dot"></i><span>' + escapeHtml(r.status_label) + '</span></span></td>' +
                 '<td><div class="row-actions">' +
-                (id ? '<button type="button" class="action-btn primary" data-focus-tracker="' + id + '">Live</button><button type="button" class="action-btn" data-open-route="' + id + '">Route</button><button type="button" class="action-btn visit-details-trigger" data-tracker-id="' + id + '">Details</button>' : '') +
+                (id ? '<button type="button" class="action-btn primary" data-focus-tracker="' + id + '">Live</button><button type="button" class="action-btn" data-open-route="' + id + '">Route</button>' : '') +
                 '</div></td></tr>';
         }).join('');
         var count = document.getElementById('table-row-count');
