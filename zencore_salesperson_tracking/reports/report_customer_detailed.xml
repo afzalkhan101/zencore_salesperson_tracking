@@ -98,24 +98,54 @@
                         .cdr-subbox {border-color:#d4d4d4; background:#fafafa;}
                         .cdr-photo {border-color:#c8c8c8;}
                         .cdr-footer {border-top-color:#222;}
+
+                        /* Compact official layout: plain text and tables,
+                           deliberately avoiding dashboard cards or emphasis. */
+                        .cdr-page,.cdr-page strong,.cdr-page th {font-weight:400; color:#111;}
+                        .cdr-page {font-size:10px;}
+                        .cdr-header {border:0; border-bottom:1px solid #555; border-radius:0; padding:3px 0 7px; margin-bottom:9px;}
+                        .cdr-logo {display:none;}
+                        .cdr-company-name {font-size:12px; font-weight:400; margin:0; color:#111;}
+                        .cdr-company-tag,.cdr-eyebrow {display:none;}
+                        .cdr-title {font-size:16px; line-height:18px; font-weight:400; margin:0; color:#111;}
+                        .cdr-title .accent {color:#111;}
+                        .cdr-track {font-size:10px; font-weight:400; color:#444;}
+                        .cdr-track-line {display:none;}
+                        .cdr-meta {border-left:1px solid #cfcfcf; color:#333; line-height:13px;}
+                        .cdr-meta strong {font-size:10px; font-weight:400; color:#111;}
+                        .cdr-section,.cdr-section-soft {background:transparent; color:#111; border:0; border-bottom:1px solid #777; border-radius:0; padding:4px 0; margin-top:10px; font-size:11px; font-weight:400;}
+                        .cdr-card {border:1px solid #d0d0d0; border-top:0; border-radius:0; padding:7px 9px;}
+                        .cdr-info-row {padding:2px 0; min-height:14px;}
+                        .cdr-icon {display:none;}
+                        .cdr-label {width:100px; color:#444; font-weight:400;}
+                        .cdr-value {color:#111; font-weight:400;}
+                        .cdr-split {border-left:1px solid #d0d0d0; padding-left:12px;}
+                        .cdr-kpi-wrap {border:1px solid #d0d0d0; border-top:0; border-radius:0; padding:0;}
+                        .cdr-kpi,.cdr-kpi.blue,.cdr-kpi.green,.cdr-kpi.orange,.cdr-kpi.purple,.cdr-kpi.pink,.cdr-kpi.teal {min-height:0; margin:0; padding:5px 4px; border:0; border-right:1px solid #d0d0d0; border-radius:0; background:#f5f5f5;}
+                        .cdr-kpi-icon {display:none;}
+                        .cdr-kpi-value {display:inline; font-size:10px; font-weight:400; color:#111;}
+                        .cdr-kpi-label {display:inline; font-size:10px; color:#111;}
+                        .cdr-kpi-label:after {content:': ';}
+                        .cdr-table {border-color:#c8c8c8;}
+                        .cdr-table th {background:#f0f0f0; color:#111; border-color:#c8c8c8; padding:4px; font-weight:400;}
+                        .cdr-table td {border-color:#dedede; color:#111; padding:4px;}
+                        .cdr-status,.cdr-status.completed,.cdr-status.pending,.cdr-status.progress {border:0; border-radius:0; padding:0; background:transparent; color:#111; font-size:8.5px; font-weight:400;}
+                        .cdr-stars {color:#111;}
+                        .cdr-detail {border-color:#d0d0d0; border-radius:0; margin-top:8px;}
+                        .cdr-detail-head {background:#f0f0f0; color:#111; border-bottom-color:#c8c8c8; padding:5px 7px; font-weight:400;}
+                        .cdr-detail-body {padding:7px 8px;}
+                        .cdr-subbox {border-color:#d4d4d4; border-radius:0; background:#fff; min-height:0; padding:6px 7px;}
+                        .cdr-subtitle {color:#111; font-weight:400; margin-bottom:4px;}
+                        .cdr-footer {border-top-color:#777; color:#555;}
                     </style>
 
                     <div class="page cdr-page">
                         <div class="cdr-header">
                             <div class="row align-items-center">
-                                <div class="col-4">
-                                    <t t-if="env.company.logo">
-                                        <img t-att-src="image_data_uri(env.company.logo)" class="cdr-logo"/>
-                                    </t>
-                                    <t t-else="">
-                                        <div class="cdr-company-name" t-esc="env.company.name"/>
-                                        <div class="cdr-company-tag">Your Business Partner</div>
-                                    </t>
-                                </div>
+                                <div class="col-4"><div class="cdr-company-name" t-esc="env.company.name"/></div>
                                 <div class="col-5">
-                                    <div class="cdr-eyebrow">CUSTOMER</div>
-                                    <div class="cdr-title">Detailed Visit <span class="accent">Report</span></div>
-                                    <div class="cdr-track"><span class="cdr-track-line"/>Salesperson Tracking</div>
+                                    <div class="cdr-title">Customer Detailed Visit Report</div>
+                                    <div class="cdr-track">Salesperson Tracking</div>
                                 </div>
                                 <div class="col-3">
                                     <div class="cdr-meta">
@@ -146,16 +176,16 @@
                             </div>
                         </div>
 
-                        <div class="cdr-section-soft">Summary <span style="float:right;font-size:9px;font-weight:400;color:#555;">Key highlights from the selected period</span></div>
+                        <div class="cdr-section-soft">Summary</div>
                         <div class="cdr-kpi-wrap">
                             <div class="row" style="margin:0 -2px;">
-                                <div class="col" style="padding:2px;"><div class="cdr-kpi blue"><div class="cdr-kpi-icon">●●●</div><div class="cdr-kpi-value" t-esc="doc.total_visits"/><div class="cdr-kpi-label">Total Visits</div></div></div>
-                                <div class="col" style="padding:2px;"><div class="cdr-kpi green"><div class="cdr-kpi-icon">✓</div><div class="cdr-kpi-value" t-esc="doc.completed_visits"/><div class="cdr-kpi-label">Completed</div></div></div>
-                                <div class="col" style="padding:2px;"><div class="cdr-kpi orange"><div class="cdr-kpi-icon">◷</div><div class="cdr-kpi-value" t-esc="doc.pending_visits"/><div class="cdr-kpi-label">Pending</div></div></div>
-                                <div class="col" style="padding:2px;"><div class="cdr-kpi purple"><div class="cdr-kpi-icon">◆</div><div class="cdr-kpi-value"><span t-esc="'%.1f' % doc.total_distance_km"/> km</div><div class="cdr-kpi-label">Route Distance</div></div></div>
-                                <div class="col" style="padding:2px;"><div class="cdr-kpi pink"><div class="cdr-kpi-icon">◷</div><div class="cdr-kpi-value"><span t-esc="'%dh %02dm' % (int(doc.total_visit_minutes // 60), int(doc.total_visit_minutes % 60))"/></div><div class="cdr-kpi-label">Visit Time</div></div></div>
-                                <div class="col" style="padding:2px;"><div class="cdr-kpi teal"><div class="cdr-kpi-icon">≋</div><div class="cdr-kpi-value"><span t-esc="'%.2f' % doc.total_expense"/></div><div class="cdr-kpi-label">Actual Expense (<span t-esc="env.company.currency_id.name"/>)</div></div></div>
-                                <div class="col" style="padding:2px;"><div class="cdr-kpi purple"><div class="cdr-kpi-icon">★</div><div class="cdr-kpi-value"><span t-esc="'%.1f' % doc.average_rating"/></div><div class="cdr-kpi-label">Average Rating</div></div></div>
+                                <div class="col" style="padding:2px;"><div class="cdr-kpi blue"><div class="cdr-kpi-icon">●●●</div><div class="cdr-kpi-label">Total Visits</div><div class="cdr-kpi-value" t-esc="doc.total_visits"/></div></div>
+                                <div class="col" style="padding:2px;"><div class="cdr-kpi green"><div class="cdr-kpi-icon">✓</div><div class="cdr-kpi-label">Completed</div><div class="cdr-kpi-value" t-esc="doc.completed_visits"/></div></div>
+                                <div class="col" style="padding:2px;"><div class="cdr-kpi orange"><div class="cdr-kpi-icon">◷</div><div class="cdr-kpi-label">Pending</div><div class="cdr-kpi-value" t-esc="doc.pending_visits"/></div></div>
+                                <div class="col" style="padding:2px;"><div class="cdr-kpi purple"><div class="cdr-kpi-icon">◆</div><div class="cdr-kpi-label">Route Distance</div><div class="cdr-kpi-value"><span t-esc="'%.1f' % doc.total_distance_km"/> km</div></div></div>
+                                <div class="col" style="padding:2px;"><div class="cdr-kpi pink"><div class="cdr-kpi-icon">◷</div><div class="cdr-kpi-label">Visit Time</div><div class="cdr-kpi-value"><span t-esc="'%dh %02dm' % (int(doc.total_visit_minutes // 60), int(doc.total_visit_minutes % 60))"/></div></div></div>
+                                <div class="col" style="padding:2px;"><div class="cdr-kpi teal"><div class="cdr-kpi-icon">≋</div><div class="cdr-kpi-label">Actual Expense (<span t-esc="env.company.currency_id.name"/>)</div><div class="cdr-kpi-value"><span t-esc="'%.2f' % doc.total_expense"/></div></div></div>
+                                <div class="col" style="padding:2px;"><div class="cdr-kpi purple"><div class="cdr-kpi-icon">★</div><div class="cdr-kpi-label">Average Rating</div><div class="cdr-kpi-value"><span t-esc="'%.1f' % doc.average_rating"/></div></div></div>
                             </div>
                         </div>
 
@@ -210,12 +240,9 @@
                         <div class="page cdr-page">
                             <div class="cdr-header" style="padding:9px 12px;">
                                 <div class="row align-items-center">
-                                    <div class="col-4">
-                                        <t t-if="env.company.logo"><img t-att-src="image_data_uri(env.company.logo)" class="cdr-logo" style="max-height:45px;"/></t>
-                                        <t t-else=""><div class="cdr-company-name" t-esc="env.company.name"/></t>
-                                    </div>
+                                    <div class="col-4"><div class="cdr-company-name" t-esc="env.company.name"/></div>
                                     <div class="col-5 text-center">
-                                        <div style="font-size:19px;font-weight:700;color:#171717;">Detailed Visit Information</div>
+                                        <div style="font-size:16px;font-weight:400;color:#111;">Detailed Visit Information</div>
                                         <div style="font-size:10px;color:#555;" t-esc="doc.partner_id.name"/>
                                     </div>
                                     <div class="col-3">
@@ -267,7 +294,7 @@
                                                         <div><span class="cdr-label">Transport</span><span t-esc="'%.2f' % (line.tracker_id.actual_transport_cost if line.tracker_id else 0.0)"/></div>
                                                         <div><span class="cdr-label">Food</span><span t-esc="'%.2f' % (line.tracker_id.actual_food_cost if line.tracker_id else 0.0)"/></div>
                                                         <div><span class="cdr-label">Other</span><span t-esc="'%.2f' % (line.tracker_id.actual_other_cost if line.tracker_id else 0.0)"/></div>
-                                                        <div><span class="cdr-label"><strong>Total</strong></span><strong t-esc="'%.2f' % (line.tracker_id.actual_total_cost if line.tracker_id else 0.0)"/></div>
+                                                        <div><span class="cdr-label">Total</span><span t-esc="'%.2f' % (line.tracker_id.actual_total_cost if line.tracker_id else 0.0)"/></div>
                                                     </div>
                                                 </div>
                                             </div>
