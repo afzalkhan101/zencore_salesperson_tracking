@@ -1097,8 +1097,11 @@
                     .map(pair => [Number(pair?.[1]), Number(pair?.[0])])
                     .filter(pair => Number.isFinite(pair[0]) && Number.isFinite(pair[1])) : [];
                 if (points.length < 2) throw new Error('No road geometry returned');
-                gapRouteCache.set(key, points);
-                return points;
+                const meters = Number(data?.routes?.[0]?.distance);
+                if (!Number.isFinite(meters) || meters <= 0) throw new Error('No road distance returned');
+                const route = {points, meters};
+                gapRouteCache.set(key, route);
+                return route;
             } catch (error) {
                 warn('Estimated GPS-gap road path unavailable:', error);
                 gapRouteCache.set(key, null);
@@ -1113,16 +1116,17 @@
     }
 
     async function drawEstimatedGapRoadPath(from, to, token) {
-        const roadPath = await getEstimatedGapRoadPath(from, to);
+        const straightMeters = gapMeters(from, to);
+        if (straightMeters > MAX_ESTIMATED_GAP_M) return;
+        const roadRoute = await getEstimatedGapRoadPath(from, to);
         if (token !== gapRouteRenderToken) return;
-        const coordinates = roadPath || [[from.lat, from.lng], [to.lat, to.lng]];
-        const usedFallback = !roadPath;
-        const bridge = L.polyline(coordinates, {
-            color: '#0860F9', weight: 5, opacity: usedFallback ? 0.45 : 0.72,
+        // A route that is far longer than the direct gap is usually a one-way
+        // or bridge detour, not evidence of the salesperson's actual journey.
+        if (!roadRoute || roadRoute.meters > straightMeters * MAX_ESTIMATED_ROUTE_FACTOR) return;
+        const bridge = L.polyline(roadRoute.points, {
+            color: '#0860F9', weight: 5, opacity: 0.72,
             smoothFactor: 1.2, lineCap: 'round', lineJoin: 'round',
-        }).bindTooltip(usedFallback
-            ? 'GPS recording gap — estimated connection; road route unavailable'
-            : 'GPS recording gap — estimated shortest driving-road path; not recorded GPS travel');
+        }).bindTooltip('GPS recording gap — estimated shortest driving-road path; not recorded GPS travel');
         bridge.addTo(map);
         reconnectLines.push(bridge);
     }
@@ -1211,6 +1215,11 @@
     const MAP_MAX_DRAW_STEP_M = 180;   // never draw a long blind straight line
     const MAP_STATIONARY_RADIUS_M = 18;
     const MAP_REACQUIRE_RADIUS_M = 80;
+    // Never invent a large detour from a sparse GPS outage. Small gaps can be
+    // shown as a useful visual estimate, but a long/off-route gap remains
+    // intentionally blank until real GPS samples resume.
+    const MAX_ESTIMATED_GAP_M = 1200;
+    const MAX_ESTIMATED_ROUTE_FACTOR = 1.7;
 
     function distanceMeters(a, b) {
         const R = 6371000;
