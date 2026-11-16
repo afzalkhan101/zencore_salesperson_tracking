@@ -15,7 +15,7 @@
                 <!-- Custom CSS -->
                 <link rel="stylesheet"
                       type="text/css"
-                      href="/zencore_salesperson_tracking/static/src/css/templates_view.css?v=32.0.0"/>
+                      href="/zencore_salesperson_tracking/static/src/css/templates_view.css?v=33.0.0"/>
 
                 <!-- Leaflet JS -->
                 <script defer="defer"
@@ -180,7 +180,7 @@
                 <!-- Custom CSS -->
                 <link rel="stylesheet"
                       type="text/css"
-                      href="/zencore_salesperson_tracking/static/src/css/templates_view.css?v=32.0.0"/>
+                      href="/zencore_salesperson_tracking/static/src/css/templates_view.css?v=33.0.0"/>
 
                 <!-- Leaflet JS -->
                 <script defer="defer"
@@ -200,10 +200,11 @@
                             <span class="map-back-text">Tracking</span>
                         </a>
                         <div>
-                            <h1>
-                                <t t-out="tracker.user_id.name"/>
- — Movement Map</h1>
-                            <div style="font-size:12px;color:#64748b;">
+                            <h1 class="map-title">
+                                <span class="map-title-name"><t t-out="tracker.user_id.name"/></span>
+                                <span class="map-title-context">Movement Map</span>
+                            </h1>
+                            <div class="map-team-label">
                                 <t t-out="tracker.sale_team_id.name or 'No team'"/>
                             </div>
                         </div>

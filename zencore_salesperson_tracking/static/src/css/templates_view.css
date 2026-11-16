@@ -529,9 +529,13 @@ body.moving-map-page {
 }
 
 .top-bar-left h1 {
-    font-size: 18px;
-    font-weight: 600;
+    font-size: 16px;
+    font-weight: 700;
 }
+.map-title { display:flex; align-items:baseline; gap:7px; margin:0; white-space:nowrap; }
+.map-title-name { color:#102a43; }
+.map-title-context { color:#718096; font-size:11px; font-weight:700; letter-spacing:.045em; text-transform:uppercase; }
+.map-team-label { margin-top:3px; color:#8a9aa9; font-size:10px; line-height:1.2; }
 
 .meta-pills {
     display: flex;
@@ -712,6 +716,8 @@ body.moving-map-page {
         font-size: 15px;
         line-height: 1.2;
     }
+    .map-title { gap:5px; }
+    .map-title-context { font-size:9px; }
 
     .map-back-btn {
         width: 36px;
