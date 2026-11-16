@@ -1039,7 +1039,7 @@
         const node = L.DomUtil.create('div', 'zc-route-gap-legend');
         node.style.cssText = 'background:rgba(255,255,255,.95);border-radius:9px;padding:8px 10px;box-shadow:0 1px 7px #2342;font:11px sans-serif;color:#26374e;pointer-events:none;';
         node.innerHTML = '<div style="display:flex;gap:7px;align-items:center;margin-bottom:5px"><span style="width:24px;border-top:5px solid #0860F9;border-radius:6px"></span>Recorded GPS route</div>' +
-            '<div style="display:flex;gap:7px;align-items:center"><span style="width:24px;border-top:4px solid #0860F9;opacity:.68;border-radius:6px"></span>Estimated road path · GPS gap</div>';
+            '<div style="display:flex;gap:7px;align-items:center"><span style="width:24px;border-top:4px solid #0860F9;opacity:.58;border-radius:6px"></span>Estimated connector · GPS gap</div>';
         return node;
     };
     routeLegend.addTo(map);
@@ -1115,14 +1115,32 @@
         return request;
     }
 
+    function drawDirectGapConnector(from, to, message) {
+        // A straight connector is intentionally visual-only. It keeps the
+        // displayed journey continuous when an outage is too large for us to
+        // responsibly infer a road route, without inventing a large detour.
+        const bridge = L.polyline([[from.lat, from.lng], [to.lat, to.lng]], {
+            color: '#0860F9', weight: 4, opacity: 0.52,
+            smoothFactor: 1.2, lineCap: 'round', lineJoin: 'round',
+        }).bindTooltip(message);
+        bridge.addTo(map);
+        reconnectLines.push(bridge);
+    }
+
     async function drawEstimatedGapRoadPath(from, to, token) {
         const straightMeters = gapMeters(from, to);
-        if (straightMeters > MAX_ESTIMATED_GAP_M) return;
+        if (straightMeters > MAX_ESTIMATED_GAP_M) {
+            drawDirectGapConnector(from, to, 'GPS recording gap — direct estimated connector; not recorded GPS travel');
+            return;
+        }
         const roadRoute = await getEstimatedGapRoadPath(from, to);
         if (token !== gapRouteRenderToken) return;
         // A route that is far longer than the direct gap is usually a one-way
         // or bridge detour, not evidence of the salesperson's actual journey.
-        if (!roadRoute || roadRoute.meters > straightMeters * MAX_ESTIMATED_ROUTE_FACTOR) return;
+        if (!roadRoute || roadRoute.meters > straightMeters * MAX_ESTIMATED_ROUTE_FACTOR) {
+            drawDirectGapConnector(from, to, 'GPS recording gap — direct estimated connector; not recorded GPS travel');
+            return;
+        }
         const bridge = L.polyline(roadRoute.points, {
             color: '#0860F9', weight: 5, opacity: 0.72,
             smoothFactor: 1.2, lineCap: 'round', lineJoin: 'round',
@@ -1215,9 +1233,9 @@
     const MAP_MAX_DRAW_STEP_M = 180;   // never draw a long blind straight line
     const MAP_STATIONARY_RADIUS_M = 18;
     const MAP_REACQUIRE_RADIUS_M = 80;
-    // Never invent a large detour from a sparse GPS outage. Small gaps can be
-    // shown as a useful visual estimate, but a long/off-route gap remains
-    // intentionally blank until real GPS samples resume.
+    // Never invent a large detour from a sparse GPS outage. Small gaps can use
+    // a road estimate; larger or implausible gaps use a subtle direct visual
+    // connector so the displayed journey remains continuous.
     const MAX_ESTIMATED_GAP_M = 1200;
     const MAX_ESTIMATED_ROUTE_FACTOR = 1.7;
 
