@@ -40,7 +40,6 @@
 .o_zc_visit_plan_kanban .zc-plan-card-body { padding: 12px; }
 .o_zc_visit_plan_kanban .zc-plan-card-head,
 .o_zc_visit_plan_kanban .zc-plan-salesperson,
-.o_zc_visit_plan_kanban .zc-plan-card-footer,
 .o_zc_visit_plan_kanban .zc-plan-stop { display: flex; align-items: center; }
 .o_zc_visit_plan_kanban .zc-plan-card-head { justify-content: space-between; gap: 8px; }
 .o_zc_visit_plan_kanban .zc-plan-reference { overflow: hidden; color: #122b43; font-size: 13px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
@@ -66,9 +65,6 @@
 .o_zc_visit_plan_kanban .zc-plan-distance { flex: 0 0 auto; margin-top: 2px; border-radius: 7px; padding: 4px 5px; background: #eef4f7; color: #38556d; font-size: 9px; font-weight: 800; white-space: nowrap; }
 .o_zc_visit_plan_kanban .zc-plan-more-stops,
 .o_zc_visit_plan_kanban .zc-plan-route-empty { padding: 8px 9px; color: #71879a; font-size: 9px; font-style: italic; }
-.o_zc_visit_plan_kanban .zc-plan-card-footer { justify-content: space-between; gap: 8px; margin-top: 9px; padding-top: 8px; border-top: 1px solid #e7eef1; color: #5f7789; font-size: 9.5px; font-weight: 600; }
-.o_zc_visit_plan_kanban .zc-plan-approver { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.o_zc_visit_plan_kanban .zc-plan-route-mark { display: inline-grid; width: 25px; height: 25px; flex: 0 0 25px; place-items: center; border: 1px solid #cfdfe6; border-radius: 7px; color: #0d668d; font-size: 14px; }
 @media (max-width: 640px) {
     .o_zc_visit_plan_kanban .o_kanban_record { min-width: 100%; }
 }

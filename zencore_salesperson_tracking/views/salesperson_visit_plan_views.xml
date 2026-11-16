@@ -195,11 +195,6 @@
                   </t>
                   <div t-else="" class="zc-plan-route-empty">No customer locations added yet.</div>
                 </section>
-
-                <div class="zc-plan-card-footer">
-                  <span class="zc-plan-approver">♙ Approver: <t t-if="record.zc_approver_id.raw_value"><field name="zc_approver_id"/></t><t t-else="">Not assigned</t></span>
-                  <span class="zc-plan-route-mark" title="Customer route">⌑</span>
-                </div>
               </div>
             </article>
           </t></templates>
