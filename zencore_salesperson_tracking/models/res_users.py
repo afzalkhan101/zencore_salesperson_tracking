@@ -122,30 +122,39 @@ class ResUsers(models.Model):
                                          string='Visible Reporting Team')
 
     def _compute_zc_team_user_ids(self):
-        # ``active_test=False`` intentionally retains former staff in reporting
-        # and map history. It does not make them able to log in or receive new
-        # assignments; it only keeps historic records visible to authorized
-        # monitors.
+        # ``active_test=False`` intentionally retains former staff in map and
+        # reporting history. It does not make them able to log in or receive
+        # new assignments; it only keeps historic records visible to an
+        # authorized monitor.
         Users = self.env['res.users'].sudo().with_context(active_test=False)
         for user in self:
-            # A CEO is a company-level monitor, including users who registered
-            # without choosing a Reports To manager. Manager and Supervisor
-            # visibility remains strictly their reporting subtree.
-            if user.salesperson_role == 'ceo' and user.company_id:
-                company_users = Users.search([
+            # Monitoring follows the company role ladder, not whether a
+            # Reports To manager happens to be configured.  Reports To remains
+            # useful for organization and approvals, but must never hide a
+            # lower-role field user's route from an authorized monitor.
+            #
+            # CEO        → everyone in the same company
+            # Manager    → self + Supervisor + Salesperson
+            # Supervisor → self + Salesperson
+            # Salesperson→ self only
+            role = user.salesperson_role or 'salesman'
+            visible_ids = {user.id}
+            if user.company_id:
+                domain = [
                     ('company_id', '=', user.company_id.id),
                     ('share', '=', False),
-                ])
-                user.zc_team_user_ids = [(6, 0, company_users.ids)]
-                continue
-            seen = {user.id}
-            frontier = {user.id}
-            while frontier:
-                children = Users.search([('zc_reports_to_id','in',list(frontier))])
-                next_ids = set(children.ids) - seen
-                seen |= next_ids
-                frontier = next_ids
-            user.zc_team_user_ids = [(6, 0, list(seen))]
+                ]
+                if role == 'ceo':
+                    visible_ids.update(Users.search(domain).ids)
+                elif role == 'manager':
+                    visible_ids.update(Users.search(
+                        domain + [('salesperson_role', 'in', ('supervisor', 'salesman'))]
+                    ).ids)
+                elif role == 'supervisor':
+                    visible_ids.update(Users.search(
+                        domain + [('salesperson_role', '=', 'salesman')]
+                    ).ids)
+            user.zc_team_user_ids = [(6, 0, list(visible_ids))]
 
     def _zc_allowed_reporting_superior_roles(self):
         """Return the server-authoritative allowed direct-superior roles."""
