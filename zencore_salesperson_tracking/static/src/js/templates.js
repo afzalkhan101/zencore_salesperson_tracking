@@ -1038,8 +1038,7 @@
     routeLegend.onAdd = function () {
         const node = L.DomUtil.create('div', 'zc-route-gap-legend');
         node.style.cssText = 'background:rgba(255,255,255,.95);border-radius:9px;padding:8px 10px;box-shadow:0 1px 7px #2342;font:11px sans-serif;color:#26374e;pointer-events:none;';
-        node.innerHTML = '<div style="display:flex;gap:7px;align-items:center;margin-bottom:5px"><span style="width:24px;border-top:5px solid #0860F9;border-radius:6px"></span>Recorded GPS route</div>' +
-            '<div style="display:flex;gap:7px;align-items:center"><span style="width:24px;border-top:4px solid #0860F9;opacity:.58;border-radius:6px"></span>Estimated connector · GPS gap</div>';
+        node.innerHTML = '<div style="display:flex;gap:7px;align-items:center"><span style="width:24px;border-top:5px solid #0860F9;border-radius:6px"></span>GPS path</div>';
         return node;
     };
     routeLegend.addTo(map);
@@ -1076,9 +1075,9 @@
         return [from.lng.toFixed(5), from.lat.toFixed(5), to.lng.toFixed(5), to.lat.toFixed(5)].join(',');
     }
 
-    // Missing GPS samples cannot tell us the real journey. For visual
-    // continuity only, ask OSRM for the shortest *driving-road* path between
-    // the two recorded endpoints. It is never included in verified distance.
+    // For a meaningful GPS break, use OSRM's first (preferred) driving route
+    // between the two endpoints. It is only visual and never changes verified
+    // distance, reports, or stored GPS data.
     async function getEstimatedGapRoadPath(from, to) {
         const key = gapRouteKey(from, to);
         if (gapRouteCache.has(key)) return gapRouteCache.get(key);
@@ -1115,38 +1114,42 @@
         return request;
     }
 
-    function drawDirectGapConnector(from, to, message) {
-        // A straight connector is intentionally visual-only. It keeps the
-        // displayed journey continuous when an outage is too large for us to
-        // responsibly infer a road route, without inventing a large detour.
-        const bridge = L.polyline([[from.lat, from.lng], [to.lat, to.lng]], {
-            color: '#0860F9', weight: 4, opacity: 0.52,
+    function drawReconnectPath(points) {
+        // Reconnected sections deliberately look exactly like the recorded
+        // path. The map stays clean: it does not expose outage diagnostics to
+        // supervisors or salespeople.
+        const bridge = L.polyline(points, {
+            color: '#0860F9', weight: 8, opacity: 0.96,
             smoothFactor: 1.2, lineCap: 'round', lineJoin: 'round',
-        }).bindTooltip(message);
+        });
         bridge.addTo(map);
         reconnectLines.push(bridge);
     }
 
+    function drawDirectReconnectPath(from, to) {
+        // If a road service cannot provide a sensible nearby road, keep the
+        // route continuous without drawing a distant detour.
+        drawReconnectPath([[from.lat, from.lng], [to.lat, to.lng]]);
+    }
+
     async function drawEstimatedGapRoadPath(from, to, token) {
         const straightMeters = gapMeters(from, to);
+        // Ignore tiny out-and-back movements. At this distance a reconnect
+        // line adds visual noise without conveying useful travel.
+        if (straightMeters <= MIN_RECONNECT_GAP_M) return;
         if (straightMeters > MAX_ESTIMATED_GAP_M) {
-            drawDirectGapConnector(from, to, 'GPS recording gap — direct estimated connector; not recorded GPS travel');
+            drawDirectReconnectPath(from, to);
             return;
         }
         const roadRoute = await getEstimatedGapRoadPath(from, to);
         if (token !== gapRouteRenderToken) return;
         // A route that is far longer than the direct gap is usually a one-way
-        // or bridge detour, not evidence of the salesperson's actual journey.
+        // or bridge detour, rather than the nearby reconnect route to show.
         if (!roadRoute || roadRoute.meters > straightMeters * MAX_ESTIMATED_ROUTE_FACTOR) {
-            drawDirectGapConnector(from, to, 'GPS recording gap — direct estimated connector; not recorded GPS travel');
+            drawDirectReconnectPath(from, to);
             return;
         }
-        const bridge = L.polyline(roadRoute.points, {
-            color: '#0860F9', weight: 5, opacity: 0.72,
-            smoothFactor: 1.2, lineCap: 'round', lineJoin: 'round',
-        }).bindTooltip('GPS recording gap — estimated shortest driving-road path; not recorded GPS travel');
-        bridge.addTo(map);
-        reconnectLines.push(bridge);
+        drawReconnectPath(roadRoute.points);
     }
 
     function headingBetween(from, to) {
@@ -1193,10 +1196,10 @@
         document.getElementById('logCount').textContent = pts.length;
         const note = document.getElementById('distanceQualityNote');
         if (note) {
-            note.textContent = breakCount
-                ? `${breakCount} GPS gap${breakCount === 1 ? '' : 's'} excluded · ${dropped} filtered`
-                : `${dropped} noisy GPS point${dropped === 1 ? '' : 's'} filtered`;
-            note.title = 'Verified GPS movement only. Unrecorded travel cannot be calculated from missing samples. Road distance is not claimed without a reliable route.';
+            note.textContent = dropped
+                ? `${dropped} noisy GPS point${dropped === 1 ? '' : 's'} filtered`
+                : 'Route quality checked';
+            note.title = 'GPS quality checks are applied before route display.';
         }
     }
 
@@ -1233,10 +1236,11 @@
     const MAP_MAX_DRAW_STEP_M = 180;   // never draw a long blind straight line
     const MAP_STATIONARY_RADIUS_M = 18;
     const MAP_REACQUIRE_RADIUS_M = 80;
-    // Never invent a large detour from a sparse GPS outage. Small gaps can use
-    // a road estimate; larger or implausible gaps use a subtle direct visual
-    // connector so the displayed journey remains continuous.
-    const MAX_ESTIMATED_GAP_M = 1200;
+    // Small movements do not need a reconnect path. Otherwise use the nearest
+    // sensible driving route, falling back to a direct visual connection when
+    // a road result would introduce a large detour.
+    const MIN_RECONNECT_GAP_M = 100;
+    const MAX_ESTIMATED_GAP_M = 5000;
     const MAX_ESTIMATED_ROUTE_FACTOR = 1.7;
 
     function distanceMeters(a, b) {
@@ -1390,8 +1394,8 @@
                 trackPolylines.push(poly);
             }
         }
-        // Display-only road paths for every GPS gap. These are inferred from
-        // endpoint positions and deliberately excluded from verified totals.
+        // Reconnect meaningful breaks using one preferred nearby driving route.
+        // It remains display-only and is excluded from verified totals.
         for (let i = 1; i < segs.length; i++) {
             const before = segs[i - 1];
             const after = segs[i];
