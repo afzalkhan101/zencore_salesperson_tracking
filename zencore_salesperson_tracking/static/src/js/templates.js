@@ -980,11 +980,18 @@
             }
             event.preventDefault();
             const targetUrl = mapBackBtn.href;
+            const isBackendTrackingReturn = targetUrl.indexOf('/odoo/action-') !== -1;
+            if (isBackendTrackingReturn && window.parent && window.parent !== window) {
+                // Tracker forms/lists open the map as an Odoo client action.
+                // Loading /odoo/action-* inside this iframe creates a nested,
+                // blank web client. Restore the actual Odoo action history
+                // instead, which returns to the exact source form or list.
+                window.parent.history.back();
+                return;
+            }
             try {
-                // Keep the Odoo web client intact. The map runs inside its own
-                // iframe, so only this frame must change page. Redirecting the
-                // parent would replace Odoo's shell and make the user appear
-                // to have left Odoo completely.
+                // Dashboard and standalone/new-tab maps keep their own source
+                // page history, so returning within this frame is correct.
                 window.location.assign(targetUrl);
             } catch (error) {
                 window.location.assign(targetUrl);
