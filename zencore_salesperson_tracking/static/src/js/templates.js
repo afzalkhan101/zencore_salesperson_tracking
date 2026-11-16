@@ -1032,20 +1032,23 @@
         });
     }
 
-    // Same color semantics in Odoo Movement Map and Mobile Live Map.
-    // Dashboard map is a live position overview, not a historical GPS polyline.
+    // Same blue color family is used for recorded and inferred routes. Inferred
+    // gap paths are slightly thinner/translucent and always labelled as estimates.
     const routeLegend = L.control({position: 'topright'});
     routeLegend.onAdd = function () {
         const node = L.DomUtil.create('div', 'zc-route-gap-legend');
         node.style.cssText = 'background:rgba(255,255,255,.95);border-radius:9px;padding:8px 10px;box-shadow:0 1px 7px #2342;font:11px sans-serif;color:#26374e;pointer-events:none;';
         node.innerHTML = '<div style="display:flex;gap:7px;align-items:center;margin-bottom:5px"><span style="width:24px;border-top:5px solid #0860F9;border-radius:6px"></span>Recorded GPS route</div>' +
-            '<div style="display:flex;gap:7px;align-items:center"><span style="width:24px;border-top:5px dotted #F5B400"></span>Disconnected · no GPS</div>';
+            '<div style="display:flex;gap:7px;align-items:center"><span style="width:24px;border-top:4px solid #0860F9;opacity:.68;border-radius:6px"></span>Estimated road path · GPS gap</div>';
         return node;
     };
     routeLegend.addTo(map);
 
     let trackPolylines = [];
     let reconnectLines = [];
+    let gapRouteRenderToken = 0;
+    const gapRouteCache = new Map();
+    const gapRouteRequests = new Map();
     let startMarker    = null;
     let currentMarker  = null;
     let allLatLngs     = [];
@@ -1067,6 +1070,61 @@
 
     function gapMeters(a, b) {
         return calcDistKm([{lat: a.lat, lng: a.lng}, {lat: b.lat, lng: b.lng}]) * 1000;
+    }
+
+    function gapRouteKey(from, to) {
+        return [from.lng.toFixed(5), from.lat.toFixed(5), to.lng.toFixed(5), to.lat.toFixed(5)].join(',');
+    }
+
+    // Missing GPS samples cannot tell us the real journey. For visual
+    // continuity only, ask OSRM for the shortest *driving-road* path between
+    // the two recorded endpoints. It is never included in verified distance.
+    async function getEstimatedGapRoadPath(from, to) {
+        const key = gapRouteKey(from, to);
+        if (gapRouteCache.has(key)) return gapRouteCache.get(key);
+        if (gapRouteRequests.has(key)) return gapRouteRequests.get(key);
+        const request = (async () => {
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), 10000);
+            try {
+                const url = 'https://router.project-osrm.org/route/v1/driving/' +
+                    `${from.lng},${from.lat};${to.lng},${to.lat}?overview=full&geometries=geojson&steps=false`;
+                const response = await fetch(url, {signal: controller.signal});
+                if (!response.ok) throw new Error(`OSRM HTTP ${response.status}`);
+                const data = await response.json();
+                const coordinates = data?.routes?.[0]?.geometry?.coordinates;
+                const points = Array.isArray(coordinates) ? coordinates
+                    .map(pair => [Number(pair?.[1]), Number(pair?.[0])])
+                    .filter(pair => Number.isFinite(pair[0]) && Number.isFinite(pair[1])) : [];
+                if (points.length < 2) throw new Error('No road geometry returned');
+                gapRouteCache.set(key, points);
+                return points;
+            } catch (error) {
+                warn('Estimated GPS-gap road path unavailable:', error);
+                gapRouteCache.set(key, null);
+                return null;
+            } finally {
+                clearTimeout(timer);
+                gapRouteRequests.delete(key);
+            }
+        })();
+        gapRouteRequests.set(key, request);
+        return request;
+    }
+
+    async function drawEstimatedGapRoadPath(from, to, token) {
+        const roadPath = await getEstimatedGapRoadPath(from, to);
+        if (token !== gapRouteRenderToken) return;
+        const coordinates = roadPath || [[from.lat, from.lng], [to.lat, to.lng]];
+        const usedFallback = !roadPath;
+        const bridge = L.polyline(coordinates, {
+            color: '#0860F9', weight: 5, opacity: usedFallback ? 0.45 : 0.72,
+            smoothFactor: 1.2, lineCap: 'round', lineJoin: 'round',
+        }).bindTooltip(usedFallback
+            ? 'GPS recording gap — estimated connection; road route unavailable'
+            : 'GPS recording gap — estimated shortest driving-road path; not recorded GPS travel');
+        bridge.addTo(map);
+        reconnectLines.push(bridge);
     }
 
     function headingBetween(from, to) {
@@ -1283,6 +1341,7 @@
         trackPolylines = [];
         reconnectLines.forEach(l => map.removeLayer(l));
         reconnectLines = [];
+        const gapToken = ++gapRouteRenderToken;
         if (startMarker)   { map.removeLayer(startMarker);   startMarker   = null; }
         if (currentMarker) { map.removeLayer(currentMarker); currentMarker = null; }
 
@@ -1304,25 +1363,15 @@
                 trackPolylines.push(poly);
             }
         }
-        // Display-only gap connectors: <=500 m blue, >500 m amber dotted.
-        // These lines are straight-line estimates, NOT confirmed travel and
-        // deliberately excluded from visibleDistance / GPS totals below.
+        // Display-only road paths for every GPS gap. These are inferred from
+        // endpoint positions and deliberately excluded from verified totals.
         for (let i = 1; i < segs.length; i++) {
             const before = segs[i - 1];
             const after = segs[i];
             if (!before.length || !after.length) continue;
             const from = before[before.length - 1];
             const to = after[0];
-            const isLongGap = gapMeters(from, to) > 500.001;
-            const bridge = L.polyline([[from.lat, from.lng], [to.lat, to.lng]],
-                isLongGap
-                ? {color: '#f5b400', weight: 5, opacity: 0.90, dashArray: '1 11',
-                   smoothFactor: 1.2, lineCap: 'round', lineJoin: 'round'}
-                : {color: '#0860F9', weight: 8, opacity: 0.96,
-                   smoothFactor: 1.2, lineCap: 'round', lineJoin: 'round'}
-            ).bindTooltip('GPS recording gap — straight-line estimate; actual travel path unknown');
-            bridge.addTo(map);
-            reconnectLines.push(bridge);
+            void drawEstimatedGapRoadPath(from, to, gapToken);
         }
         if (!clean.length) {
             updateStats([]);
