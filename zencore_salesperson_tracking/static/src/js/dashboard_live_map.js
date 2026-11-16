@@ -332,7 +332,9 @@
             seenTrackers[key] = true;
             var live = isLiveSalesperson(s);
             var iconKey = String(s.name || '');
-            var icon = pinIcon(salesmanHtml(s), 34, 21);
+            // Keep the existing terminal-person design, but give it enough
+            // canvas for the marker and its name to be readable on desktop.
+            var icon = pinIcon(salesmanHtml(s), 104, 82);
             var marker = liveState.salesmanMarkers[key];
             if (!marker) {
                 marker = L.marker(latlng, { icon: icon, keyboard: true }).addTo(liveState.map);
@@ -369,7 +371,9 @@
                 .filter(Boolean)
                 .join('|');
             var iconKey = [c.name || '', c.visited ? 'visited' : 'pending', targetNames].join('|');
-            var icon = pinIcon(customerTargetHtml(c), 51, 27);
+            // Customer labels stay visible on the map instead of reducing the
+            // original pin to a few pixels at normal dashboard zoom.
+            var icon = pinIcon(customerTargetHtml(c), 146, 94);
             var marker = liveState.customerMarkers[key];
             if (!marker) {
                 marker = L.marker([Number(c.lat), Number(c.lng)], {
