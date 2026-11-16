@@ -184,11 +184,11 @@
                       <div class="zc-plan-stop">
                         <span class="zc-plan-stop-icon">⌖</span>
                         <div class="zc-plan-stop-copy">
-                          <strong t-esc="stop.get('name')"/>
-                          <span class="zc-plan-stop-address" t-esc="stop.get('address')"/>
-                          <span class="zc-plan-stop-time">◷ <t t-esc="stop.get('visit_time')"/> · <b t-attf-class="zc-stop-status zc-stop-#{stop.get('status_class', 'pending')}" t-esc="stop.get('status_label')"/></span>
+                          <strong t-esc="stop.name"/>
+                          <span class="zc-plan-stop-address" t-esc="stop.address"/>
+                          <span class="zc-plan-stop-time">◷ <t t-esc="stop.visit_time"/> · <b t-attf-class="zc-stop-status zc-stop-#{stop.status_class || 'pending'}" t-esc="stop.status_label"/></span>
                         </div>
-                        <span class="zc-plan-distance" t-esc="stop.get('distance')"/>
+                        <span class="zc-plan-distance" t-esc="stop.distance"/>
                       </div>
                     </t>
                     <div t-if="record.kanban_route_extra_count.raw_value" class="zc-plan-more-stops">+<field name="kanban_route_extra_count"/> more customer<t t-if="record.kanban_route_extra_count.raw_value != 1">s</t></div>
