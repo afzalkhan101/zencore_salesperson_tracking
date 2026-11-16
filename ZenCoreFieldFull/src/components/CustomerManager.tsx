@@ -38,11 +38,11 @@ export default function CustomerManager({onClose,onSaved,onMapInteractionChange}
   let url='';
   if(mode==='address'){
    if(form.address.trim().length<5)throw Error('Enter a detailed address before finding its coordinates.');
-   url='https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q='+encodeURIComponent(form.address.trim());
+   url='https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&accept-language=en&q='+encodeURIComponent(form.address.trim());
   }else{
    const lat=Number(form.latitude),lon=Number(form.longitude);
    if(!form.latitude.trim()||!form.longitude.trim()||!validCoordinate(lat,lon))throw Error('Enter valid latitude and longitude.');
-   url=`https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18&lat=${lat}&lon=${lon}`;
+   url=`https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18&accept-language=en&lat=${lat}&lon=${lon}`;
   }
   const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),15000);
   let response:Response;

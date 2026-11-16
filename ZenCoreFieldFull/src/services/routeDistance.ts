@@ -8,7 +8,7 @@ const sleep=(ms:number)=>new Promise<void>(resolve=>setTimeout(resolve,ms));
 const normalize=(s:string)=>s.trim().replace(/\s+/g,' ').toLowerCase();
 async function getJson(url:string, timeout=12000):Promise<any>{
  const ctrl=new AbortController();const timer=setTimeout(()=>ctrl.abort(),timeout);
- try{const res=await fetch(url,{signal:ctrl.signal,headers:{Accept:'application/json','User-Agent':'ZenCoreField/2.1 (Mobile Visit Planning)'}});if(!res.ok)throw Error(`Route service HTTP ${res.status}`);return await res.json();}
+ try{const res=await fetch(url,{signal:ctrl.signal,headers:{Accept:'application/json','Accept-Language':'en','User-Agent':'ZenCoreField/2.1 (Mobile Visit Planning)'}});if(!res.ok)throw Error(`Route service HTTP ${res.status}`);return await res.json();}
  finally{clearTimeout(timer)}
 }
 async function geocode(address:string){
@@ -18,7 +18,7 @@ async function geocode(address:string){
  const delay=Math.max(0,1200-(Date.now()-previousGeocodeAt));if(delay)await sleep(delay);
  previousGeocodeAt=Date.now();
  const endpoint=process.env.EXPO_PUBLIC_ZC_GEOCODE_URL||'https://nominatim.openstreetmap.org/search';
- const url=`${endpoint}?format=json&limit=1&q=${encodeURIComponent(address)}`;
+ const url=`${endpoint}?format=json&limit=1&accept-language=en&q=${encodeURIComponent(address)}`;
  const data=await getJson(url);if(!Array.isArray(data)||!data.length)throw Error(`Address not found: ${address}`);
  const lat=Number(data[0].lat),lon=Number(data[0].lon);
  if(!Number.isFinite(lat)||!Number.isFinite(lon))throw Error('Invalid geocoding result');
@@ -47,6 +47,6 @@ export async function findAddressLocation(address:string):Promise<RoutePoint>{
  return {latitude:point.lat,longitude:point.lon,label:point.label};
 }
 export async function reverseLocation(latitude:number,longitude:number):Promise<RoutePoint>{
- const data=await getJson(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18&lat=${latitude}&lon=${longitude}`);
+ const data=await getJson(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18&accept-language=en&lat=${latitude}&lon=${longitude}`);
  return {latitude,longitude,label:String(data?.display_name||`Lat ${latitude.toFixed(6)}, Lng ${longitude.toFixed(6)}`)};
 }
