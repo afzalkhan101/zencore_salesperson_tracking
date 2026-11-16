@@ -10,7 +10,7 @@
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""/>
         <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&amp;family=DM+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-        <link rel="stylesheet" type="text/css" href="/zencore_salesperson_tracking/static/src/css/dashboard_view.css?v=31.0.0"/>
+        <link rel="stylesheet" type="text/css" href="/zencore_salesperson_tracking/static/src/css/dashboard_view.css?v=32.0.0"/>
         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     </head>
     <body>
@@ -74,15 +74,31 @@
                 </div>
 
                 <form class="date-range-form" id="zc-date-form" method="get" action="/salesperson/dashboard">
-                    <label class="visually-hidden" for="zc-date-mode">Date selection mode</label>
-                    <select id="zc-date-mode" class="zc-date-mode" aria-label="Date filter mode">
-                        <option value="single" t-att-selected="'selected' if date_from_str == date_to_str else None">Single Date</option>
-                        <option value="range" t-att-selected="'selected' if date_from_str != date_to_str else None">Date Range</option>
-                    </select>
-                    <input type="date" class="date-range-input" name="date_from" aria-label="Date from" t-att-value="date_from_str" required="required"/>
-                    <span class="date-range-sep" id="zc-date-separator">–</span>
-                    <input type="date" class="date-range-input" name="date_to" aria-label="Date to" t-att-value="date_to_str" required="required"/>
-                    <button type="submit" class="date-range-apply">Apply</button>
+                    <input id="zc-date-mode" type="hidden" t-att-value="'single' if date_from_str == date_to_str else 'range'"/>
+                    <div class="zc-date-filter-label">
+                        <span class="zc-date-filter-kicker">Custom period</span>
+                        <span class="zc-date-filter-caption">Choose one day or a date range</span>
+                    </div>
+                    <div class="zc-date-mode-switch" role="group" aria-label="Date filter mode">
+                        <button type="button" data-date-mode="single"
+                                t-att-class="'selected' if date_from_str == date_to_str else ''"
+                                t-att-aria-pressed="'true' if date_from_str == date_to_str else 'false'">Single date</button>
+                        <button type="button" data-date-mode="range"
+                                t-att-class="'selected' if date_from_str != date_to_str else ''"
+                                t-att-aria-pressed="'true' if date_from_str != date_to_str else 'false'">Date range</button>
+                    </div>
+                    <div class="zc-date-fields">
+                        <label class="zc-date-field" for="zc-date-from">
+                            <span id="zc-date-from-label">Date</span>
+                            <input id="zc-date-from" type="date" class="date-range-input" name="date_from" aria-label="Date from" t-att-value="date_from_str" required="required"/>
+                        </label>
+                        <span class="date-range-sep" id="zc-date-separator" aria-hidden="true">→</span>
+                        <label class="zc-date-field" id="zc-date-to-wrap" for="zc-date-to">
+                            <span>To</span>
+                            <input id="zc-date-to" type="date" class="date-range-input" name="date_to" aria-label="Date to" t-att-value="date_to_str" required="required"/>
+                        </label>
+                    </div>
+                    <button type="submit" class="date-range-apply"><span>Apply</span><span aria-hidden="true">→</span></button>
                 </form>
 
             </div>
@@ -329,7 +345,7 @@
         <div id="visit-details-content" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:18px"></div>
       </div>
     </div>
-    <script src="/zencore_salesperson_tracking/static/src/js/dashboard_live_map.js?v=31.0.0"></script>
+    <script src="/zencore_salesperson_tracking/static/src/js/dashboard_live_map.js?v=32.0.0"></script>
     </body>
 </html>
 </template>

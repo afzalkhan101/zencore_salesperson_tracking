@@ -130,14 +130,36 @@
         var from = form.querySelector('[name="date_from"]');
         var to = form.querySelector('[name="date_to"]');
         var separator = document.getElementById('zc-date-separator');
+        var toWrap = document.getElementById('zc-date-to-wrap');
+        var fromLabel = document.getElementById('zc-date-from-label');
+        var modeButtons = form.querySelectorAll('[data-date-mode]');
+        var applyButton = form.querySelector('.date-range-apply');
         if (!from || !to) return;
         function syncMode() {
             var single = mode.value === 'single';
-            to.hidden = single;
+            form.classList.toggle('is-single-date', single);
+            if (toWrap) toWrap.hidden = single;
             to.disabled = single;
             if (separator) separator.hidden = single;
+            if (fromLabel) fromLabel.textContent = single ? 'Date' : 'From';
+            modeButtons.forEach(function(button) {
+                var selected = button.dataset.dateMode === mode.value;
+                button.classList.toggle('selected', selected);
+                button.setAttribute('aria-pressed', selected ? 'true' : 'false');
+            });
+            from.min = '';
+            to.min = from.value || '';
+            if (single) to.value = from.value;
+            from.setCustomValidity('');
+            to.setCustomValidity('');
         }
-        mode.addEventListener('change', syncMode);
+        modeButtons.forEach(function(button) {
+            button.addEventListener('click', function() {
+                mode.value = button.dataset.dateMode;
+                syncMode();
+                from.focus();
+            });
+        });
         form.addEventListener('submit', function(e) {
             if (mode.value === 'single') {
                 to.disabled = false;
@@ -145,14 +167,25 @@
             }
             if (!from.value || !to.value || from.value > to.value) {
                 e.preventDefault();
-                // Keep the UI editable: invalid ranges are not sent to Odoo.
                 to.disabled = mode.value === 'single';
-                from.setCustomValidity('Choose a valid date range');
-                from.reportValidity();
+                var message = !from.value ? 'Choose a date first.' : 'End date must be on or after the start date.';
+                (mode.value === 'range' ? to : from).setCustomValidity(message);
+                (mode.value === 'range' ? to : from).reportValidity();
+                return;
+            }
+            if (applyButton) {
+                applyButton.disabled = true;
+                applyButton.classList.add('is-loading');
+                applyButton.querySelector('span').textContent = 'Applying';
             }
         });
-        from.addEventListener('input', function() { from.setCustomValidity(''); });
-        to.addEventListener('input', function() { from.setCustomValidity(''); });
+        from.addEventListener('input', function() {
+            from.setCustomValidity('');
+            to.setCustomValidity('');
+            to.min = from.value || '';
+            if (mode.value === 'single') to.value = from.value;
+        });
+        to.addEventListener('input', function() { to.setCustomValidity(''); });
         syncMode();
     }
 

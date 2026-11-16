@@ -416,3 +416,48 @@ body { background:linear-gradient(155deg,#f8fcff,#eff9f5); }
     .kpi-card.kpi-report-card { min-height:82px; padding:11px 12px; }
     .kpi-card.kpi-report-card .kpi-value { font-size:21px; margin-top:5px; }
 }
+
+/* V33: clearer, accessible custom date filtering. */
+#zc-date-form {
+    gap:10px;
+    padding:7px 8px 7px 12px;
+    border:1px solid #d5e5eb;
+    border-radius:16px;
+    box-shadow:0 4px 16px rgba(8,99,156,.07);
+}
+.zc-date-filter-label { display:flex; flex-direction:column; min-width:106px; padding-right:2px; }
+.zc-date-filter-kicker { color:#0b3e65; font-size:10px; font-weight:800; letter-spacing:.055em; text-transform:uppercase; line-height:1.15; }
+.zc-date-filter-caption { margin-top:2px; color:#8193a5; font-size:9px; line-height:1.15; white-space:nowrap; }
+.zc-date-mode-switch { display:inline-flex; align-self:stretch; padding:3px; border:1px solid #d8e8ed; border-radius:10px; background:#f1f7f8; }
+.zc-date-mode-switch button {
+    border:0; border-radius:7px; padding:6px 9px; background:transparent; color:#60778b;
+    font:700 11px/1.2 "DM Sans", sans-serif; cursor:pointer; white-space:nowrap; transition:background .18s ease,color .18s ease,box-shadow .18s ease;
+}
+.zc-date-mode-switch button:hover { color:#075b94; }
+.zc-date-mode-switch button.selected { color:#086a52; background:#fff; box-shadow:0 1px 5px rgba(23,74,92,.14); }
+.zc-date-fields { display:flex; align-items:center; gap:6px; }
+.zc-date-field { display:flex; align-items:center; gap:5px; min-width:0; color:#7890a2; font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:.04em; white-space:nowrap; }
+#zc-date-form .date-range-input { min-width:118px; padding:7px 6px; border:1px solid transparent; border-radius:8px; background:#f7fbfc; color:#183b54; font:700 11px "DM Sans", sans-serif; cursor:pointer; }
+#zc-date-form .date-range-input:hover { border-color:#c5dfe8; background:#fff; }
+#zc-date-form .date-range-input:focus { outline:none; border-color:#1680ae; box-shadow:0 0 0 3px rgba(22,128,174,.13); background:#fff; }
+#zc-date-form .date-range-sep { color:#8aa0af; font-size:15px; font-weight:700; }
+#zc-date-form .date-range-apply { display:inline-flex; align-items:center; justify-content:center; gap:5px; min-width:70px; padding:8px 10px; border-radius:9px; background:linear-gradient(120deg,#075a93,#087a9e); box-shadow:0 3px 8px rgba(8,99,156,.2); transition:transform .18s ease,box-shadow .18s ease,opacity .18s ease; }
+#zc-date-form .date-range-apply:hover { transform:translateY(-1px); box-shadow:0 5px 12px rgba(8,99,156,.26); }
+#zc-date-form .date-range-apply:focus-visible { outline:3px solid rgba(40,167,69,.28); outline-offset:2px; }
+#zc-date-form .date-range-apply:disabled { cursor:wait; opacity:.76; transform:none; }
+#zc-date-form .date-range-apply.is-loading span:last-child { animation:zc-date-arrow .7s linear infinite; }
+@keyframes zc-date-arrow { from { transform:translateX(-2px); } to { transform:translateX(3px); } }
+@media(max-width:1050px) {
+    #zc-date-form { gap:7px; }
+    .zc-date-filter-label { display:none; }
+}
+@media(max-width:720px) {
+    #zc-date-form { align-items:stretch; }
+    .zc-date-mode-switch { width:100%; }
+    .zc-date-mode-switch button { flex:1; }
+    .zc-date-fields { width:100%; }
+    .zc-date-field { flex:1; }
+    #zc-date-form .date-range-input { width:100%; min-width:0; }
+    #zc-date-form.is-single-date .zc-date-field { max-width:100%; }
+    #zc-date-form .date-range-apply { width:100%; min-height:36px; }
+}
