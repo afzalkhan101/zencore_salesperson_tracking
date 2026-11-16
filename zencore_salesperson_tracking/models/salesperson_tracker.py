@@ -143,6 +143,7 @@ class SalespersonTracker(models.Model):
         ("offline", "Offline"),
         ("live", "Live"),
         ("completed", "Completed"),
+        ("failed", "Failed"),
     ], default="planned", tracking=True)
 
     # Tabs
@@ -162,7 +163,7 @@ class SalespersonTracker(models.Model):
         for tracker in self:
             tracker.name = f"{tracker.user_id.name} - {tracker.visit_date}" if tracker.user_id else "New"
 
-    @api.depends("plan_id.target_line_ids.customer_ids", "visited_line_ids.checkin_time")
+    @api.depends("plan_id.target_line_ids.customer_ids", "visited_line_ids.checkin_time", "visited_line_ids.checkout_time")
     def _compute_counts(self):
         for tracker in self:
             # Total visits from plan
@@ -171,13 +172,29 @@ class SalespersonTracker(models.Model):
                 total += len(line.customer_ids) if line.customer_ids else 0
             tracker.total_visits = total
             
-            # Only count visits that have checkin_time (completed visits)
-            completed_visits = tracker.visited_line_ids.filtered(lambda v: v.checkin_time)
+            # A visit is completed only after automatic/manual check-out.
+            completed_visits = tracker.visited_line_ids.filtered(lambda v: v.checkout_time)
             tracker.total_visited = len(completed_visits)
             tracker.skipped_visits = tracker.total_visits - tracker.total_visited
             
             _logger.debug("_compute_counts: tracker=%s total_visits=%s total_visited=%s skipped=%s",
                         tracker.id, tracker.total_visits, tracker.total_visited, tracker.skipped_visits)
+
+    def _all_planned_visits_completed(self):
+        """Return True only when every planned customer has a checked-out visit.
+
+        This is deliberately stricter than a tracker being stopped.  A stopped
+        tracker may still have customers that were never visited, so it must
+        never be marked Completed merely because its visit date has passed.
+        """
+        self.ensure_one()
+        planned_count = sum(
+            len(line.customer_ids) for line in self.plan_id.target_line_ids
+        )
+        completed_count = len(
+            self.visited_line_ids.filtered(lambda visit: visit.checkout_time)
+        )
+        return bool(planned_count and completed_count >= planned_count)
 
     @api.depends("transport_cost", "food_cost", "other_cost")
     def _compute_costs(self):
@@ -1027,14 +1044,19 @@ class SalespersonTracker(models.Model):
 
     @api.model
     def action_auto_complete_past_trackers(self):
-        """Scheduled action: auto-mark past-day trackers as 'completed'.
-        Runs daily at midnight+5min. Stops any still-active tracking session
-        before transitioning state so GPS logs are closed cleanly.
+        """Close past-day trackers with an outcome based on completed visits.
+
+        Runs daily at midnight+5min.  It stops any still-active tracking
+        session cleanly, then marks a tracker Completed only when every
+        planned customer was checked out.  A past-day tracker with one or more
+        unfinished visits is marked Failed, which keeps the history honest.
         """
         today = fields.Date.today()
-        past_trackers = self.search([
+        # Include historical ``completed`` values as well, so records that
+        # were incorrectly completed by older versions self-correct on upgrade.
+        past_trackers = self.with_context(_tracker_autocomplete_running=True).search([
             ('visit_date', '<', today),
-            ('state', 'in', ['planned', 'offline', 'live']),
+            ('state', 'in', ['planned', 'offline', 'live', 'completed', 'failed']),
         ])
         for tracker in past_trackers:
             try:
@@ -1045,21 +1067,19 @@ class SalespersonTracker(models.Model):
                         # action_stop_tracking() re-raises internally on any
                         # failure (session/checkin cleanup, etc.) — without
                         # this inner try/except, that exception would abort
-                        # this loop iteration BEFORE the completed-write
-                        # below ever runs, permanently stranding a past
-                        # record in planned/offline/live state. The
-                        # completed transition must never depend on
-                        # subsidiary cleanup succeeding.
+                        # this loop iteration before the final outcome write
+                        # below ever runs. The historical outcome must not
+                        # depend on subsidiary cleanup succeeding.
                         _logger.warning(
                             "action_auto_complete_past_trackers: action_stop_tracking failed for "
-                            "tracker=%s, forcing completed state anyway: %s", tracker.id, e,
+                            "tracker=%s; applying visit outcome anyway: %s", tracker.id, e,
                         )
-                # Always force completed + not-tracking, regardless of
-                # whether the stop-tracking cleanup above succeeded.
-                tracker.write({'state': 'completed', 'is_tracking': False})
+                outcome = 'completed' if tracker._all_planned_visits_completed() else 'failed'
+                tracker.write({'state': outcome, 'is_tracking': False})
                 _logger.info(
-                    "action_auto_complete_past_trackers: completed tracker=%s user=%s date=%s",
-                    tracker.id, tracker.user_id.name, tracker.visit_date,
+                    "action_auto_complete_past_trackers: %s tracker=%s user=%s date=%s (%s/%s visits)",
+                    outcome, tracker.id, tracker.user_id.name, tracker.visit_date,
+                    tracker.total_visited, tracker.total_visits,
                 )
             except Exception as e:
                 _logger.error(

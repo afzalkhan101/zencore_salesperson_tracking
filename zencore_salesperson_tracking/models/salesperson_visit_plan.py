@@ -308,8 +308,10 @@ class SalespersonVisitPlan(models.Model):
 
         Legacy code completed Draft, Submitted and Approved plans when their date
         passed; that bypassed the new hierarchy's requirement that unapproved
-        plans remain pending. Only finished historical *In Progress* plans that
-        have no live tracker may be auto-completed.
+        plans remain pending. A historical *In Progress* plan may become
+        completed only when all of its planned customers have a checked-out
+        visit; merely stopping tracking or passing the visit date is not
+        completion.
         """
         today = fields.Date.today()
         past = self.search([
@@ -318,8 +320,12 @@ class SalespersonVisitPlan(models.Model):
         ])
         Tracker = self.env['salesperson.tracker'].sudo()
         for plan in past:
-            running = Tracker.search([('plan_id', '=', plan.id),('is_tracking','=',True)], limit=1)
-            if not running:
+            trackers = Tracker.search([('plan_id', '=', plan.id)])
+            has_live_tracker = any(trackers.mapped('is_tracking'))
+            has_completed_route = any(
+                tracker._all_planned_visits_completed() for tracker in trackers
+            )
+            if not has_live_tracker and has_completed_route:
                 plan.write({'state':'completed'})
         return True
 

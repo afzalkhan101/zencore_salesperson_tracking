@@ -10,7 +10,7 @@
                 <header>
                     <button name="action_print_tracking_report" string="Print Report" type="object" class="btn-secondary" groups="zencore_salesperson_tracking.group_salesperson_ceo,zencore_salesperson_tracking.group_salesperson_manager,zencore_salesperson_tracking.group_salesperson_supervisor"/>
                     <button name="action_view_moving_map" string="Map" type="object" class="btn-secondary"/>
-                    <field name="state" widget="statusbar" statusbar_visible="planned,offline,live,completed"/>
+                    <field name="state" widget="statusbar" statusbar_visible="planned,offline,live,completed,failed"/>
                 </header>
                 <sheet>
                     <div class="oe_title"><h1><field name="name"/></h1></div>
@@ -121,8 +121,8 @@
         - Top-right corner: status badge (Live green pulse / Idle amber / Offline grey)
         - Map button: always /moving_map/<id> for the clicked record, for everyone.
           Tracking controls are intentionally kept in the mobile app.
-        - Status colour uses `state` (stored) for the header stripe
-        - Status badge uses `is_tracking` (stored bool) to derive Live/Offline safely
+        - Completed is shown only after every planned customer has been checked out.
+        - A past-day tracker with any unfinished visit is marked Failed.
     -->
     <record id="view_salesperson_tracker_kanban" model="ir.ui.view">
         <field name="name">salesperson.tracker.kanban</field>
@@ -144,7 +144,7 @@
 
                         <!-- ── Top colour stripe + status badge ── -->
                         <div t-attf-style="
-                            background: #{record.state.raw_value == 'live' ? '#059669' : record.state.raw_value == 'offline' ? '#DC2626' : record.state.raw_value == 'planned' ? '#D97706' : '#94A3B8'};
+                            background: #{record.state.raw_value == 'live' ? '#059669' : record.state.raw_value == 'completed' ? '#15803D' : record.state.raw_value == 'failed' ? '#DC2626' : record.state.raw_value == 'offline' ? '#64748B' : '#D97706'};
                             padding:6px 14px;
                             border-radius:8px 8px 0 0;
                             display:flex;
@@ -161,10 +161,10 @@
                                 display:inline-flex;align-items:center;gap:5px;
                                 padding:3px 10px;border-radius:999px;font-size:10px;font-weight:700;
                                 background:rgba(255,255,255,0.22);color:#fff;letter-spacing:.04em;">
-                                <!-- Pulsing dot for live, static for others -->
+                                <!-- Pulsing dot for live, static for historical outcomes -->
                                 <span t-attf-style="
                                     width:7px;height:7px;border-radius:50%;flex-shrink:0;
-                                    background:#{record.is_tracking.raw_value ? '#4ade80' : '#e5e7eb'};
+                                    background:#{record.is_tracking.raw_value ? '#4ade80' : record.state.raw_value == 'completed' ? '#86efac' : record.state.raw_value == 'failed' ? '#fecaca' : '#e5e7eb'};
                                     #{record.is_tracking.raw_value ? 'animation:kbPulse 1.4s infinite;' : ''}"/>
                                 <t t-if="record.is_tracking.raw_value">Live</t>
                                 <t t-else="">
@@ -222,6 +222,24 @@
                                     <div style="font-size:9px;color:#64748B;text-transform:uppercase;">Dist</div>
                                 </div>
                             </div>
+
+                            <!-- Clear visit outcome: never call an incomplete route Completed. -->
+                            <div t-if="record.state.raw_value == 'completed'"
+                                 style="margin:8px 0 0;padding:7px 9px;border-radius:7px;background:#ECFDF5;color:#047857;font-size:10px;font-weight:700;">
+                                ✓ All planned visits completed
+                            </div>
+                            <div t-elif="record.state.raw_value == 'failed'"
+                                 style="margin:8px 0 0;padding:7px 9px;border-radius:7px;background:#FEF2F2;color:#B91C1C;font-size:10px;font-weight:700;">
+                                ⚠ <t t-esc="record.total_visits.raw_value - record.total_visited.raw_value"/> visit(s) remained incomplete
+                            </div>
+                            <div t-elif="record.state.raw_value == 'live'"
+                                 style="margin:8px 0 0;padding:7px 9px;border-radius:7px;background:#ECFDF5;color:#047857;font-size:10px;font-weight:700;">
+                                ● Tracking is active
+                            </div>
+                            <div t-else=""
+                                 style="margin:8px 0 0;padding:7px 9px;border-radius:7px;background:#FFF7ED;color:#9A3412;font-size:10px;font-weight:700;">
+                                <t t-esc="record.total_visits.raw_value - record.total_visited.raw_value"/> visit(s) still pending
+                            </div>
                         </div>
 
                         <!-- ── Action buttons ── -->
@@ -263,7 +281,8 @@
             <list string="Tracking Reports"
                   decoration-success="state=='completed'"
                   decoration-primary="state=='live'"
-                  decoration-danger="state=='offline'"
+                  decoration-danger="state=='failed'"
+                  decoration-warning="state=='offline'"
                   decoration-muted="state=='planned'">
                 <field name="name"/>
                 <field name="user_id"/>
