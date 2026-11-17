@@ -1,9 +1,10 @@
 import io
 
-from odoo import http
+from odoo import http, fields
 from odoo.http import request
 from odoo.exceptions import AccessError
 from ..models.report_security import check_report_access
+from ..models.report_render_security import _visible_documents
 
 try:
     import xlsxwriter
@@ -26,8 +27,11 @@ class SalespersonPerformanceReportExportController(http.Controller):
             return request.not_found()
         if not wizard:
             return request.not_found()
-        if not wizard.line_ids:
+        try:
+            _visible_documents(request.env, wizard._name, [wizard.id], wizard=True)
             wizard.action_generate_report()
+        except AccessError:
+            return request.not_found()
 
         if xlsxwriter is None:
             return request.make_response(
@@ -37,7 +41,7 @@ class SalespersonPerformanceReportExportController(http.Controller):
             )
 
         output = io.BytesIO()
-        workbook = xlsxwriter.Workbook(output, {'in_memory': True})
+        workbook = xlsxwriter.Workbook(output, {'in_memory': True, 'strings_to_formulas': False, 'strings_to_urls': False})
         title_fmt = workbook.add_format({'bold': True, 'font_size': 16, 'font_color': '#1F3B6D'})
         header_fmt = workbook.add_format({'bold': True, 'bg_color': '#714B67', 'font_color': 'white', 'border': 1})
         subheader_fmt = workbook.add_format({'bold': True, 'bg_color': '#EDE9FE', 'border': 1})
@@ -47,93 +51,55 @@ class SalespersonPerformanceReportExportController(http.Controller):
         date_fmt = workbook.add_format({'border': 1, 'num_format': 'yyyy-mm-dd'})
         datetime_fmt = workbook.add_format({'border': 1, 'num_format': 'yyyy-mm-dd hh:mm'})
 
-        # Summary sheet
-        sheet = workbook.add_worksheet('Summary')
-        sheet.set_column('A:A', 26)
-        sheet.set_column('B:B', 18)
-        sheet.write('A1', 'Salesperson Performance Report', title_fmt)
-        sheet.write('A3', 'Report Type', subheader_fmt)
-        sheet.write('B3', dict(wizard._fields['report_type'].selection).get(wizard.report_type), cell_fmt)
-        sheet.write('A4', 'From Date', subheader_fmt)
-        sheet.write('B4', str(wizard.date_from or ''), cell_fmt)
-        sheet.write('A5', 'To Date', subheader_fmt)
-        sheet.write('B5', str(wizard.date_to or ''), cell_fmt)
-        metrics = [
-            ('Total Salespersons', wizard.total_salespersons),
-            ('Planned Visits', wizard.total_planned_visits),
-            ('Completed Visits', wizard.total_completed_visits),
-            ('Pending Visits', wizard.total_pending_visits),
-            ('Completion %', wizard.completion_percent),
-            ('Total Distance (KM)', wizard.total_distance_km),
-            ('Tracking Time (Min)', wizard.total_tracking_minutes),
-            ('Visit Time (Min)', wizard.total_visit_minutes),
-            ('Idle Time (Min)', wizard.total_idle_minutes),
-            ('Total Expense', wizard.total_expense),
-            ('Average Rating', wizard.average_rating),
-        ]
-        row = 7
-        for label, value in metrics:
-            sheet.write(row, 0, label, subheader_fmt)
-            sheet.write(row, 1, value, number_fmt if isinstance(value, float) else cell_fmt)
-            row += 1
+        def label(record, field):
+            return dict(record._fields[field]._description_selection(request.env)).get(record[field], '')
 
-        # Salesperson summary sheet
-        sheet = workbook.add_worksheet('Salespersons')
-        headers = ['Salesperson', 'Planned', 'Completed', 'Pending', 'Completion %', 'Distance KM',
-                   'Tracking Min', 'Visit Min', 'Idle Min', 'Expense', 'Avg Rating']
-        for col, header in enumerate(headers):
-            sheet.write(0, col, header, header_fmt)
-        sheet.set_column(0, 0, 28)
-        sheet.set_column(1, 10, 14)
-        for row, line in enumerate(wizard.line_ids, start=1):
-            values = [line.user_id.name, line.planned_visits, line.completed_visits, line.pending_visits,
-                      line.completion_percent, line.distance_km, line.tracking_minutes, line.visit_minutes,
-                      line.idle_minutes, line.expense, line.average_rating]
-            for col, value in enumerate(values):
-                fmt = percent_fmt if col == 4 else (number_fmt if col >= 5 else cell_fmt)
-                sheet.write(row, col, value, fmt)
+        def local_datetime(value):
+            return fields.Datetime.context_timestamp(wizard, value).replace(tzinfo=None) if value else ''
 
-        # Day-wise summary
-        sheet = workbook.add_worksheet('Day Wise')
-        headers = ['Date', 'Planned', 'Completed', 'Pending', 'Distance KM', 'Visit Min', 'Idle Min']
-        for col, header in enumerate(headers):
-            sheet.write(0, col, header, header_fmt)
-        sheet.set_column(0, 0, 14)
-        sheet.set_column(1, 6, 14)
-        for row, line in enumerate(wizard.day_line_ids, start=1):
-            sheet.write_datetime(row, 0, line.date, date_fmt) if line.date else sheet.write(row, 0, '', cell_fmt)
-            for col, value in enumerate([line.planned_visits, line.completed_visits, line.pending_visits,
-                                         line.distance_km, line.visit_minutes, line.idle_minutes], start=1):
-                sheet.write(row, col, value, number_fmt if col >= 4 else cell_fmt)
+        def make_sheet(name, headers, rows):
+            sheet = workbook.add_worksheet(name)
+            sheet.freeze_panes(1, 0)
+            sheet.set_column(0, len(headers)-1, 20)
+            for col, header in enumerate(headers):
+                sheet.write(0, col, header, header_fmt)
+            status_formats = {"Missed": workbook.add_format({'border': 1, 'font_color': '#B42318'}), "Overdue": workbook.add_format({'border': 1, 'font_color': '#B42318'}), "Completed": workbook.add_format({'border': 1, 'font_color': '#087F5B'})}
+            for rownum, row in enumerate(rows, 1):
+                for col, value in enumerate(row):
+                    fmt = number_fmt if isinstance(value, float) else cell_fmt
+                    if headers[col] == 'Status':
+                        fmt = status_formats.get(value, cell_fmt)
+                    if headers[col] in ('Check-in', 'Check-out') and value:
+                        sheet.write_datetime(rownum, col, value, datetime_fmt)
+                    else:
+                        sheet.write(rownum, col, value if value is not None else '', fmt)
+            sheet.autofilter(0, 0, len(rows), len(headers)-1)
+            return sheet
 
-        # Visit details
-        sheet = workbook.add_worksheet('Visit Details')
-        headers = ['Date', 'Salesperson', 'Customer', 'Purpose', 'Check In', 'Check Out', 'Duration Min',
-                   'Tracker Distance KM', 'Status', 'Outcome', 'Rating']
-        for col, header in enumerate(headers):
-            sheet.write(0, col, header, header_fmt)
-        sheet.set_column(0, 0, 14)
-        sheet.set_column(1, 3, 24)
-        sheet.set_column(4, 5, 20)
-        sheet.set_column(6, 10, 16)
-        for row, line in enumerate(wizard.visit_line_ids, start=1):
-            if line.visit_date:
-                sheet.write_datetime(row, 0, line.visit_date, date_fmt)
-            sheet.write(row, 1, line.user_id.name or '', cell_fmt)
-            sheet.write(row, 2, line.partner_id.name or '', cell_fmt)
-            purpose = dict(line._fields['purpose'].selection).get(line.purpose, '') if line.purpose else ''
-            sheet.write(row, 3, purpose, cell_fmt)
-            if line.checkin_time:
-                sheet.write_datetime(row, 4, line.checkin_time, datetime_fmt)
-            if line.checkout_time:
-                sheet.write_datetime(row, 5, line.checkout_time, datetime_fmt)
-            sheet.write(row, 6, line.duration_minutes, number_fmt)
-            sheet.write(row, 7, line.distance_km, number_fmt)
-            status = dict(line._fields['status'].selection).get(line.status, '') if line.status else ''
-            outcome = dict(line._fields['outcome'].selection).get(line.outcome, '') if line.outcome else ''
-            sheet.write(row, 8, status, cell_fmt)
-            sheet.write(row, 9, outcome, cell_fmt)
-            sheet.write(row, 10, line.rating, number_fmt)
+        keys = ('planned', 'completed', 'missed', 'pending', 'in_progress', 'overdue', 'awaiting_approval', 'rejected', 'unplanned')
+        metrics = [('From date', str(wizard.date_from)), ('To date', str(wizard.date_to)), ('Detail status', label(wizard, 'visit_status')), ('Salespeople', wizard.total_salespersons), ('Customers', wizard.total_customers), ('Visited customers', wizard.total_visited_customers)]
+        metrics += [(key.replace('_', ' ').title(), wizard['total_' + key + '_visits']) for key in keys]
+        metrics += [('Completion %', wizard.completion_percent), ('Distance km', wizard.total_distance_km), ('Tracking min', wizard.total_tracking_minutes), ('Visit min', wizard.total_visit_minutes), ('Idle min', wizard.total_idle_minutes), ('Estimated expense', wizard.total_estimated_expense), ('Actual expense', wizard.total_expense), ('Average rating', wizard.average_rating), ('Definition', 'Missed: scheduled date elapsed without check-in; unapproved/rejected excluded from completion rate.'), ('Scope', 'Status filter applies to detail sheets only. Completed summary counts planned visits; distance and actual expense are tracker totals; estimated expense is plan/tracker level.')]
+        make_sheet('Summary', ['Metric', 'Value'], metrics).set_column(1, 1, 85)
+        count_headers = ['Completed planned' if k == 'completed' else k.replace('_', ' ').title() for k in keys]
+        make_sheet('Salespersons', ['Salesperson', 'Customers', 'Visited customers'] + count_headers + ['Completion %', 'Distance km', 'Tracking min', 'Visit min', 'Idle min', 'Estimated expense', 'Actual expense', 'Rating'], [[l.user_id.name, l.customer_count, l.visited_customer_count] + [l[k + '_visits'] for k in keys] + [l.completion_percent, l.distance_km, l.tracking_minutes, l.visit_minutes, l.idle_minutes, l.estimated_expense, l.expense, l.average_rating] for l in wizard.line_ids])
+        make_sheet('Day Wise', ['Date'] + count_headers + ['Distance km', 'Visit min', 'Idle min'], [[str(l.date)] + [l[k + '_visits'] for k in keys] + [l.distance_km, l.visit_minutes, l.idle_minutes] for l in wizard.day_line_ids])
+        headers = ['Reference', 'Date', 'Salesperson', 'Customer', 'Planned', 'Purpose', 'Status', 'Check-in', 'Check-out', 'Minutes', 'Outcome', 'Rating', 'Status Explanation', 'Notes', 'Feedback', 'Photo Evidence', 'Tracker Distance km (not additive)', 'Check-in location', 'Latitude', 'Longitude']
+        def visit_values(l):
+            return [l.reference or '', str(l.visit_date), l.user_id.name, l.partner_id.name, 'Yes' if l.is_planned else 'No', label(l, 'purpose'), label(l, 'status'), local_datetime(l.checkin_time), local_datetime(l.checkout_time), l.duration_minutes, label(l, 'outcome'), l.rating, l.reason or '', l.notes or '', l.customer_feedback or '', 'Yes' if l.photo_available else 'No', l.distance_km, l.location_name or '', l.checkin_latitude if l.checkin_id else '', l.checkin_longitude if l.checkin_id else '']
+        for title, records in [('Visit Details', wizard.visit_line_ids), ('Missed and Overdue', wizard.missed_line_ids), ('Completed Visits', wizard.completed_line_ids)]:
+            sheet = make_sheet(title, headers, [visit_values(l) for l in records])
+            sheet.set_column(12, 14, 42)
+        groups = {}
+        for l in wizard.visit_line_ids:
+            groups.setdefault((l.user_id.id, l.partner_id.id), []).append(l)
+        customers = []
+        for rows in groups.values():
+            completed = [l for l in rows if l.status == 'completed']
+            last = max((l.visit_date for l in completed if l.visit_date), default=False)
+            customers.append([rows[0].user_id.name, rows[0].partner_id.name, sum(l.is_planned for l in rows), len(completed), sum(l.status in ('missed', 'overdue') for l in rows), sum(l.status == 'pending' for l in rows), sum(not l.is_planned for l in rows), str(last or '')])
+        make_sheet('Customer Analysis', ['Salesperson', 'Customer', 'Planned', 'Completed (all)', 'Missed or overdue', 'Pending', 'Unplanned', 'Last completed in period'], customers)
+        make_sheet('Travel and Expenses', ['Salesperson', 'Distance km', 'Tracking min', 'Visit min', 'Idle min', 'Estimated expense', 'Actual expense', 'Rating'], [[l.user_id.name, l.distance_km,l.tracking_minutes,l.visit_minutes,l.idle_minutes,l.estimated_expense,l.expense,l.average_rating] for l in wizard.line_ids])
 
         workbook.close()
         output.seek(0)

@@ -5,14 +5,14 @@
         <field name="default" eval="False"/>
         <field name="format">A4</field>
         <field name="orientation">Landscape</field>
-        <field name="margin_top">8</field>
-        <field name="margin_bottom">8</field>
+        <field name="margin_top">30</field>
+        <field name="header_spacing">8</field>
+        <field name="margin_bottom">20</field>
         <field name="margin_left">8</field>
         <field name="margin_right">8</field>
         <field name="header_line" eval="False"/>
         <field name="dpi">90</field>
     </record>
-
     <record id="action_report_salesperson_performance" model="ir.actions.report">
         <field name="name">Salesperson Performance Report</field>
         <field name="model">salesperson.performance.report.wizard</field>
@@ -21,99 +21,330 @@
         <field name="report_file">zencore_salesperson_tracking.report_salesperson_performance_document</field>
         <field name="paperformat_id" ref="paperformat_salesperson_performance"/>
         <field name="print_report_name">'Salesperson Performance - %s to %s' % (object.date_from, object.date_to)</field>
-
     </record>
-
     <template id="report_salesperson_performance_document">
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="doc">
-                <div class="page" style="font-family:Arial,sans-serif;color:#111;font-size:10px;">
-                    <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid #555;padding:2px 0 7px 0;margin-bottom:10px;">
+                <t t-set="company" t-value="env.company"/>
+                <t t-call="web.external_layout">
+                    <div class="page" style="font-size:10px;color:#18243a;font-family:Arial,sans-serif;">
+                        <style> .zc-table{width:100%;border-collapse:collapse;margin:8px 0 14px;} .zc-table th{background:#714b67;color:white;padding:5px;text-align:left;} .zc-table td{padding:5px;border:1px solid #d8dee6;vertical-align:top;word-wrap:break-word;} .zc-table thead{display:table-header-group;} .zc-table tr{page-break-inside:avoid;} .zc-heading{color:#714b67;font-size:16px;font-weight:bold;margin-top:12px;} </style>
+                        <h2 style="color:#714b67;margin-bottom:3px;">Salesperson Performance &amp; Customer Visit Analysis</h2>
                         <div>
-                            <div style="font-size:16px;font-weight:400;">Salesperson Performance Report</div>
-                            <div style="font-size:10px;color:#444;margin-top:2px;">Salesperson Tracking</div>
+                            <strong t-esc="company.name"/> | Period: <span t-field="doc.date_from"/> – <span t-field="doc.date_to"/> | Details status: <span t-field="doc.visit_status"/>
                         </div>
-                        <div style="text-align:right;color:#333;">
-                            <div t-esc="env.company.name"/>
-                            <div><span t-esc="doc.date_from"/> - <span t-esc="doc.date_to"/></div>
-                            <div style="text-transform:capitalize;">Type: <span t-esc="doc.report_type"/></div>
+                        <p>Planned completion excludes rejected and unapproved plans. Missed means the scheduled date has elapsed without a check-in. Unplanned check-ins are separate. Distance and expenses are tracking-session totals.</p>
+                        <table class="zc-table">
+                            <tr>
+                                <th>Salespeople</th>
+                                <th>Customers</th>
+                                <th>Visited customers</th>
+                                <th>Planned</th>
+                                <th>Completed planned</th>
+                                <th>Missed</th>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <span t-field="doc.total_salespersons"/>
+                                </td>
+                                <td>
+                                    <span t-field="doc.total_customers"/>
+                                </td>
+                                <td>
+                                    <span t-field="doc.total_visited_customers"/>
+                                </td>
+                                <td>
+                                    <span t-field="doc.total_planned_visits"/>
+                                </td>
+                                <td>
+                                    <span t-field="doc.total_completed_visits"/>
+                                </td>
+                                <td>
+                                    <span t-field="doc.total_missed_visits"/>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Pending</th>
+                                <th>In progress</th>
+                                <th>Overdue</th>
+                                <th>Awaiting approval</th>
+                                <th>Rejected</th>
+                                <th>Unplanned</th>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <span t-field="doc.total_pending_visits"/>
+                                </td>
+                                <td>
+                                    <span t-field="doc.total_in_progress_visits"/>
+                                </td>
+                                <td>
+                                    <span t-field="doc.total_overdue_visits"/>
+                                </td>
+                                <td>
+                                    <span t-field="doc.total_awaiting_approval_visits"/>
+                                </td>
+                                <td>
+                                    <span t-field="doc.total_rejected_visits"/>
+                                </td>
+                                <td>
+                                    <span t-field="doc.total_unplanned_visits"/>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Distance km</th>
+                                <th>Tracking min</th>
+                                <th>Visit min</th>
+                                <th>Idle min</th>
+                                <th>Expense</th>
+                                <th>Average rating</th>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <span t-field="doc.total_distance_km"/>
+                                </td>
+                                <td>
+                                    <span t-field="doc.total_tracking_minutes"/>
+                                </td>
+                                <td>
+                                    <span t-field="doc.total_visit_minutes"/>
+                                </td>
+                                <td>
+                                    <span t-field="doc.total_idle_minutes"/>
+                                </td>
+                                <td>
+                                    <span t-field="doc.total_expense"/>
+                                </td>
+                                <td>
+                                    <span t-field="doc.average_rating"/>
+                                </td>
+                            </tr>
+                        </table>
+                        <p>
+                            <strong>Completion rate: </strong>
+                            <span t-esc="'%.1f%%' % doc.completion_percent"/>
+                        </p>
+                        <div class="zc-heading">Salesperson summary</div>
+                        <table class="zc-table">
+                            <thead>
+                                <tr>
+                                    <th>Salesperson</th>
+                                    <th>Customers</th>
+                                    <th>Planned</th>
+                                    <th>Completed planned</th>
+                                    <th>Missed</th>
+                                    <th>Pending</th>
+                                    <th>In Progress</th>
+                                    <th>Overdue</th>
+                                    <th>Awaiting Approval</th>
+                                    <th>Rejected</th>
+                                    <th>Unplanned</th>
+                                    <th>Rate %</th>
+                                    <th>Distance km</th>
+                                    <th>Tracking min</th>
+                                    <th>Expense</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="doc.line_ids" t-as="l">
+                                    <td t-esc="l.user_id.name"/>
+                                    <td t-esc="l.customer_count"/>
+                                    <td t-esc="l.planned_visits"/>
+                                    <td t-esc="l.completed_visits"/>
+                                    <td t-esc="l.missed_visits"/>
+                                    <td t-esc="l.pending_visits"/>
+                                    <td t-esc="l.in_progress_visits"/>
+                                    <td t-esc="l.overdue_visits"/>
+                                    <td t-esc="l.awaiting_approval_visits"/>
+                                    <td t-esc="l.rejected_visits"/>
+                                    <td t-esc="l.unplanned_visits"/>
+                                    <td t-esc="'%.1f' % l.completion_percent"/>
+                                    <td t-esc="'%.2f' % l.distance_km"/>
+                                    <td t-esc="'%.1f' % l.tracking_minutes"/>
+                                    <td t-esc="'%.2f' % l.expense"/>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div class="zc-heading">Daily summary</div>
+                        <table class="zc-table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Planned</th>
+                                    <th>Completed planned</th>
+                                    <th>Missed</th>
+                                    <th>Pending</th>
+                                    <th>In Progress</th>
+                                    <th>Overdue</th>
+                                    <th>Awaiting Approval</th>
+                                    <th>Rejected</th>
+                                    <th>Unplanned</th>
+                                    <th>Distance km</th>
+                                    <th>Visit min</th>
+                                    <th>Idle min</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="doc.day_line_ids" t-as="d">
+                                    <td>
+                                        <span t-field="d.date"/>
+                                    </td>
+                                    <td t-esc="d.planned_visits"/>
+                                    <td t-esc="d.completed_visits"/>
+                                    <td t-esc="d.missed_visits"/>
+                                    <td t-esc="d.pending_visits"/>
+                                    <td t-esc="d.in_progress_visits"/>
+                                    <td t-esc="d.overdue_visits"/>
+                                    <td t-esc="d.awaiting_approval_visits"/>
+                                    <td t-esc="d.rejected_visits"/>
+                                    <td t-esc="d.unplanned_visits"/>
+                                    <td t-esc="'%.2f' % d.distance_km"/>
+                                    <td t-esc="'%.1f' % d.visit_minutes"/>
+                                    <td t-esc="'%.1f' % d.idle_minutes"/>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div style="page-break-before:always;">
+                            <div class="zc-heading">Customer-wise visit register</div>
+                            <p t-if="not doc.visit_line_ids">No visits match the selected scope and detail status.</p>
+                            <table class="zc-table">
+                                <thead>
+                                    <tr>
+                                        <th>Reference</th>
+                                        <th>Date</th>
+                                        <th>Salesperson</th>
+                                        <th>Customer</th>
+                                        <th>Planned</th>
+                                        <th>Purpose</th>
+                                        <th>Status</th>
+                                        <th>Check-in</th>
+                                        <th>Check-out</th>
+                                        <th>Minutes</th>
+                                        <th>Outcome</th>
+                                        <th>Rating</th>
+                                        <th>Explanation / notes</th>
+                                        <th>Photo</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr t-foreach="doc.visit_line_ids" t-as="v">
+                                        <td t-esc="v.reference"/>
+                                        <td>
+                                            <span t-field="v.visit_date"/>
+                                        </td>
+                                        <td t-esc="v.user_id.name"/>
+                                        <td t-esc="v.partner_id.name"/>
+                                        <td t-esc="'Yes' if v.is_planned else 'No'"/>
+                                        <td>
+                                            <span t-field="v.purpose"/>
+                                        </td>
+                                        <td t-att-style="'color:#b42318;font-weight:bold' if v.status in ('missed','overdue') else ('color:#087f5b;font-weight:bold' if v.status == 'completed' else '')">
+                                            <span t-field="v.status"/>
+                                        </td>
+                                        <td>
+                                            <span t-field="v.checkin_time"/>
+                                        </td>
+                                        <td>
+                                            <span t-field="v.checkout_time"/>
+                                        </td>
+                                        <td t-esc="'%.1f' % v.duration_minutes"/>
+                                        <td>
+                                            <span t-field="v.outcome"/>
+                                        </td>
+                                        <td t-esc="v.rating"/>
+                                        <td t-esc="(v.reason or '') + ' | ' + (v.notes or '') + ' | ' + (v.customer_feedback or '')"/>
+                                        <td t-esc="'Yes' if v.photo_available else 'No'"/>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div style="page-break-before:always;">
+                            <div class="zc-heading">Missed and overdue visits — follow-up required</div>
+                            <p t-if="not doc.missed_line_ids">No missed or overdue visits match the detail filter.</p>
+                            <table class="zc-table">
+                                <thead>
+                                    <tr>
+                                        <th>Reference</th>
+                                        <th>Date</th>
+                                        <th>Salesperson</th>
+                                        <th>Customer</th>
+                                        <th>Planned</th>
+                                        <th>Purpose</th>
+                                        <th>Status</th>
+                                        <th>Check-in</th>
+                                        <th>Check-out</th>
+                                        <th>Minutes</th>
+                                        <th>Outcome</th>
+                                        <th>Rating</th>
+                                        <th>Explanation / notes</th>
+                                        <th>Photo</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr t-foreach="doc.missed_line_ids" t-as="v">
+                                        <td t-esc="v.reference"/>
+                                        <td>
+                                            <span t-field="v.visit_date"/>
+                                        </td>
+                                        <td t-esc="v.user_id.name"/>
+                                        <td t-esc="v.partner_id.name"/>
+                                        <td t-esc="'Yes' if v.is_planned else 'No'"/>
+                                        <td>
+                                            <span t-field="v.purpose"/>
+                                        </td>
+                                        <td t-att-style="'color:#b42318;font-weight:bold' if v.status in ('missed','overdue') else ('color:#087f5b;font-weight:bold' if v.status == 'completed' else '')">
+                                            <span t-field="v.status"/>
+                                        </td>
+                                        <td>
+                                            <span t-field="v.checkin_time"/>
+                                        </td>
+                                        <td>
+                                            <span t-field="v.checkout_time"/>
+                                        </td>
+                                        <td t-esc="'%.1f' % v.duration_minutes"/>
+                                        <td>
+                                            <span t-field="v.outcome"/>
+                                        </td>
+                                        <td t-esc="v.rating"/>
+                                        <td t-esc="(v.reason or '') + ' | ' + (v.notes or '') + ' | ' + (v.customer_feedback or '')"/>
+                                        <td t-esc="'Yes' if v.photo_available else 'No'"/>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <div class="zc-heading">Customer coverage within selected period</div>
+                            <div t-field="doc.customer_analysis_html"/>
+                            <div class="zc-heading">Travel and expense summary</div>
+                            <p>Estimated expenses: <span t-field="doc.total_estimated_expense"/> | Actual expenses: <span t-field="doc.total_expense"/>
+                            </p>
+                            <table class="zc-table">
+                                <thead>
+                                    <tr>
+                                        <th>Salesperson</th>
+                                        <th>Distance km</th>
+                                        <th>Tracking min</th>
+                                        <th>Visit min</th>
+                                        <th>Idle min</th>
+                                        <th>Estimated expense</th>
+                                        <th>Actual expense</th>
+                                        <th>Rating</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr t-foreach="doc.line_ids" t-as="l">
+                                        <td t-esc="l.user_id.name"/>
+                                        <td t-esc="'%.2f' % l.distance_km"/>
+                                        <td t-esc="'%.2f' % l.tracking_minutes"/>
+                                        <td t-esc="'%.2f' % l.visit_minutes"/>
+                                        <td t-esc="'%.2f' % l.idle_minutes"/>
+                                        <td t-esc="'%.2f' % l.estimated_expense"/>
+                                        <td t-esc="'%.2f' % l.expense"/>
+                                        <td t-esc="'%.2f' % l.average_rating"/>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
-
-                    <table style="width:100%;border-collapse:collapse;margin-bottom:12px;">
-                        <tr>
-                            <td style="background:#f5f5f5;padding:5px 6px;border:1px solid #cfcfcf;text-align:center;">Total Salespersons: <span t-esc="doc.total_salespersons"/></td>
-                            <td style="background:#f5f5f5;padding:5px 6px;border:1px solid #cfcfcf;text-align:center;">Completed Visits: <span t-esc="doc.total_completed_visits"/></td>
-                            <td style="background:#f5f5f5;padding:5px 6px;border:1px solid #cfcfcf;text-align:center;">Pending Visits: <span t-esc="doc.total_pending_visits"/></td>
-                            <td style="background:#f5f5f5;padding:5px 6px;border:1px solid #cfcfcf;text-align:center;">Planned Visits: <span t-esc="doc.total_planned_visits"/></td>
-                            <td style="background:#f5f5f5;padding:5px 6px;border:1px solid #cfcfcf;text-align:center;">Total Distance: <span t-esc="'%.2f KM' % doc.total_distance_km"/></td>
-                        </tr>
-                        <tr>
-                            <td style="background:#f5f5f5;padding:5px 6px;border:1px solid #cfcfcf;text-align:center;">Tracking Time: <span t-esc="'%.1f h' % (doc.total_tracking_minutes/60.0)"/></td>
-                            <td style="background:#f5f5f5;padding:5px 6px;border:1px solid #cfcfcf;text-align:center;">Visit Time: <span t-esc="'%.1f h' % (doc.total_visit_minutes/60.0)"/></td>
-                            <td style="background:#f5f5f5;padding:5px 6px;border:1px solid #cfcfcf;text-align:center;">Idle Time: <span t-esc="'%.1f h' % (doc.total_idle_minutes/60.0)"/></td>
-                            <td style="background:#f5f5f5;padding:5px 6px;border:1px solid #cfcfcf;text-align:center;">Total Expense: <span t-esc="'%.2f' % doc.total_expense"/></td>
-                            <td style="background:#f5f5f5;padding:5px 6px;border:1px solid #cfcfcf;text-align:center;">Completion: <span t-esc="('%.1f' % doc.completion_percent) + '%'"/></td>
-                        </tr>
-                    </table>
-
-                    <div style="font-size:11px;font-weight:400;border-bottom:1px solid #777;padding:4px 0;margin:10px 0 0;">Salesperson Performance Summary</div>
-                    <table style="width:100%;border-collapse:collapse;margin-bottom:14px;">
-                        <thead>
-                            <tr style="background:#f0f0f0;font-weight:400;">
-                                <th style="padding:5px;border:1px solid #c8c8c8;text-align:left;font-weight:400;">Salesperson</th>
-                                <th style="padding:5px;border:1px solid #c8c8c8;font-weight:400;">Planned</th>
-                                <th style="padding:5px;border:1px solid #c8c8c8;font-weight:400;">Completed</th>
-                                <th style="padding:5px;border:1px solid #c8c8c8;font-weight:400;">Pending</th>
-                                <th style="padding:5px;border:1px solid #c8c8c8;font-weight:400;">Completion %</th>
-                                <th style="padding:5px;border:1px solid #c8c8c8;font-weight:400;">Distance</th>
-                                <th style="padding:5px;border:1px solid #c8c8c8;font-weight:400;">Visit Time</th>
-                                <th style="padding:5px;border:1px solid #c8c8c8;font-weight:400;">Idle Time</th>
-                                <th style="padding:5px;border:1px solid #c8c8c8;font-weight:400;">Expense</th>
-                                <th style="padding:5px;border:1px solid #c8c8c8;font-weight:400;">Rating</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr t-foreach="doc.line_ids" t-as="line">
-                                <td style="padding:6px;border:1px solid #dedede;" t-esc="line.user_id.name"/>
-                                <td style="padding:6px;border:1px solid #dedede;text-align:center;" t-esc="line.planned_visits"/>
-                                <td style="padding:6px;border:1px solid #dedede;text-align:center;" t-esc="line.completed_visits"/>
-                                <td style="padding:6px;border:1px solid #dedede;text-align:center;" t-esc="line.pending_visits"/>
-                                <td style="padding:6px;border:1px solid #dedede;text-align:center;" t-esc="('%.1f' % line.completion_percent) + '%'"/>
-                                <td style="padding:6px;border:1px solid #dedede;text-align:right;" t-esc="'%.2f' % line.distance_km"/>
-                                <td style="padding:6px;border:1px solid #dedede;text-align:right;" t-esc="'%.1f h' % (line.visit_minutes/60.0)"/>
-                                <td style="padding:6px;border:1px solid #dedede;text-align:right;" t-esc="'%.1f h' % (line.idle_minutes/60.0)"/>
-                                <td style="padding:6px;border:1px solid #dedede;text-align:right;" t-esc="'%.2f' % line.expense"/>
-                                <td style="padding:6px;border:1px solid #dedede;text-align:center;" t-esc="'%.1f' % line.average_rating"/>
-                            </tr>
-                        </tbody>
-                    </table>
-
-                    <t t-if="doc.day_line_ids">
-                        <div style="font-size:11px;font-weight:400;border-bottom:1px solid #777;padding:4px 0;margin:10px 0 0;">Day-wise Summary</div>
-                        <table style="width:100%;border-collapse:collapse;margin-bottom:14px;">
-                            <thead><tr style="background:#f0f0f0;font-weight:400;">
-                                <th style="padding:5px;border:1px solid #c8c8c8;font-weight:400;">Date</th><th style="padding:5px;border:1px solid #c8c8c8;font-weight:400;">Planned</th><th style="padding:5px;border:1px solid #c8c8c8;font-weight:400;">Completed</th><th style="padding:5px;border:1px solid #c8c8c8;font-weight:400;">Pending</th><th style="padding:5px;border:1px solid #c8c8c8;font-weight:400;">Distance KM</th><th style="padding:5px;border:1px solid #c8c8c8;font-weight:400;">Visit Time</th><th style="padding:5px;border:1px solid #c8c8c8;font-weight:400;">Idle Time</th>
-                            </tr></thead>
-                            <tbody><tr t-foreach="doc.day_line_ids" t-as="d">
-                                <td style="padding:5px;border:1px solid #dedede;" t-esc="d.date"/><td style="padding:5px;border:1px solid #dedede;text-align:center;" t-esc="d.planned_visits"/><td style="padding:5px;border:1px solid #dedede;text-align:center;" t-esc="d.completed_visits"/><td style="padding:5px;border:1px solid #dedede;text-align:center;" t-esc="d.pending_visits"/><td style="padding:5px;border:1px solid #dedede;text-align:right;" t-esc="'%.2f' % d.distance_km"/><td style="padding:5px;border:1px solid #dedede;text-align:right;" t-esc="'%.1f h' % (d.visit_minutes/60.0)"/><td style="padding:5px;border:1px solid #dedede;text-align:right;" t-esc="'%.1f h' % (d.idle_minutes/60.0)"/>
-                            </tr></tbody>
-                        </table>
-                    </t>
-
-                    <t t-if="doc.visit_line_ids">
-                        <div style="page-break-before:always;"/>
-                        <div style="font-size:11px;font-weight:400;border-bottom:1px solid #777;padding:4px 0;margin:10px 0 0;">Visit Details</div>
-                        <table style="width:100%;border-collapse:collapse;font-size:9px;">
-                            <thead><tr style="background:#f0f0f0;font-weight:400;">
-                                <th style="padding:4px;border:1px solid #c8c8c8;font-weight:400;">Date</th><th style="padding:4px;border:1px solid #c8c8c8;font-weight:400;">Salesperson</th><th style="padding:4px;border:1px solid #c8c8c8;font-weight:400;">Customer</th><th style="padding:4px;border:1px solid #c8c8c8;font-weight:400;">Purpose</th><th style="padding:4px;border:1px solid #c8c8c8;font-weight:400;">Check In</th><th style="padding:4px;border:1px solid #c8c8c8;font-weight:400;">Check Out</th><th style="padding:4px;border:1px solid #c8c8c8;font-weight:400;">Duration</th><th style="padding:4px;border:1px solid #c8c8c8;font-weight:400;">Status</th><th style="padding:4px;border:1px solid #c8c8c8;font-weight:400;">Rating</th>
-                            </tr></thead>
-                            <tbody><tr t-foreach="doc.visit_line_ids" t-as="v">
-                                <td style="padding:4px;border:1px solid #dedede;" t-esc="v.visit_date"/><td style="padding:4px;border:1px solid #dedede;" t-esc="v.user_id.name"/><td style="padding:4px;border:1px solid #dedede;" t-esc="v.partner_id.name"/><td style="padding:4px;border:1px solid #dedede;" t-esc="v.purpose or '-'"/><td style="padding:4px;border:1px solid #dedede;" t-esc="v.checkin_time or '-'"/><td style="padding:4px;border:1px solid #dedede;" t-esc="v.checkout_time or '-'"/><td style="padding:4px;border:1px solid #dedede;text-align:right;" t-esc="'%.0f min' % v.duration_minutes"/><td style="padding:4px;border:1px solid #dedede;text-align:center;" t-esc="v.status or '-'"/><td style="padding:4px;border:1px solid #dedede;text-align:center;" t-esc="'%.1f' % v.rating"/>
-                            </tr></tbody>
-                        </table>
-                    </t>
-                </div>
+                </t>
             </t>
         </t>
     </template>

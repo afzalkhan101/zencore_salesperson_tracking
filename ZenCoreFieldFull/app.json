@@ -54,7 +54,8 @@
           "cameraPermission": "Take a photo for customer visit evidence."
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-sqlite"
     ],
     "extra": {
       "eas": {

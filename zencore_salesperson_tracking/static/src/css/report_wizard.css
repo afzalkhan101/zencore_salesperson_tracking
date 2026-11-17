@@ -350,3 +350,11 @@
     .o_zc_report_actions { flex-wrap: wrap; }
     .o_zc_report_actions .ms-auto { margin-left: 0 !important; }
 }
+
+.o_zc_kpi_card--red { border-top: 3px solid #dc2626; }
+.o_zc_kpi_card--red .o_field_widget { color: #b42318; }
+
+.o_zc_performance_charts { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap:12px; margin-top:16px; }
+.o_zc_performance_chart { padding:14px; background:var(--o-view-background-color, white); border:1px solid #dce9ed; border-radius:12px; min-width:0; overflow:auto; }
+.o_zc_performance_chart h4 { font-size:15px; font-weight:600; }
+@media (max-width: 900px) { .o_zc_performance_charts { grid-template-columns:1fr; } }

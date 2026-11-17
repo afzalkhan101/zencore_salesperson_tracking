@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='UTF-8'?>
 <odoo>
     <record id="view_salesperson_performance_report_wizard_form" model="ir.ui.view">
         <field name="name">salesperson.performance.report.wizard.form</field>
@@ -15,7 +15,6 @@
                         </div>
                         <span class="o_zc_report_hero_icon fa fa-line-chart" aria-label="Performance analytics" title="Performance analytics"/>
                     </div>
-
                     <div class="o_zc_report_section_intro">
                         <span class="o_zc_report_section_number">01</span>
                         <div>
@@ -23,7 +22,6 @@
                             <p>Choose a period and the field team data you want to review.</p>
                         </div>
                     </div>
-
                     <group class="o_zc_report_filter_grid" col="2">
                         <group string="Report period" class="o_zc_report_filter_group">
                             <field name="report_type" widget="radio" options="{'horizontal': true}"/>
@@ -37,6 +35,7 @@
                             <field name="individual_user_id" options="{'no_create': True}" invisible="report_type != 'individual'" required="report_type == 'individual'"/>
                             <field name="salesperson_scope" invisible="report_type == 'individual'"/>
                             <field name="user_ids" widget="many2many_tags" options="{'no_create': True}" invisible="report_type == 'individual' or salesperson_scope == 'all'" required="report_type == 'multiple' and salesperson_scope == 'selected'"/>
+                            <field name="sale_team_id" options="{'no_create': True}"/>
                             <field name="customer_scope"/>
                             <field name="partner_id" options="{'no_create': True}" invisible="customer_scope == 'all'" required="customer_scope == 'selected'"/>
                             <field name="visit_status"/>
@@ -44,7 +43,6 @@
                             <field name="tracking_status"/>
                         </group>
                     </group>
-
                     <div class="o_zc_report_actions">
                         <button name="action_generate_report" type="object" string="Generate report" class="btn-primary" icon="fa-search"/>
                         <button name="action_reset" type="object" string="Reset filters" class="btn-secondary" icon="fa-refresh"/>
@@ -52,39 +50,124 @@
                         <button name="action_print_pdf" type="object" string="Print PDF" class="btn-secondary ms-auto" icon="fa-print" invisible="not line_ids"/>
                         <button name="action_export_excel" type="object" string="Export Excel" class="btn-success" icon="fa-file-excel-o" invisible="not line_ids"/>
                     </div>
-
                     <div class="o_zc_report_results" invisible="not line_ids">
                         <div class="o_zc_report_section_intro o_zc_report_results_intro">
                             <span class="o_zc_report_section_number">02</span>
                             <div>
                                 <h2>Performance snapshot</h2>
-                                <p>Summary for the selected period and reporting scope.</p>
+                                <p>Summary for selected period and scope. Status filter limits the detail register only. Completion rate excludes rejected and unapproved plans; unplanned check-ins are separate.</p>
                             </div>
                         </div>
                         <div class="o_zc_kpi_grid">
-                            <div class="o_zc_kpi_card o_zc_kpi_card--neutral"><span>Salespeople</span><field name="total_salespersons" nolabel="1" readonly="1"/></div>
-                            <div class="o_zc_kpi_card o_zc_kpi_card--blue"><span>Planned visits</span><field name="total_planned_visits" nolabel="1" readonly="1"/></div>
-                            <div class="o_zc_kpi_card o_zc_kpi_card--green"><span>Completed</span><field name="total_completed_visits" nolabel="1" readonly="1"/></div>
-                            <div class="o_zc_kpi_card o_zc_kpi_card--amber"><span>Pending</span><field name="total_pending_visits" nolabel="1" readonly="1"/></div>
-                            <div class="o_zc_kpi_card o_zc_kpi_card--purple"><span>Completion rate</span><field name="completion_percent" nolabel="1" readonly="1" widget="percentage"/></div>
-                            <div class="o_zc_kpi_card"><span>Distance (km)</span><field name="total_distance_km" nolabel="1" readonly="1"/></div>
-                            <div class="o_zc_kpi_card"><span>Tracking (min)</span><field name="total_tracking_minutes" nolabel="1" readonly="1"/></div>
-                            <div class="o_zc_kpi_card"><span>Visit time (min)</span><field name="total_visit_minutes" nolabel="1" readonly="1"/></div>
-                            <div class="o_zc_kpi_card"><span>Idle time (min)</span><field name="total_idle_minutes" nolabel="1" readonly="1"/></div>
-                            <div class="o_zc_kpi_card"><span>Expense</span><field name="total_expense" nolabel="1" readonly="1"/></div>
-                            <div class="o_zc_kpi_card"><span>Average rating</span><field name="average_rating" nolabel="1" readonly="1"/></div>
+                            <div class="o_zc_kpi_card o_zc_kpi_card--neutral">
+                                <span>Salespeople</span>
+                                <field name="total_salespersons" nolabel="1" readonly="1"/>
+                            </div>
+                            <div class="o_zc_kpi_card o_zc_kpi_card--blue">
+                                <span>Planned visits</span>
+                                <field name="total_planned_visits" nolabel="1" readonly="1"/>
+                            </div>
+                            <div class="o_zc_kpi_card o_zc_kpi_card--green">
+                                <span>Completed planned</span>
+                                <field name="total_completed_visits" nolabel="1" readonly="1"/>
+                            </div>
+                            <div class="o_zc_kpi_card o_zc_kpi_card--amber">
+                                <span>Pending</span>
+                                <field name="total_pending_visits" nolabel="1" readonly="1"/>
+                            </div>
+                            <div class="o_zc_kpi_card o_zc_kpi_card--purple">
+                                <span>Completion rate (%)</span>
+                                <field name="completion_percent" nolabel="1" readonly="1"/>
+                            </div>
+                            <div class="o_zc_kpi_card">
+                                <span>Distance (km)</span>
+                                <field name="total_distance_km" nolabel="1" readonly="1"/>
+                            </div>
+                            <div class="o_zc_kpi_card">
+                                <span>Tracking (min)</span>
+                                <field name="total_tracking_minutes" nolabel="1" readonly="1"/>
+                            </div>
+                            <div class="o_zc_kpi_card">
+                                <span>Visit time (min)</span>
+                                <field name="total_visit_minutes" nolabel="1" readonly="1"/>
+                            </div>
+                            <div class="o_zc_kpi_card">
+                                <span>Idle time (min)</span>
+                                <field name="total_idle_minutes" nolabel="1" readonly="1"/>
+                            </div>
+                            <div class="o_zc_kpi_card">
+                                <span>Actual expense</span>
+                                <field name="total_expense" nolabel="1" readonly="1"/>
+                            </div>
+                            <div class="o_zc_kpi_card">
+                                <span>Average rating</span>
+                                <field name="average_rating" nolabel="1" readonly="1"/>
+                            </div>
+                            <div class="o_zc_kpi_card o_zc_kpi_card--blue">
+                                <span>Customers in scope</span>
+                                <field name="total_customers" nolabel="1" readonly="1"/>
+                            </div>
+                            <div class="o_zc_kpi_card o_zc_kpi_card--green">
+                                <span>Visited customers</span>
+                                <field name="total_visited_customers" nolabel="1" readonly="1"/>
+                            </div>
+                            <div class="o_zc_kpi_card o_zc_kpi_card--red">
+                                <span>Missed</span>
+                                <field name="total_missed_visits" nolabel="1" readonly="1"/>
+                            </div>
+                            <div class="o_zc_kpi_card o_zc_kpi_card--blue">
+                                <span>In progress</span>
+                                <field name="total_in_progress_visits" nolabel="1" readonly="1"/>
+                            </div>
+                            <div class="o_zc_kpi_card o_zc_kpi_card--red">
+                                <span>Overdue</span>
+                                <field name="total_overdue_visits" nolabel="1" readonly="1"/>
+                            </div>
+                            <div class="o_zc_kpi_card o_zc_kpi_card--amber">
+                                <span>Awaiting approval</span>
+                                <field name="total_awaiting_approval_visits" nolabel="1" readonly="1"/>
+                            </div>
+                            <div class="o_zc_kpi_card o_zc_kpi_card--neutral">
+                                <span>Rejected</span>
+                                <field name="total_rejected_visits" nolabel="1" readonly="1"/>
+                            </div>
+                            <div class="o_zc_kpi_card o_zc_kpi_card--neutral">
+                                <span>Unplanned check-ins</span>
+                                <field name="total_unplanned_visits" nolabel="1" readonly="1"/>
+                            </div>
+                            <div class="o_zc_kpi_card">
+                                <span>Estimated expense</span>
+                                <field name="total_estimated_expense" nolabel="1" readonly="1"/>
+                            </div>
+                        </div>
+                        <div class="o_zc_performance_charts">
+                            <div class="o_zc_performance_chart">
+                                <h4>Visit status distribution</h4>
+                                <field name="status_distribution_html" nolabel="1" readonly="1" widget="html"/>
+                            </div>
+                            <div class="o_zc_performance_chart">
+                                <h4>Salesperson completion comparison</h4>
+                                <field name="comparison_html" nolabel="1" readonly="1" widget="html"/>
+                            </div>
                         </div>
                     </div>
-
                     <notebook invisible="not line_ids" class="o_zc_report_notebook">
                         <page string="Salesperson summary">
                             <field name="line_ids" nolabel="1" readonly="1">
                                 <list create="0" delete="0" edit="0">
                                     <field name="user_id"/>
+                                    <field name="customer_count" optional="show"/>
+                                    <field name="visited_customer_count" optional="show"/>
                                     <field name="planned_visits"/>
                                     <field name="completed_visits"/>
+                                    <field name="missed_visits" optional="show"/>
+                                    <field name="in_progress_visits" optional="show"/>
+                                    <field name="overdue_visits" optional="show"/>
+                                    <field name="awaiting_approval_visits" optional="hide"/>
+                                    <field name="rejected_visits" optional="hide"/>
+                                    <field name="unplanned_visits" optional="hide"/>
                                     <field name="pending_visits"/>
-                                    <field name="completion_percent" widget="percentage"/>
+                                    <field name="completion_percent"/>
                                     <field name="distance_km"/>
                                     <field name="tracking_minutes"/>
                                     <field name="visit_minutes"/>
@@ -100,6 +183,12 @@
                                     <field name="date"/>
                                     <field name="planned_visits"/>
                                     <field name="completed_visits"/>
+                                    <field name="missed_visits" optional="show"/>
+                                    <field name="in_progress_visits" optional="show"/>
+                                    <field name="overdue_visits" optional="show"/>
+                                    <field name="awaiting_approval_visits" optional="hide"/>
+                                    <field name="rejected_visits" optional="hide"/>
+                                    <field name="unplanned_visits" optional="hide"/>
                                     <field name="pending_visits"/>
                                     <field name="distance_km"/>
                                     <field name="visit_minutes"/>
@@ -109,10 +198,12 @@
                         </page>
                         <page string="Visit details">
                             <field name="visit_line_ids" nolabel="1" readonly="1">
-                                <list create="0" delete="0" edit="0">
+                                <list create="0" delete="0" edit="0" decoration-danger="status in ('missed', 'overdue')" decoration-success="status == 'completed'" decoration-warning="status in ('pending', 'awaiting_approval')">
+                                    <field name="reference"/>
                                     <field name="visit_date"/>
                                     <field name="user_id"/>
                                     <field name="partner_id"/>
+                                    <field name="is_planned"/>
                                     <field name="purpose"/>
                                     <field name="checkin_time"/>
                                     <field name="checkout_time"/>
@@ -121,6 +212,199 @@
                                     <field name="status" widget="badge"/>
                                     <field name="outcome"/>
                                     <field name="rating" optional="hide"/>
+                                    <field name="reason" optional="show"/>
+                                    <field name="notes" optional="hide"/>
+                                    <field name="customer_feedback" optional="hide"/>
+                                    <field name="photo_available" optional="show"/>
+                                    <field name="plan_id" optional="hide"/>
+                                    <field name="tracker_id" optional="hide"/>
+                                    <field name="checkin_id" optional="hide"/>
+                                    <field name="location_name" optional="hide"/>
+                                    <field name="checkin_latitude" optional="hide"/>
+                                    <field name="checkin_longitude" optional="hide"/>
+                                </list>
+                                <form string="Customer Visit Detail" create="0" edit="0" delete="0">
+                                    <sheet>
+                                        <group>
+                                            <group>
+                                                <field name="reference" readonly="1"/>
+                                                <field name="user_id" readonly="1"/>
+                                                <field name="partner_id" readonly="1"/>
+                                                <field name="visit_date" readonly="1"/>
+                                                <field name="purpose" readonly="1"/>
+                                                <field name="status" readonly="1"/>
+                                                <field name="is_planned" readonly="1"/>
+                                                <field name="reason" readonly="1"/>
+                                            </group>
+                                            <group>
+                                                <field name="checkin_time" readonly="1"/>
+                                                <field name="checkout_time" readonly="1"/>
+                                                <field name="duration_minutes" readonly="1"/>
+                                                <field name="rating" readonly="1"/>
+                                                <field name="outcome" readonly="1"/>
+                                                <field name="photo_available" readonly="1"/>
+                                                <field name="location_name" readonly="1"/>
+                                                <field name="checkin_latitude" readonly="1"/>
+                                                <field name="checkin_longitude" readonly="1"/>
+                                            </group>
+                                        </group>
+                                        <group string="Evidence and source records">
+                                            <field name="notes" readonly="1"/>
+                                            <field name="customer_feedback" readonly="1"/>
+                                            <field name="plan_id" readonly="1"/>
+                                            <field name="tracker_id" readonly="1"/>
+                                            <field name="checkin_id" readonly="1"/>
+                                            <field name="selfie_image" widget="image" readonly="1" invisible="not photo_available" options="{'size': [180, 180]}"/>
+                                        </group>
+                                    </sheet>
+                                </form>
+                            </field>
+                        </page>
+                        <page string="Missed / overdue visits">
+                            <field name="missed_line_ids" nolabel="1" readonly="1">
+                                <list create="0" delete="0" edit="0" decoration-danger="status in ('missed', 'overdue')" decoration-success="status == 'completed'" decoration-warning="status in ('pending', 'awaiting_approval')">
+                                    <field name="reference"/>
+                                    <field name="visit_date"/>
+                                    <field name="user_id"/>
+                                    <field name="partner_id"/>
+                                    <field name="is_planned"/>
+                                    <field name="purpose"/>
+                                    <field name="checkin_time"/>
+                                    <field name="checkout_time"/>
+                                    <field name="duration_minutes"/>
+                                    <field name="distance_km" optional="hide"/>
+                                    <field name="status" widget="badge"/>
+                                    <field name="outcome"/>
+                                    <field name="rating" optional="hide"/>
+                                    <field name="reason" optional="show"/>
+                                    <field name="notes" optional="hide"/>
+                                    <field name="customer_feedback" optional="hide"/>
+                                    <field name="photo_available" optional="show"/>
+                                    <field name="plan_id" optional="hide"/>
+                                    <field name="tracker_id" optional="hide"/>
+                                    <field name="checkin_id" optional="hide"/>
+                                    <field name="location_name" optional="hide"/>
+                                    <field name="checkin_latitude" optional="hide"/>
+                                    <field name="checkin_longitude" optional="hide"/>
+                                </list>
+                                <form string="Customer Visit Detail" create="0" edit="0" delete="0">
+                                    <sheet>
+                                        <group>
+                                            <group>
+                                                <field name="reference" readonly="1"/>
+                                                <field name="user_id" readonly="1"/>
+                                                <field name="partner_id" readonly="1"/>
+                                                <field name="visit_date" readonly="1"/>
+                                                <field name="purpose" readonly="1"/>
+                                                <field name="status" readonly="1"/>
+                                                <field name="is_planned" readonly="1"/>
+                                                <field name="reason" readonly="1"/>
+                                            </group>
+                                            <group>
+                                                <field name="checkin_time" readonly="1"/>
+                                                <field name="checkout_time" readonly="1"/>
+                                                <field name="duration_minutes" readonly="1"/>
+                                                <field name="rating" readonly="1"/>
+                                                <field name="outcome" readonly="1"/>
+                                                <field name="photo_available" readonly="1"/>
+                                                <field name="location_name" readonly="1"/>
+                                                <field name="checkin_latitude" readonly="1"/>
+                                                <field name="checkin_longitude" readonly="1"/>
+                                            </group>
+                                        </group>
+                                        <group string="Evidence and source records">
+                                            <field name="notes" readonly="1"/>
+                                            <field name="customer_feedback" readonly="1"/>
+                                            <field name="plan_id" readonly="1"/>
+                                            <field name="tracker_id" readonly="1"/>
+                                            <field name="checkin_id" readonly="1"/>
+                                            <field name="selfie_image" widget="image" readonly="1" invisible="not photo_available" options="{'size': [180, 180]}"/>
+                                        </group>
+                                    </sheet>
+                                </form>
+                            </field>
+                        </page>
+                        <page string="Completed visits">
+                            <field name="completed_line_ids" nolabel="1" readonly="1">
+                                <list create="0" delete="0" edit="0" decoration-danger="status in ('missed', 'overdue')" decoration-success="status == 'completed'" decoration-warning="status in ('pending', 'awaiting_approval')">
+                                    <field name="reference"/>
+                                    <field name="visit_date"/>
+                                    <field name="user_id"/>
+                                    <field name="partner_id"/>
+                                    <field name="is_planned"/>
+                                    <field name="purpose"/>
+                                    <field name="checkin_time"/>
+                                    <field name="checkout_time"/>
+                                    <field name="duration_minutes"/>
+                                    <field name="distance_km" optional="hide"/>
+                                    <field name="status" widget="badge"/>
+                                    <field name="outcome"/>
+                                    <field name="rating" optional="hide"/>
+                                    <field name="reason" optional="show"/>
+                                    <field name="notes" optional="hide"/>
+                                    <field name="customer_feedback" optional="hide"/>
+                                    <field name="photo_available" optional="show"/>
+                                    <field name="plan_id" optional="hide"/>
+                                    <field name="tracker_id" optional="hide"/>
+                                    <field name="checkin_id" optional="hide"/>
+                                    <field name="location_name" optional="hide"/>
+                                    <field name="checkin_latitude" optional="hide"/>
+                                    <field name="checkin_longitude" optional="hide"/>
+                                </list>
+                                <form string="Customer Visit Detail" create="0" edit="0" delete="0">
+                                    <sheet>
+                                        <group>
+                                            <group>
+                                                <field name="reference" readonly="1"/>
+                                                <field name="user_id" readonly="1"/>
+                                                <field name="partner_id" readonly="1"/>
+                                                <field name="visit_date" readonly="1"/>
+                                                <field name="purpose" readonly="1"/>
+                                                <field name="status" readonly="1"/>
+                                                <field name="is_planned" readonly="1"/>
+                                                <field name="reason" readonly="1"/>
+                                            </group>
+                                            <group>
+                                                <field name="checkin_time" readonly="1"/>
+                                                <field name="checkout_time" readonly="1"/>
+                                                <field name="duration_minutes" readonly="1"/>
+                                                <field name="rating" readonly="1"/>
+                                                <field name="outcome" readonly="1"/>
+                                                <field name="photo_available" readonly="1"/>
+                                                <field name="location_name" readonly="1"/>
+                                                <field name="checkin_latitude" readonly="1"/>
+                                                <field name="checkin_longitude" readonly="1"/>
+                                            </group>
+                                        </group>
+                                        <group string="Evidence and source records">
+                                            <field name="notes" readonly="1"/>
+                                            <field name="customer_feedback" readonly="1"/>
+                                            <field name="plan_id" readonly="1"/>
+                                            <field name="tracker_id" readonly="1"/>
+                                            <field name="checkin_id" readonly="1"/>
+                                            <field name="selfie_image" widget="image" readonly="1" invisible="not photo_available" options="{'size': [180, 180]}"/>
+                                        </group>
+                                    </sheet>
+                                </form>
+                            </field>
+                        </page>
+                        <page string="Customer analysis">
+                            <field name="customer_analysis_html" nolabel="1" readonly="1" widget="html"/>
+                        </page>
+                        <page string="Performance ranking">
+                            <field name="comparison_html" nolabel="1" readonly="1" widget="html"/>
+                        </page>
+                        <page string="Travel &amp; Expenses">
+                            <field name="line_ids" nolabel="1" readonly="1">
+                                <list create="0" edit="0" delete="0">
+                                    <field name="user_id"/>
+                                    <field name="distance_km"/>
+                                    <field name="tracking_minutes"/>
+                                    <field name="visit_minutes"/>
+                                    <field name="idle_minutes"/>
+                                    <field name="estimated_expense"/>
+                                    <field name="expense"/>
+                                    <field name="average_rating"/>
                                 </list>
                             </field>
                         </page>
@@ -129,14 +413,12 @@
             </form>
         </field>
     </record>
-
     <record id="action_salesperson_performance_report" model="ir.actions.act_window">
         <field name="name">Performance Report</field>
         <field name="res_model">salesperson.performance.report.wizard</field>
         <field name="view_mode">form</field>
         <field name="target">current</field>
     </record>
-
     <menuitem id="menu_salesperson_reports_root" name="Reports" parent="menu_salesperson_tracking_root" sequence="34" groups="zencore_salesperson_tracking.group_salesperson_ceo,zencore_salesperson_tracking.group_salesperson_manager,zencore_salesperson_tracking.group_salesperson_supervisor"/>
     <menuitem id="menu_salesperson_performance_report" name="Performance Report" parent="menu_salesperson_reports_root" action="action_salesperson_performance_report" sequence="10" groups="zencore_salesperson_tracking.group_salesperson_ceo,zencore_salesperson_tracking.group_salesperson_manager,zencore_salesperson_tracking.group_salesperson_supervisor"/>
     <!-- The hierarchy action is retained for internal use, but it is not a

@@ -72,4 +72,8 @@ class ZcSalespersonPerformanceReport(models.AbstractModel):
     @api.model
     def _get_report_values(self, docids, data=None):
         docs = _visible_documents(self.env, 'salesperson.performance.report.wizard', docids, wizard=True)
+        allowed = report_team_user_ids(self.env)
+        for doc in docs:
+            if any(line.user_id.id not in allowed for line in doc.visit_line_ids):
+                raise AccessError(_('This report includes visits outside your reporting team.'))
         return {'doc_ids': docs.ids, 'doc_model': docs._name, 'docs': docs}
