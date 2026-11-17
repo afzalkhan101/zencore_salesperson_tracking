@@ -23,7 +23,10 @@ export function cleanDisplayedRoute(points:RouteFix[]):RouteFix[][]{
   }
   preliminary.push(point);
  }
- // Detect isolated triangular spikes that return close to the prior location.
+ // Detect A → B → C GPS triangles. If B is more than 50m from A and the
+ // following fix returns near A, B is a transient GPS jump, not proven travel.
+ // Keep A and C so the route stays continuous without drawing either A→B or
+ // B→C. Raw GPS SQLite records are intentionally preserved for diagnostics.
  const stable:RouteFix[]=[];
  for(let i=0;i<preliminary.length;i++){
   const prior=stable[stable.length-1],current=preliminary[i],next=preliminary[i+1];
@@ -32,7 +35,8 @@ export function cleanDisplayedRoute(points:RouteFix[]):RouteFix[][]{
    const outward=haversineMeters(prior,current);
    const returnDist=haversineMeters(current,next);
    const duration=(next.capturedAt-prior.capturedAt)/1000;
-   if(duration>0&&duration<150&&outward>80&&returnDist>80&&back<Math.max(40,outward*0.28))continue;
+   const returnRadius=Math.max(35,Math.min(50,1.5*Math.max(prior.accuracy,next.accuracy)));
+   if(duration>0&&duration<=90&&outward>50&&returnDist>50&&back<=returnRadius)continue;
   }
   stable.push(current);
  }

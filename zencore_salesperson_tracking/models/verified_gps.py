@@ -70,4 +70,24 @@ def verified_distance_km(rows):
         pending = None
         segment.append(p)
     flush()
-    return sum(_meters(a, b) for seg in segments for a, b in zip(seg, seg[1:])) / 1000.0
+
+    # Mirror the map's A → B → C protection. A brief remote B fix followed by
+    # a return near A is GPS drift, so it must not inflate verified distance.
+    cleaned_segments = []
+    for source in segments:
+        cleaned = []
+        for index, current in enumerate(source):
+            prior = cleaned[-1] if cleaned else None
+            following = source[index + 1] if index + 1 < len(source) else None
+            if prior and following and prior[3] and following[3]:
+                duration = (following[3] - prior[3]).total_seconds()
+                outward = _meters(prior, current)
+                return_distance = _meters(current, following)
+                return_to_anchor = _meters(prior, following)
+                if (0 < duration <= 90 and outward > 50 and return_distance > 50
+                        and return_to_anchor <= 50):
+                    continue
+            cleaned.append(current)
+        if cleaned:
+            cleaned_segments.append(cleaned)
+    return sum(_meters(a, b) for seg in cleaned_segments for a, b in zip(seg, seg[1:])) / 1000.0

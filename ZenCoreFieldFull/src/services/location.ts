@@ -4,6 +4,9 @@ import {addGpsPoint,getTrackingSession,getActiveTracker,getActivePlan,getTrackin
 import type {GpsPoint} from '../types/models';
 
 const TASK='ZENCORE_FIELD_BACKGROUND_LOCATION';
+const GPS_CAPTURE_INTERVAL_MS=2000;
+const GPS_MIN_DISTANCE_M=1;
+const GPS_UPLOAD_INTERVAL_MS=5000;
 const uid=()=>`${Date.now()}-${Math.random().toString(36).slice(2)}`;
 const rad=(value:number)=>value*Math.PI/180;
 
@@ -11,6 +14,8 @@ type LastFix={latitude:number;longitude:number;capturedAt:number};
 let foregroundSubscription:Location.LocationSubscription|null=null;
 let foregroundSession:string|null=null;
 const lastFixBySession=new Map<string,LastFix>();
+let gpsUploadTimer:ReturnType<typeof setTimeout>|null=null;
+let lastGpsUploadAttemptAt=0;
 
 export type TrackingCaptureMode='background'|'foreground'|'stopped';
 export type TrackingInspection={
@@ -48,7 +53,11 @@ export async function persistLocation(location:Location.LocationObject,session:s
  if(!validLocation(location))return false;
  const capturedAt=location.timestamp||Date.now();
  const previous=lastFixBySession.get(session);
- if(previous && capturedAt-previous.capturedAt<4500&&distanceMeters(previous,location)<5)return false;
+ // Ask Android for a fix every two seconds, but do not manufacture route
+ // movement while the device remains inside one metre of its last stored fix.
+ // This is deliberately a capture rule, not a timer stop: the native watcher
+ // stays alive until the salesperson explicitly stops tracking.
+ if(previous&&distanceMeters(previous,location)<GPS_MIN_DISTANCE_M)return false;
  const trackerId=await getActiveTracker();
  const planId=await getActivePlan();
  if(!trackerId||!planId)return false;
@@ -59,16 +68,29 @@ export async function persistLocation(location:Location.LocationObject,session:s
  };
  await addGpsPoint(point);
  lastFixBySession.set(session,{latitude:point.latitude,longitude:point.longitude,capturedAt});
- // Foreground uploads start immediately. Background execution also attempts a
- // bounded direct flush below, because AppState timers are intentionally paused.
- try { const {triggerAutoSync}=await import('./autoSync');triggerAutoSync(true); }
- catch(error){console.warn('[ZenCore GPS] Foreground sync will retry on resume',error);}
+ // Keep 2-second capture local. Odoo receives a bounded batch every five
+ // seconds, avoiding a network request for every individual GPS callback.
+ scheduleGpsUpload();
  return true;
 }
 
-async function flushOneBackgroundBatch(){
+async function flushOneBackgroundBatch(force=false){
+ if(!force&&Date.now()-lastGpsUploadAttemptAt<GPS_UPLOAD_INTERVAL_MS)return;
+ lastGpsUploadAttemptAt=Date.now();
  try {const {flushAllGps}=await import('./sync');await flushAllGps(1);}
  catch(error){console.warn('[ZenCore GPS] Background upload retained for retry',error);}
+}
+
+function scheduleGpsUpload(){
+ if(gpsUploadTimer)return;
+ const elapsed=Date.now()-lastGpsUploadAttemptAt;
+ const delay=lastGpsUploadAttemptAt
+  ?Math.max(0,GPS_UPLOAD_INTERVAL_MS-elapsed)
+  :GPS_UPLOAD_INTERVAL_MS;
+ gpsUploadTimer=setTimeout(()=>{
+  gpsUploadTimer=null;
+  void flushOneBackgroundBatch(true);
+ },delay);
 }
 
 // Expo Go on Android deliberately does not provide TaskManager.  Defining the
@@ -105,8 +127,8 @@ async function ensureForegroundWatch(session:string){
  try{
   foregroundSubscription=await Location.watchPositionAsync({
    accuracy:Location.Accuracy.High,
-   timeInterval:5000,
-   distanceInterval:5,
+   timeInterval:GPS_CAPTURE_INTERVAL_MS,
+   distanceInterval:GPS_MIN_DISTANCE_M,
    mayShowUserSettingsDialog:true,
   },location=>{void persistLocation(location,session);});
   foregroundSession=session;
@@ -163,6 +185,7 @@ export async function startTracking(trackerId:number,planId:number){
  // Store identity before callbacks can arrive; a GPS sample can never be routed
  // to another plan/tracker after a restart.
  await setTrackingIdentity({planId,trackerId,sessionId,startedAt:Date.now()});
+ lastGpsUploadAttemptAt=Date.now();
  const foregroundStarted=await ensureForegroundWatch(sessionId);
  if(!foregroundStarted){await setTrackingIdentity(null);throw Error('GPS listener could not start. Turn on Location and try again.');}
 
@@ -177,8 +200,8 @@ export async function startTracking(trackerId:number,planId:number){
    if(backgroundPermission.status==='granted'){
     await Location.startLocationUpdatesAsync(TASK,{
      accuracy:Location.Accuracy.High,
-     timeInterval:10000,
-     distanceInterval:10,
+     timeInterval:GPS_CAPTURE_INTERVAL_MS,
+     distanceInterval:GPS_MIN_DISTANCE_M,
      pausesUpdatesAutomatically:false,
      showsBackgroundLocationIndicator:true,
      foregroundService:{
@@ -207,6 +230,7 @@ export async function startTracking(trackerId:number,planId:number){
 export async function stopTracking(){
  // Clear identity only after every running native capture mechanism stops.
  if(await Location.hasStartedLocationUpdatesAsync(TASK).catch(()=>false))await Location.stopLocationUpdatesAsync(TASK);
+ if(gpsUploadTimer){clearTimeout(gpsUploadTimer);gpsUploadTimer=null;}
  await stopForegroundWatch();
  await setTrackingIdentity(null);
 }

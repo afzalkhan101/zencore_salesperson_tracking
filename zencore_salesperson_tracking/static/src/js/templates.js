@@ -1244,6 +1244,8 @@
     const MAP_MAX_DRAW_STEP_M = 180;   // never draw a long blind straight line
     const MAP_STATIONARY_RADIUS_M = 18;
     const MAP_REACQUIRE_RADIUS_M = 80;
+    const MAP_TRIANGLE_SPIKE_M = 50;
+    const MAP_RETURN_TO_ANCHOR_M = 50;
     // Small movements do not need a reconnect path. Otherwise use the nearest
     // sensible driving route, falling back to a direct visual connection when
     // a road result would introduce a large detour.
@@ -1353,17 +1355,44 @@
             addPoint(p);
         }
         flush();
+        // A → B → C can be a GPS bounce even when the point-to-point speed is
+        // plausible. If B is 50m+ away but C returns to A's area shortly after,
+        // retain A/C and remove only B from the displayed route. This avoids a
+        // false blue triangle while keeping the original location log intact.
+        const cleanedSegments = segments.map(source => {
+            const cleaned = [];
+            for (let index = 0; index < source.length; index++) {
+                const prior = cleaned[cleaned.length - 1];
+                const current = source[index];
+                const next = source[index + 1];
+                if (prior && next) {
+                    const duration = (parseTime(next.time) - parseTime(prior.time)) / 1000;
+                    const outward = distanceMeters(prior, current);
+                    const returnDistance = distanceMeters(current, next);
+                    const returnToAnchor = distanceMeters(prior, next);
+                    if (duration > 0 && duration <= MAP_GAP_SECONDS
+                        && outward > MAP_TRIANGLE_SPIKE_M
+                        && returnDistance > MAP_TRIANGLE_SPIKE_M
+                        && returnToAnchor <= MAP_RETURN_TO_ANCHOR_M) {
+                        rejected++;
+                        continue;
+                    }
+                }
+                cleaned.push(current);
+            }
+            return cleaned;
+        }).filter(segment => segment.length);
         // Preserve a meaningful current marker for a tracker with just one fix.
-        if (!segments.length && rawPoints.length === 1 && pending) segments.push([pending.point]);
+        if (!cleanedSegments.length && rawPoints.length === 1 && pending) cleanedSegments.push([pending.point]);
         // A lone uncorroborated jump must not replace an established route.
         log('Map GPS cleanup: %d source points, %d rejected, %d disconnected segments',
-            rawPoints.length, rejected + (pending ? 1 : 0), segments.length);
+            rawPoints.length, rejected + (pending ? 1 : 0), cleanedSegments.length);
         prepareMapSegments.quality = {
             raw: rawPoints.length,
-            accepted: segments.reduce((sum, seg) => sum + seg.length, 0),
-            breaks: Math.max(0, segments.length - 1),
+            accepted: cleanedSegments.reduce((sum, seg) => sum + seg.length, 0),
+            breaks: Math.max(0, cleanedSegments.length - 1),
         };
-        return segments;
+        return cleanedSegments;
     }
 
     // ── Fix 3+4: renderPath — correct marker sizes/colors, live path ──
