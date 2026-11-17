@@ -451,6 +451,19 @@ class SalespersonPerformanceReportWizard(models.TransientModel):
         self.action_generate_report()
         return self.env.ref("zencore_salesperson_tracking.action_report_salesperson_performance").report_action(self)
 
+    def action_preview_pdf(self):
+        self.ensure_one()
+        check_report_access(self.env)
+        self.action_generate_report()
+        return {
+            "type": "ir.actions.client",
+            "tag": "zencore_performance_pdf_preview",
+            "params": {
+                "report_url": "/report/pdf/zencore_salesperson_tracking.report_salesperson_performance_document/%s" % self.id,
+                "filename": "Salesperson Performance - %s to %s.pdf" % (self.date_from, self.date_to),
+            },
+        }
+
     def action_export_excel(self):
         self.ensure_one()
         check_report_access(self.env)

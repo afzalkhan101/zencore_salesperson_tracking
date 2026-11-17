@@ -47,7 +47,7 @@
                         <button name="action_generate_report" type="object" string="Generate report" class="btn-primary" icon="fa-search"/>
                         <button name="action_reset" type="object" string="Reset filters" class="btn-secondary" icon="fa-refresh"/>
                         <span class="o_zc_report_action_hint">Results use only the users and records you are allowed to monitor.</span>
-                        <button name="action_print_pdf" type="object" string="Print PDF" class="btn-secondary ms-auto" icon="fa-print" invisible="not line_ids"/>
+                        <button name="action_preview_pdf" type="object" string="PDF Preview" class="btn-secondary ms-auto" icon="fa-file-pdf-o" invisible="not line_ids"/>
                         <button name="action_export_excel" type="object" string="Export Excel" class="btn-success" icon="fa-file-excel-o" invisible="not line_ids"/>
                     </div>
                     <div class="o_zc_report_results" invisible="not line_ids">
