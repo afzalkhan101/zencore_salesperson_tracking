@@ -1130,6 +1130,160 @@ class SalespersonTrackingController(http.Controller):
 
     # ── Dashboard data API (Today tab live polling) ───────────────────────────
 
+    @http.route("/salesperson/dashboard/visits", type="http", auth="user", methods=["GET"], csrf=False)
+    def dashboard_salesperson_visits(self, **kwargs):
+        """Show plan and customer-level progress for one dashboard salesperson.
+
+        The dashboard itself uses ``sudo()`` to aggregate monitoring data, so
+        this route deliberately repeats the reporting-team check before reading
+        plan, tracker and check-in data.  A manager can only drill into their
+        own reporting tree; changing ``user_id`` in the URL cannot reveal a
+        different team's plans.
+        """
+        user = self._check_dashboard_access()
+        today = fields.Date.today()
+        try:
+            salesperson_id = int(kwargs.get("user_id") or 0)
+            date_from = fields.Date.from_string(kwargs.get("date_from")) if kwargs.get("date_from") else today
+            date_to = fields.Date.from_string(kwargs.get("date_to")) if kwargs.get("date_to") else date_from
+            if not salesperson_id or not date_from or not date_to:
+                raise ValueError("Missing visit scope")
+        except (TypeError, ValueError):
+            raise ValidationError(_("Choose a valid salesperson and date range."))
+
+        if date_from > date_to:
+            date_from, date_to = date_to, date_from
+
+        salesperson = request.env["res.users"].sudo().browse(salesperson_id).exists()
+        if not salesperson:
+            raise AccessError(_("The selected salesperson no longer exists."))
+        if (
+            not user.has_group("base.group_system")
+            and salesperson.id not in user.sudo().zc_team_user_ids.ids
+        ):
+            raise AccessError(_("This salesperson is outside your reporting team."))
+
+        search_text = (kwargs.get("q") or "").strip()
+        plan_domain = [
+            ("user_id", "=", salesperson.id),
+            ("visit_date", ">=", date_from),
+            ("visit_date", "<=", date_to),
+        ]
+        if search_text:
+            plan_domain += ["|", ("name", "ilike", search_text), ("target_line_ids.customer_ids.name", "ilike", search_text)]
+        plans = request.env["salesperson.visit.plan"].sudo().search(
+            plan_domain, order="visit_date desc, id desc"
+        )
+
+        # A plan normally owns one tracker.  Keeping the lookup keyed by plan
+        # also handles older data with more than one tracker without losing a
+        # recorded customer visit.
+        trackers = request.env["salesperson.tracker"].sudo().search([
+            ("plan_id", "in", plans.ids),
+        ])
+        checkins = request.env["salesperson.checkin"].sudo().search([
+            ("tracker_id", "in", trackers.ids),
+            ("state", "in", ["checked_in", "checked_out"]),
+        ], order="checkin_time desc, id desc")
+        latest_checkins = {}
+        for checkin in checkins:
+            plan_id = checkin.tracker_id.plan_id.id
+            if plan_id:
+                latest_checkins.setdefault((plan_id, checkin.partner_id.id), checkin)
+
+        tz_name = self._user_tz(user)
+        state_labels = dict(request.env["salesperson.visit.plan"]._fields["state"].selection)
+        detail_plans = []
+        total_targets = total_completed = total_remaining = 0
+
+        for plan in plans:
+            targets = []
+            seen_partners = set()
+            route_distance = 0.0
+            for line in plan.target_line_ids.sorted(lambda route_line: (route_line.sequence, route_line.id)):
+                route_distance += line.expected_km or 0.0
+                for partner in line.customer_ids:
+                    if partner.id in seen_partners:
+                        continue
+                    seen_partners.add(partner.id)
+                    checkin = latest_checkins.get((plan.id, partner.id))
+                    is_completed = bool(checkin and checkin.state == "checked_out")
+                    is_checked_in = bool(checkin and checkin.state == "checked_in")
+                    if is_completed:
+                        visit_status, status_class = _("Completed"), "completed"
+                    elif is_checked_in:
+                        visit_status, status_class = _("Checked in"), "active"
+                    elif plan.visit_date < today:
+                        visit_status, status_class = _("Missed"), "missed"
+                    else:
+                        visit_status, status_class = _("Remaining"), "remaining"
+                    targets.append({
+                        "name": partner.display_name or partner.name or _("Customer"),
+                        "address": partner.contact_address or _("Address not available"),
+                        "distance": ("%.2f km" % line.expected_km) if line.expected_km else _("Distance unavailable"),
+                        "status": visit_status,
+                        "status_class": status_class,
+                        "checkin": _localize_dt(checkin.checkin_time, tz_name) if checkin else "",
+                        "checkout": _localize_dt(checkin.checkout_time, tz_name) if checkin and checkin.checkout_time else "",
+                        "duration": ("%.0f min" % checkin.duration_minutes) if checkin and checkin.duration_minutes else "",
+                        "is_completed": is_completed,
+                    })
+
+            completed_count = sum(1 for target in targets if target["is_completed"])
+            target_count = len(targets)
+            remaining_count = max(target_count - completed_count, 0)
+            total_targets += target_count
+            total_completed += completed_count
+            total_remaining += remaining_count
+
+            # A plan is operationally complete only when every target has an
+            # actual checkout.  This avoids calling a plan complete merely
+            # because its date has passed or tracking was stopped.
+            if target_count and completed_count == target_count:
+                plan_status, plan_status_class = _("Completed"), "completed"
+            elif plan.visit_date < today and remaining_count:
+                plan_status, plan_status_class = _("Missed visits"), "missed"
+            elif plan.state == "in_progress":
+                plan_status, plan_status_class = _("Tracking"), "tracking"
+            else:
+                plan_status = state_labels.get(plan.state, plan.state or _("Planned"))
+                plan_status_class = plan.state or "planned"
+
+            detail_plans.append({
+                "id": plan.id,
+                "name": plan.name,
+                "visit_date": plan.visit_date.strftime("%d %b %Y") if plan.visit_date else "—",
+                "purpose": dict(plan._fields["purpose"].selection).get(plan.purpose, plan.purpose or "—"),
+                "status": plan_status,
+                "status_class": plan_status_class,
+                "target_count": target_count,
+                "completed_count": completed_count,
+                "remaining_count": remaining_count,
+                "route_distance": ("%.2f km" % route_distance) if route_distance else _("Distance unavailable"),
+                "targets": targets,
+            })
+
+        values = {
+            "salesperson": salesperson,
+            "plans": detail_plans,
+            "search_text": search_text,
+            "date_from_str": date_from.strftime("%Y-%m-%d"),
+            "date_to_str": date_to.strftime("%Y-%m-%d"),
+            "period_label": date_from.strftime("%d %b %Y") if date_from == date_to else "%s – %s" % (
+                date_from.strftime("%d %b %Y"), date_to.strftime("%d %b %Y")
+            ),
+            "summary": {
+                "plans": len(detail_plans),
+                "planned": total_targets,
+                "completed": total_completed,
+                "remaining": total_remaining,
+                "rate": int(total_completed * 100 / total_targets) if total_targets else 0,
+            },
+        }
+        return self._no_cache(request.render(
+            "zencore_salesperson_tracking.dashboard_salesperson_visit_details", values
+        ))
+
     @http.route("/salesperson/dashboard/visit_details", type="http", auth="user", methods=["GET"], csrf=False)
     def dashboard_visit_details(self, **kwargs):
         """Customer-level visit details for the currently selected salesperson and dates."""

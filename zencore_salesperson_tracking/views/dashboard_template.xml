@@ -320,6 +320,8 @@
                                                         t-att-onclick="'focusSalesman(%s); return false;' % r['id']">Live</button>
                                             </t>
                                             <button t-if="r['id']" type="button" class="action-btn" t-att-onclick="'openMovementMap(%s); return false;' % r['id']">Route</button>
+                                            <a class="action-btn visit-action"
+                                               t-attf-href="/salesperson/dashboard/visits?user_id=#{r['user_id']}&amp;date_from=#{date_from_str}&amp;date_to=#{date_to_str}">Visits</a>
                                         </div>
                                     </td>
                                 </tr>
@@ -342,6 +344,99 @@
       </div>
     </div>
     <script src="/zencore_salesperson_tracking/static/src/js/dashboard_live_map.js?v=33.0.0"></script>
+    </body>
+</html>
+</template>
+
+<template id="dashboard_salesperson_visit_details" name="Dashboard Salesperson Visit Details">
+<html lang="en">
+    <head>
+        <meta charset="utf-8"/>
+        <title><t t-esc="salesperson.name"/> — Visit Details</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+        <link rel="preconnect" href="https://fonts.googleapis.com"/>
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""/>
+        <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+        <link rel="stylesheet" type="text/css" href="/zencore_salesperson_tracking/static/src/css/dashboard_view.css?v=35.0.0"/>
+        <style>
+            .visit-detail-page { max-width:1280px; margin:0 auto; padding:24px 18px 42px; }
+            .visit-detail-top { display:flex; gap:16px; align-items:flex-start; justify-content:space-between; margin-bottom:18px; }
+            .visit-detail-back { display:inline-flex; align-items:center; gap:7px; min-height:34px; padding:7px 11px; border:1px solid #cfe0e7; border-radius:9px; color:#075b94; background:#fff; text-decoration:none; font-size:12px; font-weight:700; }
+            .visit-detail-title { margin:8px 0 3px; color:#102d47; font-size:25px; line-height:1.2; letter-spacing:-.025em; }
+            .visit-detail-subtitle { color:#6f8597; font-size:12px; }
+            .visit-detail-filter { display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:11px; background:#fff; border:1px solid #d9e7eb; border-radius:13px; box-shadow:0 4px 15px rgba(10,69,95,.06); }
+            .visit-detail-filter input { height:36px; min-width:190px; border:1px solid #cce0e6; border-radius:8px; padding:0 10px; color:#173a53; font:600 12px "DM Sans",sans-serif; }
+            .visit-detail-filter input[type="search"] { min-width:265px; }
+            .visit-detail-filter button { height:36px; border:0; border-radius:8px; padding:0 14px; cursor:pointer; color:#fff; background:#08639c; font:700 12px "DM Sans",sans-serif; }
+            .visit-detail-summary { display:grid; grid-template-columns:repeat(5,minmax(120px,1fr)); gap:10px; margin-bottom:17px; }
+            .visit-summary-card { padding:14px; border:1px solid #d9e7eb; border-radius:13px; background:#fff; box-shadow:0 3px 12px rgba(10,69,95,.05); }
+            .visit-summary-card span { display:block; color:#758b9b; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; }
+            .visit-summary-card strong { display:block; margin-top:6px; color:#13334c; font-size:23px; line-height:1; }
+            .visit-summary-card.completed strong { color:#098454; }.visit-summary-card.remaining strong { color:#b45309; }
+            .visit-detail-list { display:grid; gap:13px; }
+            .visit-plan-card { overflow:hidden; border:1px solid #d8e5ea; border-radius:14px; background:#fff; box-shadow:0 3px 13px rgba(10,69,95,.055); }
+            .visit-plan-head { display:flex; align-items:flex-start; gap:12px; padding:14px 16px; border-bottom:1px solid #e4eef1; }
+            .visit-plan-main { min-width:0; flex:1; }.visit-plan-name { color:#102d47; font-size:15px; font-weight:800; }.visit-plan-meta { margin-top:4px; color:#678095; font-size:11px; }
+            .visit-status { display:inline-flex; align-items:center; justify-content:center; border-radius:999px; padding:5px 9px; white-space:nowrap; font-size:10px; font-weight:800; }
+            .visit-status.completed { background:#e8f8ec; color:#087c3c; }.visit-status.tracking,.visit-status.in_progress { background:#e6f4f7; color:#087080; }.visit-status.approved { background:#ebf2ff; color:#215fbe; }.visit-status.submitted { background:#fff6df; color:#a76300; }.visit-status.missed { background:#fff0f1; color:#c33448; }.visit-status.draft,.visit-status.rejected { background:#eef2f5; color:#607080; }
+            .visit-plan-metrics { display:flex; align-items:center; gap:14px; padding:10px 16px; background:#f8fbfc; color:#627c8f; font-size:11px; }.visit-plan-metrics b { color:#183c55; }
+            .visit-target-list { display:grid; gap:0; }.visit-target { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:12px; align-items:center; padding:12px 16px; border-top:1px solid #edf3f5; }
+            .visit-target:first-child { border-top:0; }.visit-target-name { color:#17344d; font-size:12px; font-weight:800; }.visit-target-address { max-width:780px; margin-top:3px; overflow:hidden; color:#7890a1; font-size:10px; text-overflow:ellipsis; white-space:nowrap; }.visit-target-time { margin-top:5px; color:#557185; font-size:10px; }
+            .visit-target-right { min-width:132px; text-align:right; }.visit-target-distance { display:block; margin-bottom:5px; color:#527083; font-size:10px; font-weight:700; }.visit-target-status { display:inline-block; border-radius:999px; padding:4px 8px; font-size:9px; font-weight:800; }.visit-target-status.completed { color:#087c3c; background:#e8f8ec; }.visit-target-status.active { color:#087080; background:#e6f4f7; }.visit-target-status.remaining { color:#9a6505; background:#fff7e7; }.visit-target-status.missed { color:#bf3145; background:#fff0f1; }
+            .visit-detail-empty { padding:50px 20px; text-align:center; color:#71889a; background:#fff; border:1px dashed #c8dbe1; border-radius:14px; }
+            @media (max-width:820px) { .visit-detail-top { flex-direction:column; }.visit-detail-summary { grid-template-columns:repeat(2,minmax(0,1fr)); }.visit-detail-filter { width:100%; }.visit-detail-filter input,.visit-detail-filter input[type="search"] { min-width:0; width:100%; }.visit-detail-filter button { width:100%; }.visit-target { grid-template-columns:1fr; }.visit-target-right { text-align:left; }.visit-target-address { white-space:normal; } }
+        </style>
+    </head>
+    <body>
+        <div class="dash-nav">
+            <div class="nav-brand">
+                <div class="nav-brand-icon">ZF</div>
+                <div><div class="nav-brand-text"><span class="brand-blue">zen</span><span class="brand-green">core</span> FIELD</div><div class="nav-brand-sub">Salesperson Tracking · Visit progress</div></div>
+            </div>
+        </div>
+        <main class="visit-detail-page">
+            <div class="visit-detail-top">
+                <div>
+                    <a class="visit-detail-back" t-attf-href="/salesperson/dashboard?date_from=#{date_from_str}&amp;date_to=#{date_to_str}">← Back to dashboard</a>
+                    <h1 class="visit-detail-title"><t t-esc="salesperson.name"/> — Visit Details</h1>
+                    <p class="visit-detail-subtitle"><t t-esc="period_label"/> · planned customer visits and live completion progress</p>
+                </div>
+                <form class="visit-detail-filter" method="get" action="/salesperson/dashboard/visits">
+                    <input type="hidden" name="user_id" t-att-value="salesperson.id"/>
+                    <input type="hidden" name="date_from" t-att-value="date_from_str"/>
+                    <input type="hidden" name="date_to" t-att-value="date_to_str"/>
+                    <input type="search" name="q" t-att-value="search_text" placeholder="Search plan ID, customer or address" aria-label="Search visit plans"/>
+                    <button type="submit">Search</button>
+                </form>
+            </div>
+            <section class="visit-detail-summary" aria-label="Visit summary">
+                <div class="visit-summary-card"><span>Plans</span><strong t-esc="summary['plans']"/></div>
+                <div class="visit-summary-card"><span>Planned visits</span><strong t-esc="summary['planned']"/></div>
+                <div class="visit-summary-card completed"><span>Completed</span><strong t-esc="summary['completed']"/></div>
+                <div class="visit-summary-card remaining"><span>Remaining</span><strong t-esc="summary['remaining']"/></div>
+                <div class="visit-summary-card"><span>Visit rate</span><strong t-esc="str(summary['rate']) + '%'"/></div>
+            </section>
+            <section class="visit-detail-list">
+                <t t-if="not plans"><div class="visit-detail-empty">No plans or customer visits match this search.</div></t>
+                <t t-foreach="plans" t-as="plan">
+                    <article class="visit-plan-card">
+                        <header class="visit-plan-head">
+                            <div class="visit-plan-main"><div class="visit-plan-name" t-esc="plan['name']"/><div class="visit-plan-meta"><span t-esc="plan['visit_date']"/> · <span t-esc="plan['purpose']"/></div></div>
+                            <span t-attf-class="visit-status #{plan['status_class']}" t-esc="plan['status']"/>
+                        </header>
+                        <div class="visit-plan-metrics"><span><b t-esc="plan['target_count']"/> planned</span><span><b t-esc="plan['completed_count']"/> completed</span><span><b t-esc="plan['remaining_count']"/> remaining</span><span>Route: <b t-esc="plan['route_distance']"/></span></div>
+                        <div class="visit-target-list">
+                            <t t-foreach="plan['targets']" t-as="target">
+                                <div class="visit-target">
+                                    <div><div class="visit-target-name" t-esc="target['name']"/><div class="visit-target-address" t-esc="target['address']"/><div t-if="target['checkin']" class="visit-target-time">Check-in: <span t-esc="target['checkin']"/><t t-if="target['checkout']"> · Check-out: <span t-esc="target['checkout']"/></t><t t-if="target['duration']"> · <span t-esc="target['duration']"/></t></div></div>
+                                    <div class="visit-target-right"><span class="visit-target-distance" t-esc="target['distance']"/><span t-attf-class="visit-target-status #{target['status_class']}" t-esc="target['status']"/></div>
+                                </div>
+                            </t>
+                        </div>
+                    </article>
+                </t>
+            </section>
+        </main>
     </body>
 </html>
 </template>
