@@ -18,8 +18,7 @@
     },
     "android": {
       "package": "com.zencore.field",
-      "versionCode": 2,
-      "edgeToEdgeEnabled": false,
+      "versionCode": 3,
       "usesCleartextTraffic": true,
       "permissions": [
         "android.permission.ACCESS_COARSE_LOCATION",

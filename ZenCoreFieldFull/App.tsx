@@ -18,7 +18,7 @@ import CustomerManager from './src/components/CustomerManager';
 
 type Tab='Home'|'Visits'|'Tracking'|'Map'|'Profile';
 const TODAY=()=>new Date().toISOString().slice(0,10);
-const BUILD_TAG='ZENCORE_FIELD_V37_COMPACT_ODOO_PLANS';
+const BUILD_TAG='ZENCORE_FIELD_V38_RELIABLE_GPS_CAPTURE';
 if (__DEV__) console.log('[ZenCore Build]',BUILD_TAG);
 const createId=()=>`${Date.now()}-${Math.random().toString(36).slice(2)}`;
 const planScope=(host:string,login:string)=>`v1_${host.trim().toLowerCase()}_${login.trim().toLowerCase()}`;
@@ -131,7 +131,7 @@ function ZenCoreFieldApp(){
  const [tab,setTab]=useState<Tab>('Home');const [activePlanId,setActivePlanId]=useState<number|null>(null);const [plans,setLocalPlans]=useState<Plan[]>([]);const [planOwnerKey,setPlanOwnerKey]=useState('');const [serverPlans,setServerPlans]=useState<Odoo.RemotePlan[]>([]);
  const [editing,setEditing]=useState<Plan|null>(null);const [detail,setDetail]=useState<Plan|null>(null);const [serverDetail,setServerDetail]=useState<number|null>(null);
  const [customerList,setCustomerList]=useState<Customer[]>([]);const [search,setSearch]=useState('');const [customerPickerOpen,setCustomerPickerOpen]=useState(false);const [customersLoading,setCustomersLoading]=useState(false);const [customersMore,setCustomersMore]=useState(false);const [customersOffset,setCustomersOffset]=useState(0);const [target,setTarget]=useState<Target>({id:createId(),customer:'',from:'',to:'',notes:''});
- const [online,setOnline]=useState<boolean|null>(null);const [pending,setPending]=useState(0);const [tracking,setTracking]=useState(false);const [busy,setBusy]=useState(false);const [message,setMessage]=useState('');
+ const [online,setOnline]=useState<boolean|null>(null);const [pending,setPending]=useState(0);const [tracking,setTracking]=useState(false);const [trackingCaptureMode,setTrackingCaptureMode]=useState<GPS.TrackingCaptureMode>('stopped');const [busy,setBusy]=useState(false);const [message,setMessage]=useState('');
  const [host,setHost]=useState('');const [database,setDatabase]=useState('');const [email,setEmail]=useState('');const [password,setPassword]=useState('');const [connected,setConnected]=useState(false);const [userName,setUserName]=useState('');
  const [authPage,setAuthPage]=useState<'login'|'register'|'forgot'>('login');
  const [regName,setRegName]=useState('');const [regPhone,setRegPhone]=useState('');
@@ -162,6 +162,7 @@ function ZenCoreFieldApp(){
    setTracking(device.active);setActivePlanId(device.active?device.planId:null);
    setTrackerId(device.active?device.trackerId:null);
    setTrackingNeedsRepair(device.needsRecovery);
+   setTrackingCaptureMode(device.captureMode);
    setGpsStats(await gpsSummary(device.active?device.planId:null));
    const identity=device.active?await getTrackingIdentity():await getLastTrackingIdentity();
    setMetrics(await trackingMetrics(identity??null));
@@ -360,11 +361,14 @@ function ZenCoreFieldApp(){
        ? 'Your Odoo account session changed. Only plans assigned to the current account are shown; the list has been refreshed.'
        : reasons.join(' '));
    }
-   setTrackerId(newTrackerId);setActivePlanId(planId);setTracking(true);
+   const capture=await GPS.inspectTracking();
+   setTrackerId(newTrackerId);setActivePlanId(planId);setTracking(true);setTrackingCaptureMode(capture.captureMode);
    setTab('Tracking');setTrackingNeedsRepair(false);
    triggerAutoSync(true);
    try{setServerPlans(onlyOwnerPlans((await Odoo.myVisitPlans()).plans,activeProfile.id))}catch(_error){}
-   notify(isSwitch?`Previous tracking stopped. Plan #${planId} is now recording.`:`GPS recording started for Plan #${planId}.`);
+   notify(capture.captureMode==='background'
+    ?(isSwitch?`Previous tracking stopped. Plan #${planId} is now recording in the background.`:`GPS recording started for Plan #${planId}. Background tracking is enabled.`)
+    :(isSwitch?`Previous tracking stopped. Plan #${planId} is now recording while this app stays open.`:`GPS recording started for Plan #${planId}. Keep the app open for live GPS; the installed ZenCore APK enables background tracking.`));
  });
  const startApprovedPlan=async(planId:number)=>{
   // One tap: server-side switch stops ALL other owned active trackers.
@@ -382,7 +386,7 @@ function ZenCoreFieldApp(){
    // Persist intent before stopping native capture. Retain it across crashes/offline.
    await setPendingStopPlan(planId);
    await GPS.stopTracking();
-   setTracking(false);setActivePlanId(null);setTrackerId(null);
+   setTracking(false);setActivePlanId(null);setTrackerId(null);setTrackingCaptureMode('stopped');
    let confirmed=false;
    if(online && connected){
      try{confirmed=await flushPendingPlanStop();}
@@ -399,7 +403,7 @@ function ZenCoreFieldApp(){
      if(!(await getPendingStopPlan()))await setPendingStopPlan(prior.planId);
      triggerAutoSync(true);
    }
-   setTracking(false);setActivePlanId(null);setTrackerId(null);setTrackingNeedsRepair(false);
+   setTracking(false);setActivePlanId(null);setTrackerId(null);setTrackingCaptureMode('stopped');setTrackingNeedsRepair(false);
    notify(prior.planId
      ? `Recovered inconsistent GPS state for Plan #${prior.planId}. Server stop will be retried after GPS uploads. Review this plan in Odoo.`
      : 'Orphaned GPS capture stopped safely. No Plan ID was available; check Odoo for any remotely active tracker.');
@@ -544,7 +548,7 @@ function ZenCoreFieldApp(){
   <Panel><Info label="Network" value={online?'Online':'Offline'}/><Info label="Odoo GPS upload" value={autoSync.phase==='up-to-date'?'Up to date':autoSync.phase.replace(/-/g,' ')}/>
     <Info label="Active Plan ID" value={activePlanId?`#${activePlanId}`:'None selected'}/>
     <Info label="Odoo Tracker" value={trackerId?`#${trackerId}`:'Not loaded'}/>
-    <Info label="Device State" value={trackingNeedsRepair?'REPAIR REQUIRED':tracking?'Healthy / Recording':'Stopped'}/>
+    <Info label="Device State" value={trackingNeedsRepair?'REPAIR REQUIRED':tracking?(trackingCaptureMode==='background'?'Healthy / Background recording':'Healthy / Foreground recording'):'Stopped'}/>
     <Info label="Stop acknowledgement" value={queuedStop?`Pending Plan #${queuedStop}`:'No pending stop'}/>
     <B onPress={toggleTracking} variant={tracking?'danger':'primary'}>{tracking?'Stop Tracking':trackingNeedsRepair?'Repair Tracking State':'Select Approved Plan in Visits'}</B>
     
