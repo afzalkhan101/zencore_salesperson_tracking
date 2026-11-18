@@ -19,7 +19,13 @@ def _visible_documents(env, model_name, docids, *, wizard=False):
             if doc.create_uid.id != actor.id:
                 raise AccessError(_('You cannot print another user’s report wizard.'))
             if model_name == 'salesperson.customer.report.wizard':
-                check_report_user(env, doc.user_id)
+                # Customer reports use the same flexible salesperson scopes as
+                # the performance report.  The former single ``user_id`` field
+                # no longer exists, so validate the requested user set instead.
+                if doc.report_type == 'individual':
+                    check_report_user(env, doc.individual_user_id)
+                for person in doc.user_ids:
+                    check_report_user(env, person)
             elif model_name == 'salesperson.performance.report.wizard':
                 check_report_user(env, doc.individual_user_id)
                 for person in doc.user_ids:

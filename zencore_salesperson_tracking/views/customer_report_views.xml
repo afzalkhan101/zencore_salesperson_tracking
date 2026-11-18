@@ -4,96 +4,62 @@
         <field name="name">salesperson.customer.report.wizard.form</field>
         <field name="model">salesperson.customer.report.wizard</field>
         <field name="arch" type="xml">
-            <form string="Customer Report" create="0" edit="1" class="o_zc_report_wizard">
+            <form string="Customer Visit Report" create="0" edit="1" class="o_zc_report_wizard">
                 <sheet>
                     <field name="name" invisible="1"/>
                     <div class="o_zc_report_hero o_zc_customer_report_hero">
                         <div>
-                            <span class="o_zc_report_eyebrow">ZENCORE FIELD / CUSTOMER HISTORY</span>
+                            <span class="o_zc_report_eyebrow">ZENCORE FIELD / CUSTOMER ANALYTICS</span>
                             <h1>Customer Visit Report</h1>
-                            <p>Review planned visits, completed meetings and visit evidence for one customer.</p>
+                            <p>Review planned visits, completed meetings and field activity by customer.</p>
                         </div>
                         <span class="o_zc_report_hero_icon fa fa-users" aria-label="Customer visit report" title="Customer visit report"/>
                     </div>
-
                     <div class="o_zc_report_section_intro">
                         <span class="o_zc_report_section_number">01</span>
                         <div>
-                            <h2>Choose the customer and period</h2>
-                            <p>Use optional salesperson and visit-state filters to focus the result.</p>
+                            <h2>Build your report</h2>
+                            <p>Choose a period and the authorised customer activity you want to review.</p>
                         </div>
                     </div>
-
                     <group class="o_zc_report_filter_grid" col="2">
-                        <group string="Customer scope" class="o_zc_report_filter_group">
-                            <field name="partner_id" options="{'no_create': True}"/>
-                            <field name="user_id" options="{'no_create': True}"/>
-                            <field name="visit_status"/>
+                        <group string="Report period" class="o_zc_report_filter_group">
+                            <field name="report_type" widget="radio" options="{'horizontal': true}"/>
+                            <field name="month_date" invisible="report_type != 'monthly'"/>
+                            <field name="week_start" invisible="report_type != 'weekly'"/>
+                            <field name="period_preset" invisible="report_type not in ('individual', 'multiple')"/>
+                            <field name="date_from" readonly="report_type in ('monthly', 'weekly') or (report_type in ('individual', 'multiple') and period_preset != 'custom')"/>
+                            <field name="date_to" readonly="report_type in ('monthly', 'weekly') or (report_type in ('individual', 'multiple') and period_preset != 'custom')"/>
                         </group>
-                        <group string="Date range" class="o_zc_report_filter_group">
-                            <field name="date_from"/>
-                            <field name="date_to"/>
+                        <group string="Scope &amp; filters" class="o_zc_report_filter_group">
+                            <field name="individual_user_id" options="{'no_create': True}" invisible="report_type != 'individual'" required="report_type == 'individual'"/>
+                            <field name="salesperson_scope" invisible="report_type == 'individual'"/>
+                            <field name="user_ids" widget="many2many_tags" options="{'no_create': True}" invisible="report_type == 'individual' or salesperson_scope == 'all'" required="report_type == 'multiple' and salesperson_scope == 'selected'"/>
+                            <field name="customer_scope"/>
+                            <field name="partner_id" options="{'no_create': True}" invisible="customer_scope == 'all'" required="customer_scope == 'selected'"/>
+                            <field name="visit_status"/>
+                            <field name="visit_purpose"/>
+                            <field name="tracking_status"/>
                         </group>
                     </group>
-
                     <div class="o_zc_report_actions">
-                        <button name="action_generate_report" type="object" string="Generate report" class="btn-primary" icon="fa-search"/>
+                        <button name="action_preview_pdf" type="object" string="Generate report" class="btn-primary" icon="fa-search"/>
                         <button name="action_reset" type="object" string="Reset filters" class="btn-secondary" icon="fa-refresh"/>
-                        <span class="o_zc_report_action_hint">Customer activity is limited to your authorised reporting team.</span>
-                        <button name="action_print_pdf" type="object" string="Print PDF" class="btn-success ms-auto" icon="fa-print" invisible="not line_ids"/>
+                        <span class="o_zc_report_action_hint">Results use only the customers and users you are allowed to monitor.</span>
+                        <button name="action_export_excel" type="object" string="Export Excel" class="btn-success ms-auto" icon="fa-file-excel-o"/>
                     </div>
-
-                    <div class="o_zc_report_results" invisible="not line_ids">
-                        <div class="o_zc_report_section_intro o_zc_report_results_intro">
-                            <span class="o_zc_report_section_number">02</span>
-                            <div>
-                                <h2>Customer activity snapshot</h2>
-                                <p>A concise view of visits recorded for the selected customer.</p>
-                            </div>
-                        </div>
-                        <div class="o_zc_kpi_grid o_zc_kpi_grid--customer">
-                            <div class="o_zc_kpi_card o_zc_kpi_card--blue"><span>Total visits</span><field name="total_visits" nolabel="1" readonly="1"/></div>
-                            <div class="o_zc_kpi_card o_zc_kpi_card--green"><span>Completed</span><field name="completed_visits" nolabel="1" readonly="1"/></div>
-                            <div class="o_zc_kpi_card o_zc_kpi_card--amber"><span>Planned / pending</span><field name="pending_visits" nolabel="1" readonly="1"/></div>
-                            <div class="o_zc_kpi_card"><span>Distance (km)</span><field name="total_distance_km" nolabel="1" readonly="1"/></div>
-                            <div class="o_zc_kpi_card"><span>Visit time (min)</span><field name="total_visit_minutes" nolabel="1" readonly="1"/></div>
-                            <div class="o_zc_kpi_card"><span>Expense</span><field name="total_expense" nolabel="1" readonly="1"/></div>
-                            <div class="o_zc_kpi_card o_zc_kpi_card--purple"><span>Average rating</span><field name="average_rating" nolabel="1" readonly="1"/></div>
-                        </div>
-                    </div>
-
-                    <div class="o_zc_report_table_heading" invisible="not line_ids">
-                        <h2>Visit timeline</h2>
-                        <p>Each row combines the planned visit with check-in and check-out evidence.</p>
-                    </div>
-                    <field name="line_ids" nolabel="1" readonly="1" invisible="not line_ids">
-                        <list create="0" delete="0" edit="0" decoration-success="status == 'completed'" decoration-warning="status == 'pending'">
-                            <field name="visit_date"/>
-                            <field name="visit_plan_ref"/>
-                            <field name="user_id"/>
-                            <field name="purpose" optional="show"/>
-                            <field name="checkin_time"/>
-                            <field name="checkout_time"/>
-                            <field name="duration_minutes"/>
-                            <field name="distance_km"/>
-                            <field name="status" widget="badge"/>
-                            <field name="outcome"/>
-                            <field name="rating" optional="hide"/>
-                            <field name="notes" optional="hide"/>
-                        </list>
-                    </field>
                 </sheet>
             </form>
         </field>
     </record>
 
     <record id="action_salesperson_customer_report" model="ir.actions.act_window">
-        <field name="name">Customer Detailed Report</field>
+        <field name="name">Customer Visit Report</field>
         <field name="res_model">salesperson.customer.report.wizard</field>
         <field name="view_mode">form</field>
         <field name="target">current</field>
     </record>
 
     <menuitem id="menu_salesperson_customer_reports" name="Customer Reports" parent="menu_salesperson_reports_root" sequence="35" groups="zencore_salesperson_tracking.group_salesperson_ceo,zencore_salesperson_tracking.group_salesperson_manager,zencore_salesperson_tracking.group_salesperson_supervisor"/>
-    <menuitem id="menu_salesperson_customer_detailed_report" name="Customer Detailed Report" parent="menu_salesperson_customer_reports" action="action_salesperson_customer_report" sequence="10" groups="zencore_salesperson_tracking.group_salesperson_ceo,zencore_salesperson_tracking.group_salesperson_manager,zencore_salesperson_tracking.group_salesperson_supervisor"/>
+    <menuitem id="menu_salesperson_customer_detailed_report" name="Customer Visit Report" parent="menu_salesperson_customer_reports" action="action_salesperson_customer_report" sequence="10" groups="zencore_salesperson_tracking.group_salesperson_ceo,zencore_salesperson_tracking.group_salesperson_manager,zencore_salesperson_tracking.group_salesperson_supervisor"/>
 </odoo>

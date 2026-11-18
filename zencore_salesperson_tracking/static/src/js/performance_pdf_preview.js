@@ -6,7 +6,7 @@ import { user } from "@web/core/user";
 
 export class PerformancePdfPreview extends Component {
     static components = { Dialog };
-    static props = { reportUrl: String, filename: String, close: Function };
+    static props = { reportUrl: String, filename: String, title: { type: String, optional: true }, close: Function };
     static template = xml`
         <Dialog title="title" size="'fullscreen'" footer="false" withBodyPadding="false">
             <div class="d-flex flex-column" style="height: calc(100dvh - 110px); min-height: 320px;">
@@ -21,12 +21,12 @@ export class PerformancePdfPreview extends Component {
                     <i class="fa fa-spinner fa-spin me-2"/> Generating PDF preview…
                 </div>
                 <div t-elif="state.error" class="alert alert-danger m-3" role="alert" t-esc="state.error"/>
-                <iframe t-elif="state.viewerUrl" t-att-src="state.viewerUrl" class="w-100 flex-grow-1 border-0" style="min-height: 0;" title="Salesperson Performance PDF" t-on-load="prepareViewer"/>
+                <iframe t-elif="state.viewerUrl" t-att-src="state.viewerUrl" class="w-100 flex-grow-1 border-0" style="min-height: 0;" t-att-title="title" t-on-load="prepareViewer"/>
             </div>
         </Dialog>`;
 
     setup() {
-        this.title = _t("PDF Preview – Salesperson Performance Report");
+        this.title = this.props.title || _t("PDF Preview – Salesperson Performance Report");
         this.state = useState({ loading: true, error: "", pdfUrl: "", viewerUrl: "" });
         this.abortController = new AbortController();
         this.destroyed = false;
@@ -44,7 +44,8 @@ export class PerformancePdfPreview extends Component {
     async loadPdf() {
         try {
             const url = new URL(this.props.reportUrl, window.location.origin);
-            if (url.origin !== window.location.origin || !/^\/report\/pdf\/zencore_salesperson_tracking\.report_salesperson_performance_document\/\d+$/.test(url.pathname)) {
+            const allowedReportUrl = /^\/report\/pdf\/zencore_salesperson_tracking\.report_(salesperson_performance|customer_detailed)_document\/\d+$/;
+            if (url.origin !== window.location.origin || !allowedReportUrl.test(url.pathname)) {
                 throw new Error("Invalid report URL");
             }
             url.searchParams.set("context", JSON.stringify(user.context));
@@ -99,5 +100,14 @@ registry.category("actions").add("zencore_performance_pdf_preview", (env, action
     env.services.dialog.add(PerformancePdfPreview, {
         reportUrl: action.params.report_url,
         filename: action.params.filename,
+        title: _t("PDF Preview – Salesperson Performance Report"),
+    });
+});
+
+registry.category("actions").add("zencore_customer_pdf_preview", (env, action) => {
+    env.services.dialog.add(PerformancePdfPreview, {
+        reportUrl: action.params.report_url,
+        filename: action.params.filename,
+        title: _t("PDF Preview – Customer Visit Report"),
     });
 });
