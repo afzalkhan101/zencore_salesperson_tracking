@@ -25,10 +25,9 @@
     </record>
 
     <template id="report_salesperson_performance_document">
-        <t t-call="web.html_container">
-            <t t-foreach="docs" t-as="doc">
-                <t t-set="company" t-value="env.company"/>
-                <t t-call="web.external_layout">
+        <t t-foreach="docs" t-as="doc">
+            <t t-set="company" t-value="env.company"/>
+            <t t-call="web.basic_layout">
                     <div class="page zc-performance-report">
                         <style type="text/css">
                             .zc-performance-report { color: #111; font-family: Arial, sans-serif; font-size: 9px; }
@@ -149,7 +148,13 @@
                             </tbody>
                         </table>
 
-                        <div style="page-break-before: always;">
+                        <div class="page zc-performance-report">
+                            <table class="zc-meta" style="border-bottom: 1px solid #222; padding-bottom: 3px;">
+                                <tr>
+                                    <td style="width: 60%;">Salesperson Performance Report — Visit details</td>
+                                    <td style="text-align: right;"><span t-esc="company.name"/></td>
+                                </tr>
+                            </table>
                             <h3>Visit details</h3>
                             <p class="zc-note" t-if="not doc.visit_line_ids">No visits match the selected report filters.</p>
                             <table t-if="doc.visit_line_ids" class="zc-table">
@@ -184,7 +189,6 @@
                             </table>
                         </div>
                     </div>
-                </t>
             </t>
         </t>
     </template>
