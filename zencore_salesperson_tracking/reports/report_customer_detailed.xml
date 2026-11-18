@@ -195,7 +195,7 @@
                                 <div class="col" style="padding:2px;"><div class="cdr-kpi green"><div class="cdr-kpi-icon">✓</div><div class="cdr-kpi-label">Completed</div><div class="cdr-kpi-value" t-esc="doc.completed_visits"/></div></div>
                                 <div class="col" style="padding:2px;"><div class="cdr-kpi orange"><div class="cdr-kpi-icon">◷</div><div class="cdr-kpi-label">Pending</div><div class="cdr-kpi-value" t-esc="doc.pending_visits"/></div></div>
                                 <div class="col" style="padding:2px;"><div class="cdr-kpi purple"><div class="cdr-kpi-icon">◆</div><div class="cdr-kpi-label">Route Distance</div><div class="cdr-kpi-value"><span t-esc="'%.1f' % doc.total_distance_km"/> km</div></div></div>
-                                <div class="col" style="padding:2px;"><div class="cdr-kpi pink"><div class="cdr-kpi-icon">◷</div><div class="cdr-kpi-label">Visit Time</div><div class="cdr-kpi-value"><span t-esc="'%dh %02dm' % (int(doc.total_visit_minutes // 60), int(doc.total_visit_minutes % 60))"/></div></div></div>
+                                <div class="col" style="padding:2px;"><div class="cdr-kpi pink"><div class="cdr-kpi-icon">◷</div><div class="cdr-kpi-label">Visit Time</div><div class="cdr-kpi-value"><span t-esc="'%d h %d min' % (int(doc.total_visit_minutes) // 60, int(doc.total_visit_minutes) % 60)"/></div></div></div>
                                 <div class="col" style="padding:2px;"><div class="cdr-kpi teal"><div class="cdr-kpi-icon">≋</div><div class="cdr-kpi-label">Actual Expense (<span t-esc="env.company.currency_id.name"/>)</div><div class="cdr-kpi-value"><span t-esc="'%.2f' % doc.total_expense"/></div></div></div>
                                 <div class="col" style="padding:2px;"><div class="cdr-kpi purple"><div class="cdr-kpi-icon">★</div><div class="cdr-kpi-label">Average Rating</div><div class="cdr-kpi-value"><span t-esc="'%.1f' % doc.average_rating"/></div></div></div>
                             </div>
@@ -230,7 +230,7 @@
                                         <td><span t-esc="dict(line._fields['purpose'].selection).get(line.purpose, '-')"/></td>
                                         <td><span t-esc="context_timestamp(line.checkin_time).strftime('%I:%M %p') if line.checkin_time else '-'"/></td>
                                         <td><span t-esc="context_timestamp(line.checkout_time).strftime('%I:%M %p') if line.checkout_time else '-'"/></td>
-                                        <td><span t-esc="('%dh %02dm' % (int(line.duration_minutes // 60), int(line.duration_minutes % 60))) if line.duration_minutes else '-'"/></td>
+                                        <td><span t-esc="('%d h %d min' % (int(line.duration_minutes) // 60, int(line.duration_minutes) % 60)) if line.duration_minutes else '-'"/></td>
                                         <td>
                                             <span t-if="line.status == 'completed'" class="cdr-status completed">Completed</span>
                                             <span t-elif="line.status == 'pending'" class="cdr-status pending">Pending</span>
@@ -284,8 +284,8 @@
                                             <div class="col-6 cdr-split">
                                                 <div class="cdr-info-row"><span class="cdr-label">Check In</span><span class="cdr-value" t-esc="context_timestamp(line.checkin_time).strftime('%d %b %Y %I:%M %p') if line.checkin_time else '-'"/></div>
                                                 <div class="cdr-info-row"><span class="cdr-label">Check Out</span><span class="cdr-value" t-esc="context_timestamp(line.checkout_time).strftime('%d %b %Y %I:%M %p') if line.checkout_time else '-'"/></div>
-                                                <div class="cdr-info-row"><span class="cdr-label">Visit Duration</span><span class="cdr-value" t-esc="('%dh %02dm' % (int(line.duration_minutes // 60), int(line.duration_minutes % 60))) if line.duration_minutes else '-'"/></div>
-                                                <div class="cdr-info-row"><span class="cdr-label">Tracking Time</span><span class="cdr-value" t-esc="('%dh %02dm' % (int(line.tracker_id.total_tracking_time_minutes // 60), int(line.tracker_id.total_tracking_time_minutes % 60))) if line.tracker_id else '-'"/></div>
+                                                <div class="cdr-info-row"><span class="cdr-label">Visit Duration</span><span class="cdr-value" t-esc="('%d h %d min' % (int(line.duration_minutes) // 60, int(line.duration_minutes) % 60)) if line.duration_minutes else '-'"/></div>
+                                                <div class="cdr-info-row"><span class="cdr-label">Tracking Time</span><span class="cdr-value" t-esc="('%d h %d min' % (int(line.tracker_id.total_tracking_time_minutes) // 60, int(line.tracker_id.total_tracking_time_minutes) % 60)) if line.tracker_id else '-'"/></div>
                                             </div>
                                         </div>
 

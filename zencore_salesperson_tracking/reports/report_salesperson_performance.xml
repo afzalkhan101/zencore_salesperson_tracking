@@ -84,9 +84,9 @@
                             <tr>
                                 <td><span class="label">Completion rate</span><span class="value" t-esc="'%.1f' % doc.completion_percent"/>%</td>
                                 <td><span class="label">Distance (km)</span><span class="value" t-esc="'%.2f' % doc.total_distance_km"/></td>
-                                <td><span class="label">Tracking (min)</span><span class="value" t-esc="'%.1f' % doc.total_tracking_minutes"/></td>
-                                <td><span class="label">Visit time (min)</span><span class="value" t-esc="'%.1f' % doc.total_visit_minutes"/></td>
-                                <td><span class="label">Idle time (min)</span><span class="value" t-esc="'%.1f' % doc.total_idle_minutes"/></td>
+                                <td><span class="label">Tracking time</span><span class="value" t-esc="'%d h %d min' % (int(doc.total_tracking_minutes) // 60, int(doc.total_tracking_minutes) % 60)"/></td>
+                                <td><span class="label">Visit time</span><span class="value" t-esc="'%d h %d min' % (int(doc.total_visit_minutes) // 60, int(doc.total_visit_minutes) % 60)"/></td>
+                                <td><span class="label">Idle time</span><span class="value" t-esc="'%d h %d min' % (int(doc.total_idle_minutes) // 60, int(doc.total_idle_minutes) % 60)"/></td>
                                 <td><span class="label">Actual expense</span><span class="value" t-esc="'%.2f' % doc.total_expense"/></td>
                             </tr>
                         </table>
@@ -103,9 +103,9 @@
                                     <th class="zc-number">Missed</th>
                                     <th class="zc-number">Rate</th>
                                     <th class="zc-number">Distance km</th>
-                                    <th class="zc-number">Tracking min</th>
-                                    <th class="zc-number">Visit min</th>
-                                    <th class="zc-number">Idle min</th>
+                                    <th class="zc-number">Tracking time</th>
+                                    <th class="zc-number">Visit time</th>
+                                    <th class="zc-number">Idle time</th>
                                     <th class="zc-number">Expense</th>
                                 </tr>
                             </thead>
@@ -119,9 +119,9 @@
                                     <td class="zc-number" t-esc="line.missed_visits + line.overdue_visits"/>
                                     <td class="zc-number"><span t-esc="'%.1f' % line.completion_percent"/>%</td>
                                     <td class="zc-number" t-esc="'%.2f' % line.distance_km"/>
-                                    <td class="zc-number" t-esc="'%.1f' % line.tracking_minutes"/>
-                                    <td class="zc-number" t-esc="'%.1f' % line.visit_minutes"/>
-                                    <td class="zc-number" t-esc="'%.1f' % line.idle_minutes"/>
+                                    <td class="zc-number" t-esc="'%d h %d min' % (int(line.tracking_minutes) // 60, int(line.tracking_minutes) % 60)"/>
+                                    <td class="zc-number" t-esc="'%d h %d min' % (int(line.visit_minutes) // 60, int(line.visit_minutes) % 60)"/>
+                                    <td class="zc-number" t-esc="'%d h %d min' % (int(line.idle_minutes) // 60, int(line.idle_minutes) % 60)"/>
                                     <td class="zc-number" t-esc="'%.2f' % line.expense"/>
                                 </tr>
                             </tbody>
@@ -137,8 +137,8 @@
                                     <th class="zc-number">Remaining</th>
                                     <th class="zc-number">Missed</th>
                                     <th class="zc-number">Distance km</th>
-                                    <th class="zc-number">Visit min</th>
-                                    <th class="zc-number">Idle min</th>
+                                    <th class="zc-number">Visit time</th>
+                                    <th class="zc-number">Idle time</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -149,8 +149,8 @@
                                     <td class="zc-number" t-esc="day.pending_visits + day.in_progress_visits"/>
                                     <td class="zc-number" t-esc="day.missed_visits + day.overdue_visits"/>
                                     <td class="zc-number" t-esc="'%.2f' % day.distance_km"/>
-                                    <td class="zc-number" t-esc="'%.1f' % day.visit_minutes"/>
-                                    <td class="zc-number" t-esc="'%.1f' % day.idle_minutes"/>
+                                    <td class="zc-number" t-esc="'%d h %d min' % (int(day.visit_minutes) // 60, int(day.visit_minutes) % 60)"/>
+                                    <td class="zc-number" t-esc="'%d h %d min' % (int(day.idle_minutes) // 60, int(day.idle_minutes) % 60)"/>
                                 </tr>
                             </tbody>
                         </table>
@@ -175,8 +175,8 @@
                                         <th style="width: 8%;">Status</th>
                                         <th style="width: 10%;">Check-in</th>
                                         <th style="width: 10%;">Check-out</th>
-                                        <th class="zc-number" style="width: 6%;">Minutes</th>
-                                        <th style="width: 16%;">Notes / reason</th>
+                                        <th class="zc-number" style="width: 8%;">Duration</th>
+                                        <th style="width: 14%;">Notes / reason</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -189,7 +189,7 @@
                                         <td><span t-field="visit.status"/></td>
                                         <td><span t-field="visit.checkin_time"/></td>
                                         <td><span t-field="visit.checkout_time"/></td>
-                                        <td class="zc-number" t-esc="'%.1f' % visit.duration_minutes"/>
+                                        <td class="zc-number" t-esc="'%d h %d min' % (int(visit.duration_minutes) // 60, int(visit.duration_minutes) % 60)"/>
                                         <td t-esc="visit.reason or visit.notes or visit.customer_feedback or ''"/>
                                     </tr>
                                 </tbody>
