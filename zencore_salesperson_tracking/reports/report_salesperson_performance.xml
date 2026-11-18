@@ -13,6 +13,7 @@
         <field name="header_line" eval="False"/>
         <field name="dpi">90</field>
     </record>
+
     <record id="action_report_salesperson_performance" model="ir.actions.report">
         <field name="name">Salesperson Performance Report</field>
         <field name="model">salesperson.performance.report.wizard</field>
@@ -22,281 +23,162 @@
         <field name="paperformat_id" ref="paperformat_salesperson_performance"/>
         <field name="print_report_name">'Salesperson Performance - %s to %s' % (object.date_from, object.date_to)</field>
     </record>
+
     <template id="report_salesperson_performance_document">
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="doc">
                 <t t-set="company" t-value="env.company"/>
                 <t t-call="web.external_layout">
-                    <div class="page" style="font-size:10px;color:#18243a;font-family:Arial,sans-serif;">
-                        <style>.zc-table{width:100%;border-collapse:collapse;margin:5px 0 10px;table-layout:fixed;font-size:9px}.zc-table th{background:#e5f2f2;color:#173b49;padding:5px;text-align:left;border:1px solid #cbdcde}.zc-table td{padding:5px;border:1px solid #d8e4e6;vertical-align:top;word-wrap:break-word}.zc-table tr:nth-child(even){background:#f5fafb}.zc-table thead{display:table-header-group}.zc-table tr{page-break-inside:avoid}.zc-heading{background:#087d87;color:white;font-size:13px;font-weight:bold;padding:5px 7px;margin:8px 0 4px;page-break-after:avoid}.zc-kpis{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:4px}.zc-kpis td{border:1px solid #d0e2e4;border-radius:5px;padding:6px;background:#f8fbfc}.zc-kpis small{font-size:9px;color:#40596b}.zc-kpis strong{display:block;font-size:19px;line-height:1.2}.zc-chart{width:100%;table-layout:fixed;border-collapse:collapse}.zc-chart td{vertical-align:top}.zc-bar{height:8px;background:#e5e9ef}.zc-bar span{display:block;height:8px}.zc-muted{font-size:9px;color:#526477}</style><div><table style="width:100%;margin-bottom:6px"><tr><td style="width:57%;vertical-align:middle"><h2 style="font-size:23px;margin:0;color:#152b43">Salesperson Performance Report</h2><div style="font-size:12px;color:#087d87">Field Sales &amp; Customer Visit Analysis</div><strong t-esc="company.name"/></td><td style="vertical-align:middle;font-size:10px"><strong>Reporting period: </strong><span t-field="doc.date_from"/> – <span t-field="doc.date_to"/><br/><strong>Salesperson: </strong><span t-esc="doc.individual_user_id.name if doc.report_type == 'individual' else (', '.join(doc.user_ids.mapped('name')) if doc.salesperson_scope == 'selected' else 'All permitted salespeople')"/><br/><strong>Customer: </strong><span t-esc="doc.partner_id.name if doc.customer_scope == 'selected' else 'All customers'"/><br/><strong>Detail status: </strong><span t-field="doc.visit_status"/><br/><strong>Team: </strong><span t-esc="doc.sale_team_id.name or 'All permitted teams'"/></td></tr></table></div><div class="zc-heading">1. Executive summary</div><table class="zc-kpis"><tr><td><small>Salespeople</small><strong style="color:#334155"><span t-esc="doc.total_salespersons"/></strong></td><td><small>Customers</small><strong style="color:#2563eb"><span t-esc="doc.total_customers"/></strong></td><td><small>Planned visits</small><strong style="color:#714b67"><span t-esc="doc.total_planned_visits"/></strong></td><td><small>Completed planned</small><strong style="color:#087f5b"><span t-esc="doc.total_completed_visits"/></strong></td><td><small>Missed</small><strong style="color:#dc2626"><span t-esc="doc.total_missed_visits"/></strong></td></tr><tr><td><small>Pending</small><strong style="color:#b77900"><span t-esc="doc.total_pending_visits"/></strong></td><td><small>In progress</small><strong style="color:#2563eb"><span t-esc="doc.total_in_progress_visits"/></strong></td><td><small>Overdue</small><strong style="color:#b42318"><span t-esc="doc.total_overdue_visits"/></strong></td><td><small>Awaiting approval</small><strong style="color:#b77900"><span t-esc="doc.total_awaiting_approval_visits"/></strong></td><td><small>Rejected</small><strong style="color:#64748b"><span t-esc="doc.total_rejected_visits"/></strong></td></tr><tr><td><small>Unplanned check-ins</small><strong style="color:#64748b"><span t-esc="doc.total_unplanned_visits"/></strong></td><td><small>Completion rate</small><strong style="color:#714b67"><span t-esc="'%.1f%%' % doc.completion_percent"/></strong></td><td><small>Visited customers</small><strong style="color:#087f5b"><span t-esc="doc.total_visited_customers"/></strong></td><td><small>Distance (km)</small><strong style="color:#087d87"><span t-esc="'%.2f' % doc.total_distance_km"/></strong></td><td><small>Tracking (min)</small><strong style="color:#334155"><span t-esc="'%.2f' % doc.total_tracking_minutes"/></strong></td></tr><tr><td><small>Visit time (min)</small><strong style="color:#334155"><span t-esc="'%.2f' % doc.total_visit_minutes"/></strong></td><td><small>Idle time (min)</small><strong style="color:#334155"><span t-esc="'%.2f' % doc.total_idle_minutes"/></strong></td><td><small>Average rating</small><strong style="color:#334155"><span t-esc="'%.2f' % doc.average_rating"/></strong></td><td><small>Estimated expense</small><strong style="color:#334155"><span t-esc="'%.2f' % doc.total_estimated_expense"/></strong></td><td><small>Actual expense</small><strong style="color:#087f5b"><span t-esc="'%.2f' % doc.total_expense"/></strong></td></tr></table><table class="zc-chart"><tr><td style="width:42%;padding-right:8px"><div class="zc-heading">Visit status distribution</div><t t-set="statuses" t-value="[('Completed', doc.total_completed_visits, '#087f5b'), ('Missed', doc.total_missed_visits, '#dc2626'), ('Pending', doc.total_pending_visits, '#d97706'), ('In progress', doc.total_in_progress_visits, '#2563eb'), ('Overdue', doc.total_overdue_visits, '#b42318'), ('Awaiting approval', doc.total_awaiting_approval_visits, '#94a3b8'), ('Rejected', doc.total_rejected_visits, '#475569')]"/><table style="width:100%;table-layout:fixed"><tr t-foreach="statuses" t-as="s"><td style="width:39%;font-size:9px" t-esc="s[0]"/><td style="width:43%;vertical-align:middle"><div class="zc-bar"><span t-att-style="'background:%s;width:%.2f%%' % (s[2], 100.0*s[1]/(doc.total_planned_visits or 1))"/></div></td><td style="text-align:right;white-space:nowrap;font-size:9px" t-esc="'%s (%.0f%%)' % (s[1], 100.0*s[1]/(doc.total_planned_visits or 1))"/></tr></table></td><td style="width:58%"><div class="zc-heading">Planned vs. completed vs. missed</div><div class="zc-muted">Grey: planned · Green: completed · Red: missed · Top 5 by planned visits</div><t t-set="maximum" t-value="max(doc.line_ids.mapped('planned_visits') or [1]) or 1"/><table style="width:100%;table-layout:fixed"><tr t-foreach="doc.line_ids.sorted('planned_visits', reverse=True)[:5]" t-as="l"><td style="width:29%;vertical-align:middle;font-size:9px" t-esc="l.user_id.name"/><td><div t-foreach="[(l.planned_visits,'#94a3b8'), (l.completed_visits,'#087f5b'), (l.missed_visits,'#dc2626')]" t-as="b" style="height:10px;line-height:10px;font-size:8px;white-space:nowrap"><span t-att-style="'display:inline-block;background:%s;width:%.2f%%;height:7px;' % (b[1], 90.0*b[0]/maximum)"/> <span t-esc="b[0]"/></div></td></tr></table></td></tr></table><p class="zc-muted">Completion excludes rejected and unapproved plans. Missed means the planned date elapsed without check-in. Unplanned check-ins are separate. Distance and expenses are tracking-session totals.</p><div class="zc-heading">2. Salesperson performance summary</div>
+                    <div class="page zc-performance-report">
+                        <style type="text/css">
+                            .zc-performance-report { color: #111; font-family: Arial, sans-serif; font-size: 9px; }
+                            .zc-performance-report h2 { font-size: 18px; font-weight: 600; margin: 0 0 3px; }
+                            .zc-performance-report h3 { font-size: 11px; font-weight: 600; margin: 14px 0 5px; padding-bottom: 3px; border-bottom: 1px solid #222; }
+                            .zc-performance-report p { margin: 2px 0; }
+                            .zc-meta { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+                            .zc-meta td { vertical-align: top; padding: 2px 4px; }
+                            .zc-table { width: 100%; border-collapse: collapse; table-layout: fixed; margin: 0 0 10px; font-size: 8px; }
+                            .zc-table thead { display: table-header-group; }
+                            .zc-table th { background: #f0f0f0; font-weight: 600; text-align: left; }
+                            .zc-table th, .zc-table td { border: 1px solid #888; padding: 4px; vertical-align: top; overflow-wrap: anywhere; }
+                            .zc-table tr { page-break-inside: avoid; }
+                            .zc-number { text-align: right; white-space: nowrap; }
+                            .zc-summary { width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: 8px; }
+                            .zc-summary td { border: 1px solid #888; padding: 5px; vertical-align: top; }
+                            .zc-summary .label { display: block; color: #333; font-size: 8px; }
+                            .zc-summary .value { display: block; font-size: 11px; margin-top: 2px; }
+                            .zc-note { color: #444; font-size: 8px; }
+                        </style>
+
+                        <table class="zc-meta">
+                            <tr>
+                                <td style="width: 60%;">
+                                    <h2>Salesperson Performance Report</h2>
+                                    <p t-esc="company.name"/>
+                                </td>
+                                <td>
+                                    <p>Period: <span t-field="doc.date_from"/> - <span t-field="doc.date_to"/></p>
+                                    <p>Salespersons: <span t-esc="doc.individual_user_id.name if doc.report_type == 'individual' else (', '.join(doc.user_ids.mapped('name')) if doc.salesperson_scope == 'selected' else 'All permitted salespersons')"/></p>
+                                    <p>Customer: <span t-esc="doc.partner_id.name if doc.customer_scope == 'selected' else 'All customers'"/></p>
+                                    <p>Visit status: <span t-field="doc.visit_status"/></p>
+                                </td>
+                            </tr>
+                        </table>
+
+                        <h3>Summary</h3>
+                        <table class="zc-summary">
+                            <tr>
+                                <td><span class="label">Salespersons</span><span class="value" t-esc="doc.total_salespersons"/></td>
+                                <td><span class="label">Customers</span><span class="value" t-esc="doc.total_customers"/></td>
+                                <td><span class="label">Planned visits</span><span class="value" t-esc="doc.total_planned_visits"/></td>
+                                <td><span class="label">Completed visits</span><span class="value" t-esc="doc.total_completed_visits"/></td>
+                                <td><span class="label">Remaining visits</span><span class="value" t-esc="doc.total_pending_visits + doc.total_in_progress_visits"/></td>
+                                <td><span class="label">Missed / overdue</span><span class="value" t-esc="doc.total_missed_visits + doc.total_overdue_visits"/></td>
+                            </tr>
+                            <tr>
+                                <td><span class="label">Completion rate</span><span class="value" t-esc="'%.1f' % doc.completion_percent"/>%</td>
+                                <td><span class="label">Distance (km)</span><span class="value" t-esc="'%.2f' % doc.total_distance_km"/></td>
+                                <td><span class="label">Tracking (min)</span><span class="value" t-esc="'%.1f' % doc.total_tracking_minutes"/></td>
+                                <td><span class="label">Visit time (min)</span><span class="value" t-esc="'%.1f' % doc.total_visit_minutes"/></td>
+                                <td><span class="label">Idle time (min)</span><span class="value" t-esc="'%.1f' % doc.total_idle_minutes"/></td>
+                                <td><span class="label">Actual expense</span><span class="value" t-esc="'%.2f' % doc.total_expense"/></td>
+                            </tr>
+                        </table>
+
+                        <h3>Salesperson summary</h3>
                         <table class="zc-table">
                             <thead>
                                 <tr>
-                                    <th>Salesperson</th>
-                                    <th>Customers</th>
-                                    <th>Planned</th>
-                                    <th>Completed planned</th>
-                                    <th>Missed</th>
-                                    <th>Pending</th>
-                                    <th>In Progress</th>
-                                    <th>Overdue</th>
-                                    <th>Awaiting Approval</th>
-                                    <th>Rejected</th>
-                                    <th>Unplanned</th>
-                                    <th>Rate %</th>
-                                    <th>Distance km</th>
-                                    <th>Tracking min</th>
-                                    <th>Expense</th>
+                                    <th style="width: 17%;">Salesperson</th>
+                                    <th class="zc-number">Customers</th>
+                                    <th class="zc-number">Planned</th>
+                                    <th class="zc-number">Completed</th>
+                                    <th class="zc-number">Remaining</th>
+                                    <th class="zc-number">Missed</th>
+                                    <th class="zc-number">Rate</th>
+                                    <th class="zc-number">Distance km</th>
+                                    <th class="zc-number">Tracking min</th>
+                                    <th class="zc-number">Visit min</th>
+                                    <th class="zc-number">Idle min</th>
+                                    <th class="zc-number">Expense</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr t-foreach="doc.line_ids" t-as="l">
-                                    <td t-esc="l.user_id.name"/>
-                                    <td t-esc="l.customer_count"/>
-                                    <td t-esc="l.planned_visits"/>
-                                    <td t-esc="l.completed_visits" style="font-weight:bold;color:#087f5b"/>
-                                    <td t-esc="l.missed_visits" style="font-weight:bold;color:#dc2626"/>
-                                    <td t-esc="l.pending_visits" style="font-weight:bold;color:#b77900"/>
-                                    <td t-esc="l.in_progress_visits"/>
-                                    <td t-esc="l.overdue_visits"/>
-                                    <td t-esc="l.awaiting_approval_visits"/>
-                                    <td t-esc="l.rejected_visits"/>
-                                    <td t-esc="l.unplanned_visits"/>
-                                    <td><span t-esc="'%.1f%%' % l.completion_percent"/><div class="zc-bar"><span t-att-style="'background:#087f5b;width:%.2f%%' % l.completion_percent"/></div></td>
-                                    <td t-esc="'%.2f' % l.distance_km"/>
-                                    <td t-esc="'%.1f' % l.tracking_minutes"/>
-                                    <td t-esc="'%.2f' % l.expense"/>
+                                <tr t-foreach="doc.line_ids" t-as="line">
+                                    <td t-esc="line.user_id.name"/>
+                                    <td class="zc-number" t-esc="line.customer_count"/>
+                                    <td class="zc-number" t-esc="line.planned_visits"/>
+                                    <td class="zc-number" t-esc="line.completed_visits"/>
+                                    <td class="zc-number" t-esc="line.pending_visits + line.in_progress_visits"/>
+                                    <td class="zc-number" t-esc="line.missed_visits + line.overdue_visits"/>
+                                    <td class="zc-number"><span t-esc="'%.1f' % line.completion_percent"/>%</td>
+                                    <td class="zc-number" t-esc="'%.2f' % line.distance_km"/>
+                                    <td class="zc-number" t-esc="'%.1f' % line.tracking_minutes"/>
+                                    <td class="zc-number" t-esc="'%.1f' % line.visit_minutes"/>
+                                    <td class="zc-number" t-esc="'%.1f' % line.idle_minutes"/>
+                                    <td class="zc-number" t-esc="'%.2f' % line.expense"/>
                                 </tr>
                             </tbody>
                         </table>
-                        <div class="zc-heading" style="page-break-before:always;margin-top:0">3. Daily activity summary</div>
+
+                        <h3>Daily summary</h3>
                         <table class="zc-table">
                             <thead>
                                 <tr>
-                                    <th>Date</th>
-                                    <th>Planned</th>
-                                    <th>Completed planned</th>
-                                    <th>Missed</th>
-                                    <th>Pending</th>
-                                    <th>In Progress</th>
-                                    <th>Overdue</th>
-                                    <th>Awaiting Approval</th>
-                                    <th>Rejected</th>
-                                    <th>Unplanned</th>
-                                    <th>Distance km</th>
-                                    <th>Visit min</th>
-                                    <th>Idle min</th>
+                                    <th style="width: 16%;">Date</th>
+                                    <th class="zc-number">Planned</th>
+                                    <th class="zc-number">Completed</th>
+                                    <th class="zc-number">Remaining</th>
+                                    <th class="zc-number">Missed</th>
+                                    <th class="zc-number">Distance km</th>
+                                    <th class="zc-number">Visit min</th>
+                                    <th class="zc-number">Idle min</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr t-foreach="doc.day_line_ids" t-as="d">
-                                    <td>
-                                        <span t-field="d.date"/>
-                                    </td>
-                                    <td t-esc="d.planned_visits"/>
-                                    <td t-esc="d.completed_visits"/>
-                                    <td t-esc="d.missed_visits"/>
-                                    <td t-esc="d.pending_visits"/>
-                                    <td t-esc="d.in_progress_visits"/>
-                                    <td t-esc="d.overdue_visits"/>
-                                    <td t-esc="d.awaiting_approval_visits"/>
-                                    <td t-esc="d.rejected_visits"/>
-                                    <td t-esc="d.unplanned_visits"/>
-                                    <td t-esc="'%.2f' % d.distance_km"/>
-                                    <td t-esc="'%.1f' % d.visit_minutes"/>
-                                    <td t-esc="'%.1f' % d.idle_minutes"/>
+                                <tr t-foreach="doc.day_line_ids" t-as="day">
+                                    <td><span t-field="day.date"/></td>
+                                    <td class="zc-number" t-esc="day.planned_visits"/>
+                                    <td class="zc-number" t-esc="day.completed_visits"/>
+                                    <td class="zc-number" t-esc="day.pending_visits + day.in_progress_visits"/>
+                                    <td class="zc-number" t-esc="day.missed_visits + day.overdue_visits"/>
+                                    <td class="zc-number" t-esc="'%.2f' % day.distance_km"/>
+                                    <td class="zc-number" t-esc="'%.1f' % day.visit_minutes"/>
+                                    <td class="zc-number" t-esc="'%.1f' % day.idle_minutes"/>
                                 </tr>
                             </tbody>
                         </table>
-                        <div style="page-break-before:always;">
-                            <div class="zc-heading">4. Customer-wise visit register</div>
-                            <p t-if="not doc.visit_line_ids">No visits match the selected scope and detail status.</p>
-                            <table class="zc-table">
+
+                        <div style="page-break-before: always;">
+                            <h3>Visit details</h3>
+                            <p class="zc-note" t-if="not doc.visit_line_ids">No visits match the selected report filters.</p>
+                            <table t-if="doc.visit_line_ids" class="zc-table">
                                 <thead>
                                     <tr>
-                                        <th>Reference</th>
-                                        <th>Date</th>
-                                        <th>Salesperson</th>
-                                        <th>Customer</th>
-                                        <th>Planned</th>
-                                        <th>Purpose</th>
-                                        <th>Status</th>
-                                        <th>Check-in</th>
-                                        <th>Check-out</th>
-                                        <th>Minutes</th>
-                                        <th>Outcome</th>
-                                        <th>Rating</th>
-                                        <th>Explanation / notes</th>
-                                        <th>Photo</th>
+                                        <th style="width: 11%;">Reference</th>
+                                        <th style="width: 7%;">Date</th>
+                                        <th style="width: 11%;">Salesperson</th>
+                                        <th style="width: 12%;">Customer</th>
+                                        <th style="width: 9%;">Purpose</th>
+                                        <th style="width: 8%;">Status</th>
+                                        <th style="width: 10%;">Check-in</th>
+                                        <th style="width: 10%;">Check-out</th>
+                                        <th class="zc-number" style="width: 6%;">Minutes</th>
+                                        <th style="width: 16%;">Notes / reason</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr t-foreach="doc.visit_line_ids" t-as="v">
-                                        <td t-esc="v.reference"/>
-                                        <td>
-                                            <span t-field="v.visit_date"/>
-                                        </td>
-                                        <td t-esc="v.user_id.name"/>
-                                        <td t-esc="v.partner_id.name"/>
-                                        <td t-esc="'Yes' if v.is_planned else 'No'"/>
-                                        <td>
-                                            <span t-field="v.purpose"/>
-                                        </td>
-                                        <td t-att-style="'color:#b42318;font-weight:bold' if v.status in ('missed','overdue') else ('color:#087f5b;font-weight:bold' if v.status == 'completed' else '')">
-                                            <span t-field="v.status"/>
-                                        </td>
-                                        <td>
-                                            <span t-field="v.checkin_time"/>
-                                        </td>
-                                        <td>
-                                            <span t-field="v.checkout_time"/>
-                                        </td>
-                                        <td t-esc="'%.1f' % v.duration_minutes"/>
-                                        <td>
-                                            <span t-field="v.outcome"/>
-                                        </td>
-                                        <td t-esc="v.rating"/>
-                                        <td t-esc="(v.reason or '') + ' | ' + (v.notes or '') + ' | ' + (v.customer_feedback or '')"/>
-                                        <td t-esc="'Yes' if v.photo_available else 'No'"/>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        <div style="page-break-before:always;">
-                            <div class="zc-heading">5. Completed customer visits</div>
-                            <p t-if="not doc.completed_line_ids">No completed visits match the detail filter.</p>
-                            <table class="zc-table">
-                                <thead>
-                                    <tr>
-                                        <th>Reference</th>
-                                        <th>Date</th>
-                                        <th>Salesperson</th>
-                                        <th>Customer</th>
-                                        <th>Planned</th>
-                                        <th>Purpose</th>
-                                        <th>Status</th>
-                                        <th>Check-in</th>
-                                        <th>Check-out</th>
-                                        <th>Minutes</th>
-                                        <th>Outcome</th>
-                                        <th>Rating</th>
-                                        <th>Explanation / notes</th>
-                                        <th>Photo</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr t-foreach="doc.completed_line_ids" t-as="v">
-                                        <td t-esc="v.reference"/>
-                                        <td>
-                                            <span t-field="v.visit_date"/>
-                                        </td>
-                                        <td t-esc="v.user_id.name"/>
-                                        <td t-esc="v.partner_id.name"/>
-                                        <td t-esc="'Yes' if v.is_planned else 'No'"/>
-                                        <td>
-                                            <span t-field="v.purpose"/>
-                                        </td>
-                                        <td t-att-style="'color:#b42318;font-weight:bold' if v.status in ('missed','overdue') else ('color:#087f5b;font-weight:bold' if v.status == 'completed' else '')">
-                                            <span t-field="v.status"/>
-                                        </td>
-                                        <td>
-                                            <span t-field="v.checkin_time"/>
-                                        </td>
-                                        <td>
-                                            <span t-field="v.checkout_time"/>
-                                        </td>
-                                        <td t-esc="'%.1f' % v.duration_minutes"/>
-                                        <td>
-                                            <span t-field="v.outcome"/>
-                                        </td>
-                                        <td t-esc="v.rating"/>
-                                        <td t-esc="(v.reason or '') + ' | ' + (v.notes or '') + ' | ' + (v.customer_feedback or '')"/>
-                                        <td t-esc="'Yes' if v.photo_available else 'No'"/>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        <div style="page-break-before:always;">
-                            <div class="zc-heading">6. Missed and overdue visits — follow-up required</div>
-                            <p t-if="not doc.missed_line_ids">No missed or overdue visits match the detail filter.</p>
-                            <table class="zc-table">
-                                <thead>
-                                    <tr>
-                                        <th>Reference</th>
-                                        <th>Date</th>
-                                        <th>Salesperson</th>
-                                        <th>Customer</th>
-                                        <th>Planned</th>
-                                        <th>Purpose</th>
-                                        <th>Status</th>
-                                        <th>Check-in</th>
-                                        <th>Check-out</th>
-                                        <th>Minutes</th>
-                                        <th>Outcome</th>
-                                        <th>Rating</th>
-                                        <th>Explanation / notes</th>
-                                        <th>Photo</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr t-foreach="doc.missed_line_ids" t-as="v">
-                                        <td t-esc="v.reference"/>
-                                        <td>
-                                            <span t-field="v.visit_date"/>
-                                        </td>
-                                        <td t-esc="v.user_id.name"/>
-                                        <td t-esc="v.partner_id.name"/>
-                                        <td t-esc="'Yes' if v.is_planned else 'No'"/>
-                                        <td>
-                                            <span t-field="v.purpose"/>
-                                        </td>
-                                        <td t-att-style="'color:#b42318;font-weight:bold' if v.status in ('missed','overdue') else ('color:#087f5b;font-weight:bold' if v.status == 'completed' else '')">
-                                            <span t-field="v.status"/>
-                                        </td>
-                                        <td>
-                                            <span t-field="v.checkin_time"/>
-                                        </td>
-                                        <td>
-                                            <span t-field="v.checkout_time"/>
-                                        </td>
-                                        <td t-esc="'%.1f' % v.duration_minutes"/>
-                                        <td>
-                                            <span t-field="v.outcome"/>
-                                        </td>
-                                        <td t-esc="v.rating"/>
-                                        <td t-esc="(v.reason or '') + ' | ' + (v.notes or '') + ' | ' + (v.customer_feedback or '')"/>
-                                        <td t-esc="'Yes' if v.photo_available else 'No'"/>
-                                    </tr>
-                                </tbody>
-                            </table>
-                            <div class="zc-heading">7. Customer coverage within selected period</div>
-                            <div t-field="doc.customer_analysis_html"/>
-                            <div class="zc-heading">8. Travel and expense summary</div>
-                            <p>Estimated expenses: <span t-field="doc.total_estimated_expense"/> | Actual expenses: <span t-field="doc.total_expense"/>
-                            </p>
-                            <table class="zc-table">
-                                <thead>
-                                    <tr>
-                                        <th>Salesperson</th>
-                                        <th>Distance km</th>
-                                        <th>Tracking min</th>
-                                        <th>Visit min</th>
-                                        <th>Idle min</th>
-                                        <th>Estimated expense</th>
-                                        <th>Actual expense</th>
-                                        <th>Rating</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr t-foreach="doc.line_ids" t-as="l">
-                                        <td t-esc="l.user_id.name"/>
-                                        <td t-esc="'%.2f' % l.distance_km"/>
-                                        <td t-esc="'%.2f' % l.tracking_minutes"/>
-                                        <td t-esc="'%.2f' % l.visit_minutes"/>
-                                        <td t-esc="'%.2f' % l.idle_minutes"/>
-                                        <td t-esc="'%.2f' % l.estimated_expense"/>
-                                        <td t-esc="'%.2f' % l.expense"/>
-                                        <td t-esc="'%.2f' % l.average_rating"/>
+                                    <tr t-foreach="doc.visit_line_ids" t-as="visit">
+                                        <td t-esc="visit.reference"/>
+                                        <td><span t-field="visit.visit_date"/></td>
+                                        <td t-esc="visit.user_id.name"/>
+                                        <td t-esc="visit.partner_id.name"/>
+                                        <td><span t-field="visit.purpose"/></td>
+                                        <td><span t-field="visit.status"/></td>
+                                        <td><span t-field="visit.checkin_time"/></td>
+                                        <td><span t-field="visit.checkout_time"/></td>
+                                        <td class="zc-number" t-esc="'%.1f' % visit.duration_minutes"/>
+                                        <td t-esc="visit.reason or visit.notes or visit.customer_feedback or ''"/>
                                     </tr>
                                 </tbody>
                             </table>
