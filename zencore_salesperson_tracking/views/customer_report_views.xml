@@ -60,6 +60,12 @@
         <field name="target">current</field>
     </record>
 
-    <menuitem id="menu_salesperson_customer_reports" name="Customer Reports" parent="menu_salesperson_reports_root" sequence="35" groups="zencore_salesperson_tracking.group_salesperson_ceo,zencore_salesperson_tracking.group_salesperson_manager,zencore_salesperson_tracking.group_salesperson_supervisor"/>
-    <menuitem id="menu_salesperson_customer_detailed_report" name="Customer Visit Report" parent="menu_salesperson_customer_reports" action="action_salesperson_customer_report" sequence="10" groups="zencore_salesperson_tracking.group_salesperson_ceo,zencore_salesperson_tracking.group_salesperson_manager,zencore_salesperson_tracking.group_salesperson_supervisor"/>
+    <!-- Keep the report/action available for future work, but do not expose it
+         from Reports until the customer-report workflow is ready to release. -->
+    <record id="menu_salesperson_customer_reports" model="ir.ui.menu">
+        <field name="active" eval="False"/>
+    </record>
+    <record id="menu_salesperson_customer_detailed_report" model="ir.ui.menu">
+        <field name="active" eval="False"/>
+    </record>
 </odoo>
