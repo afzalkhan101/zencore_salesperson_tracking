@@ -137,8 +137,20 @@
                         .cdr-subbox {border-color:#d4d4d4; border-radius:0; background:#fff; min-height:0; padding:6px 7px;}
                         .cdr-subtitle {color:#111; font-weight:400; margin-bottom:4px;}
                         .cdr-footer {border-top-color:#777; color:#555;}
+                        .cdr-empty {margin-top:55mm; text-align:center;}
+                        .cdr-empty h2 {font-size:16px; font-weight:400; margin:0 0 8px;}
+                        .cdr-empty p {font-size:11px; margin:0;}
                     </style>
 
+                    <t t-if="not doc.line_ids">
+                        <div class="page cdr-page">
+                            <div class="cdr-empty">
+                                <h2>No data found</h2>
+                                <p>No data was found for the selected report filters.</p>
+                            </div>
+                        </div>
+                    </t>
+                    <t t-else="">
                     <div class="page cdr-page">
                         <div class="cdr-header">
                             <div class="row align-items-center">
@@ -325,6 +337,7 @@
                                 <span style="float:right;">Detailed Visits</span>
                             </div>
                         </div>
+                    </t>
                     </t>
                 </t>
             </t>
