@@ -47,8 +47,15 @@
                             .zc-summary .label { display: block; color: #333; font-size: 8px; }
                             .zc-summary .value { display: block; font-size: 11px; margin-top: 2px; }
                             .zc-note { color: #444; font-size: 8px; }
+                            .zc-empty { margin-top: 55mm; text-align: center; }
+                            .zc-empty p { font-size: 12px; }
                         </style>
 
+                        <div t-if="not doc.visit_line_ids" class="zc-empty">
+                            <h2>No data found</h2>
+                            <p>No data was found for the selected report filters.</p>
+                        </div>
+                        <t t-else="">
                         <table class="zc-meta">
                             <tr>
                                 <td style="width: 60%;">
@@ -188,6 +195,7 @@
                                 </tbody>
                             </table>
                         </div>
+                        </t>
                     </div>
             </t>
         </t>
