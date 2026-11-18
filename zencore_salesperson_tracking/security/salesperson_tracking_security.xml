@@ -234,6 +234,34 @@
        <field name="groups" eval="[(4, ref('group_salesperson_ceo'))]"/>
        <field name="domain_force">[('tracker_id.user_id','in',user.zc_team_user_ids.ids)]</field>
     </record>
+    <!-- Idle-time entries are child records of a tracker.  They must follow
+         exactly the same role visibility as the parent tracker; otherwise a
+         CEO/Supervisor can open a tracker card but Odoo fails when it reads
+         its idle_line_ids One2many field. -->
+    <record id="rule_zc_salesperson_tracker_idle_line_salesman" model="ir.rule">
+       <field name="name">salesperson_tracker_idle_line salesman scope</field>
+       <field name="model_id" ref="model_salesperson_tracker_idle_line"/>
+       <field name="groups" eval="[(4, ref('group_salesperson_salesman'))]"/>
+       <field name="domain_force">[('tracker_id.user_id','=',user.id)]</field>
+    </record>
+    <record id="rule_zc_salesperson_tracker_idle_line_supervisor" model="ir.rule">
+       <field name="name">salesperson_tracker_idle_line supervisor scope</field>
+       <field name="model_id" ref="model_salesperson_tracker_idle_line"/>
+       <field name="groups" eval="[(4, ref('group_salesperson_supervisor'))]"/>
+       <field name="domain_force">[('tracker_id.user_id','in',user.zc_team_user_ids.ids)]</field>
+    </record>
+    <record id="rule_zc_salesperson_tracker_idle_line_manager" model="ir.rule">
+       <field name="name">salesperson_tracker_idle_line manager scope</field>
+       <field name="model_id" ref="model_salesperson_tracker_idle_line"/>
+       <field name="groups" eval="[(4, ref('group_salesperson_manager'))]"/>
+       <field name="domain_force">[('tracker_id.user_id','in',user.zc_team_user_ids.ids)]</field>
+    </record>
+    <record id="rule_zc_salesperson_tracker_idle_line_ceo" model="ir.rule">
+       <field name="name">salesperson_tracker_idle_line ceo scope</field>
+       <field name="model_id" ref="model_salesperson_tracker_idle_line"/>
+       <field name="groups" eval="[(4, ref('group_salesperson_ceo'))]"/>
+       <field name="domain_force">[('tracker_id.user_id','in',user.zc_team_user_ids.ids)]</field>
+    </record>
     <record id="rule_zc_salesperson_visit_plan_admin" model="ir.rule">
        <field name="name">salesperson.visit.plan system administrator</field>
        <field name="model_id" ref="model_salesperson_visit_plan"/>
@@ -279,6 +307,12 @@
     <record id="rule_zc_salesperson_tracker_visited_line_admin" model="ir.rule">
        <field name="name">salesperson.tracker.visited.line system administrator</field>
        <field name="model_id" ref="model_salesperson_tracker_visited_line"/>
+       <field name="groups" eval="[(4, ref('base.group_system'))]"/>
+       <field name="domain_force">[(1,'=',1)]</field>
+    </record>
+    <record id="rule_zc_salesperson_tracker_idle_line_admin" model="ir.rule">
+       <field name="name">salesperson.tracker.idle.line system administrator</field>
+       <field name="model_id" ref="model_salesperson_tracker_idle_line"/>
        <field name="groups" eval="[(4, ref('base.group_system'))]"/>
        <field name="domain_force">[(1,'=',1)]</field>
     </record>
