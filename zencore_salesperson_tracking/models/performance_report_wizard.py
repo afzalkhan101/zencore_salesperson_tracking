@@ -63,7 +63,7 @@ class SalespersonPerformanceReportWizard(models.TransientModel):
        help="Use all customers, or limit the report to one customer.")
     partner_id = fields.Many2one(
         "res.partner", string="Customer",
-        domain="[('active', '=', True), ('customer_rank', '>', 0), ('user_ids', '=', False), ('employee_ids', '=', False)]",
+        domain="[('active', '=', True), ('customer_rank', '>', 0), ('user_ids', '=', False)]",
     )
     visit_status = fields.Selection([
         ("all", "All"),

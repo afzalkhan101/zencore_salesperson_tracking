@@ -22,16 +22,15 @@ class ZenCoreFieldMobileBridge(http.Controller):
         """Return only genuine customer contacts, never staff or user contacts.
 
         The mobile application uses this for every customer picker and for
-        server-side plan validation.  It keeps the Customer and Employee
-        concepts separate even when an employee has a res.partner record.
+        server-side plan validation. ``customer_rank`` is the customer marker
+        available to field users; unlike HR's ``employee_ids`` relation it can
+        be read without granting employee-directory access to a salesperson.
         """
         domain = [('active', '=', True), ('name', '!=', False)]
         if 'customer_rank' in Partner._fields:
             domain.append(('customer_rank', '>', 0))
         if 'user_ids' in Partner._fields:
             domain.append(('user_ids', '=', False))
-        if 'employee_ids' in Partner._fields:
-            domain.append(('employee_ids', '=', False))
         if 'company_id' in Partner._fields:
             domain.append(('company_id', 'in', [False, request.env.company.id]))
         return domain
