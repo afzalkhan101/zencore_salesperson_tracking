@@ -1,6 +1,6 @@
 import React,{useCallback,useEffect,useRef,useState} from 'react';
 import {startAutoSync,triggerAutoSync,type AutoSyncSnapshot} from './src/services/autoSync';
-import {Alert,ActivityIndicator,Animated,Easing,KeyboardAvoidingView,Modal,Platform,Pressable,ScrollView,StatusBar,StyleSheet,Text,TextInput,View,Image as RNImage,Linking} from 'react-native';
+import {Alert,ActivityIndicator,Animated,BackHandler,Easing,KeyboardAvoidingView,Modal,Platform,Pressable,ScrollView,StatusBar,StyleSheet,Text,TextInput,View,Image as RNImage,Linking} from 'react-native';
 import {SafeAreaProvider,useSafeAreaInsets} from 'react-native-safe-area-context';
 import {chooseAndQueuePhoto,deleteQueuedPhoto,getVisitPhotos,type VisitPhoto} from './src/services/photoEvidence';
 import {photoPendingCount} from './src/services/storage';
@@ -18,7 +18,7 @@ import CustomerManager from './src/components/CustomerManager';
 
 type Tab='Home'|'Visits'|'Tracking'|'Map'|'Profile';
 const TODAY=()=>new Date().toISOString().slice(0,10);
-const BUILD_TAG='ZENCORE_FIELD_V38_RELIABLE_GPS_CAPTURE';
+const BUILD_TAG='ZENCORE_FIELD_V39_SAFE_NAVIGATION';
 if (__DEV__) console.log('[ZenCore Build]',BUILD_TAG);
 const createId=()=>`${Date.now()}-${Math.random().toString(36).slice(2)}`;
 const planScope=(host:string,login:string)=>`v1_${host.trim().toLowerCase()}_${login.trim().toLowerCase()}`;
@@ -250,7 +250,36 @@ function ZenCoreFieldApp(){
  },[connected,serverPlans]);
  const save=async(p:Plan[])=>{setLocalPlans(p);await setPlans(p,planOwnerKey||'anonymous')};
  const updateEdit=(patch:Partial<Plan>)=>setEditing(old=>old?{...old,...patch}:old);
- const go=(t:Tab)=>{setTab(t);setEditing(null);setDetail(null);setServerDetail(null)};
+ // The tab bar is the primary navigation. Preserve the selected tab's state
+ // when it is tapped again; switching tabs intentionally returns only the
+ // destination tab to its root screen.
+ const go=(t:Tab)=>{
+  if(t===tab)return;
+  setTab(t);setEditing(null);setDetail(null);setServerDetail(null);setProfileCustomersOpen(false);
+ };
+ useEffect(()=>{
+  const onHardwareBack=()=>{
+   if(dialog){setDialog(null);return true;}
+   if(profileCustomersOpen){setProfileCustomersOpen(false);return true;}
+   if(tab==='Visits'&&(editing||detail||serverDetail!==null)){
+    setEditing(null);setDetail(null);setServerDetail(null);return true;
+   }
+   if(tab==='Profile'&&!connected&&authPage!=='login'){
+    setAuthPage('login');return true;
+   }
+   if(tab!=='Home'){
+    setTab('Home');return true;
+   }
+   Alert.alert(
+    'Exit ZenCore Field?',
+    tracking?'GPS tracking will continue in the background while this app is closed.':'Are you sure you want to exit?',
+    [{text:'Stay',style:'cancel'},{text:'Exit',style:'destructive',onPress:()=>BackHandler.exitApp()}],
+   );
+   return true;
+  };
+  const subscription=BackHandler.addEventListener('hardwareBackPress',onHardwareBack);
+  return()=>subscription.remove();
+ },[authPage,connected,detail,dialog,editing,profileCustomersOpen,serverDetail,tab,tracking]);
  const run=async(action:()=>Promise<void>)=>{if(busy)return;setBusy(true);try{await action()}catch(e){notify(e instanceof Error?e.message:String(e))}finally{setBusy(false);await refresh()}};
  const fetchServer=()=>run(async()=>{
   const activeProfile=await Odoo.fieldProfile();
@@ -474,8 +503,8 @@ function ZenCoreFieldApp(){
   ? `${straightLineKm(metrics.latestLat,metrics.latestLng,todaySummary.next_visit.latitude,todaySummary.next_visit.longitude).toFixed(2)} km away`
   : 'Distance unavailable';
  return <View style={st.root}><StatusBar barStyle="dark-content"/>
- <View style={st.header}><View><Text style={st.brand}>zen<Text style={{color:C.green}}>core</Text> <Text style={{fontSize:13,color:C.green}}>FIELD</Text></Text><Text style={st.headerSubtitle}>Field Sales Workspace</Text></View><View style={st.avatar}><Text style={{fontWeight:'800',color:C.blue}}>ZF</Text></View></View>
- <KeyboardAvoidingView style={{flex:1}} behavior={Platform.OS==='ios'?'padding':undefined}><ScrollView contentContainerStyle={st.scroll} keyboardShouldPersistTaps="handled" nestedScrollEnabled scrollEnabled={!mapInteracting}><GradientBackground pointerEvents="none" colors={["#F3FBF7","#EDF9F5","#E9F6FE","#F4FBF8"]} start={{x:0,y:0}} end={{x:1,y:1}} style={st.ambient}/>
+ <View style={[st.header,{paddingTop:Math.max(insets.top,Platform.OS==='ios'?18:14)}]}><View><Text style={st.brand}>zen<Text style={{color:C.green}}>core</Text> <Text style={{fontSize:13,color:C.green}}>FIELD</Text></Text><Text style={st.headerSubtitle}>Field Sales Workspace</Text></View><View style={st.avatar}><Text style={{fontWeight:'800',color:C.blue}}>ZF</Text></View></View>
+ <KeyboardAvoidingView style={{flex:1}} behavior={Platform.OS==='ios'?'padding':undefined}><ScrollView contentContainerStyle={[st.scroll,{paddingBottom:28}]} keyboardShouldPersistTaps="handled" nestedScrollEnabled scrollEnabled={!mapInteracting}><GradientBackground pointerEvents="none" colors={["#F3FBF7","#EDF9F5","#E9F6FE","#F4FBF8"]} start={{x:0,y:0}} end={{x:1,y:1}} style={st.ambient}/>
  {tab==='Home'&&<>
  <GradientBackground colors={['#063E78','#086B87','#12A077','#62CF49']} start={{x:0,y:0}} end={{x:1,y:1}} style={[st.hero,{padding:17,marginTop:0,borderRadius:20}]}>
   <View style={st.heroOrb}/><View style={st.heroOrbSmall}/>
@@ -625,7 +654,13 @@ function ZenCoreFieldApp(){
  </>}
  {!!message&&<Text style={st.message}>{message}</Text>}
  </ScrollView></KeyboardAvoidingView>
- <View style={[st.nav,{paddingBottom:Math.max(insets.bottom,9)+6}]}>{(['Home','Visits','Tracking','Map','Profile'] as Tab[]).map(t=><Pressable key={t} style={[st.navItem,tab===t&&st.navActive]} onPress={()=>go(t)}><Text style={[st.navIcon,tab===t&&{color:C.green}]}>{icons[t]}</Text><Text style={[st.navText,tab===t&&{color:C.green}]}>{t}</Text></Pressable>)}</View>
+ <View style={[st.nav,{paddingBottom:Math.max(insets.bottom,Platform.OS==='android'?28:12),paddingTop:10}]}>{(['Home','Visits','Tracking','Map','Profile'] as Tab[]).map(t=>{
+   const active=tab===t;
+   return <Pressable key={t} accessibilityRole="tab" accessibilityState={{selected:active}} accessibilityLabel={`${t}${t==='Tracking'&&tracking?', tracking active':''}`} hitSlop={6} style={[st.navItem,active&&st.navActive]} onPress={()=>go(t)}>
+    <View style={st.navIconWrap}><Text style={[st.navIcon,active&&{color:C.green}]}>{icons[t]}</Text>{t==='Tracking'&&tracking&&<View style={st.navLiveDot}/>}</View>
+    <Text style={[st.navText,active&&{color:C.green}]}>{t}</Text>
+   </Pressable>;
+  })}</View>
  <ZenCoreDialog dialog={dialog} onClose={()=>setDialog(null)}/>
  {busy&&<View style={st.busy}><ActivityIndicator color={C.green} size="large"/></View>}
  </View>;
@@ -652,7 +687,7 @@ function ZenCoreDialog({dialog,onClose}:{dialog:DialogState|null;onClose:()=>voi
  </Modal>;
 }
 const st=StyleSheet.create({
- root:{flex:1,backgroundColor:C.bg},header:{paddingTop:Platform.OS==='ios'?54:16,paddingBottom:14,paddingHorizontal:20,backgroundColor:'#FBFFFD',flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderBottomColor:C.line,borderBottomWidth:1},brand:{fontSize:24,fontWeight:'900',color:C.blue,letterSpacing:-1},headerSubtitle:{fontSize:11,color:C.muted,marginTop:1},avatar:{height:40,width:40,borderRadius:14,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},scroll:{padding:19,paddingBottom:38},eyebrow:{color:C.green,fontWeight:'800',fontSize:11,marginBottom:6},heading:{fontSize:19,fontWeight:'800',color:C.text,marginBottom:14},hero:{borderRadius:23,padding:21,marginTop:6,overflow:'hidden',shadowColor:'#07518C',shadowOpacity:.22,shadowRadius:18,elevation:5},heroTitle:{color:C.white,fontSize:23,fontWeight:'900',marginTop:17,marginBottom:9,lineHeight:30,maxWidth:'91%'},heroSub:{color:'#DAF6EC',fontSize:11,marginBottom:16,lineHeight:18},metrics:{flexDirection:'row',justifyContent:'space-between',flexWrap:'wrap',marginTop:15,marginBottom:14},metric:{width:'48%',marginBottom:11},metricIcon:{fontSize:22,color:'#329E57',fontWeight:'700'},metricNumber:{fontSize:26,fontWeight:'900',color:C.text,marginBottom:5},panel:{backgroundColor:C.white,padding:16,marginBottom:13,borderRadius:18,borderWidth:1,borderColor:C.line,shadowOpacity:.04,shadowRadius:10,shadowColor:C.blue,elevation:1},muted:{color:C.muted,fontSize:12,lineHeight:19},body:{fontSize:13,fontWeight:'600',color:C.text},btn:{backgroundColor:C.blue,paddingVertical:13,paddingHorizontal:14,borderRadius:12,alignItems:'center',justifyContent:'center',marginVertical:4},btnLight:{backgroundColor:C.mint,borderWidth:1,borderColor:'#D4ECCC'},btnDanger:{backgroundColor:'#FFF0F2'},btnGhost:{backgroundColor:'transparent'},btnLabel:{color:C.white,fontSize:12,fontWeight:'800',textAlign:'center'},badge:{borderRadius:30,paddingHorizontal:9,paddingVertical:6,alignSelf:'flex-start'},badgeText:{fontWeight:'800',fontSize:10},topLine:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',gap:10,marginBottom:7},actions:{flexDirection:'row',gap:9,justifyContent:'space-between'},cardTitle:{fontWeight:'800',fontSize:14,color:C.text,flexShrink:1},info:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',paddingVertical:11,borderBottomColor:C.line,borderBottomWidth:1,gap:10},nav:{backgroundColor:'#FDFFFE',borderTopWidth:1,borderTopColor:C.line,flexDirection:'row',justifyContent:'space-between',paddingBottom:Platform.OS==='ios'?24:9,paddingTop:10,paddingHorizontal:9},navItem:{alignItems:'center',flex:1,paddingVertical:3,borderRadius:12},navActive:{backgroundColor:'#E8F9EC'},navIcon:{fontSize:22,color:'#93A4AA'},navText:{fontSize:10,fontWeight:'700',color:'#93A4AA',marginTop:4},fieldLabel:{fontSize:12,fontWeight:'800',color:'#466879',marginBottom:6},input:{backgroundColor:'#FAFFFC',borderWidth:1,borderColor:'#DAEAE0',borderRadius:12,paddingHorizontal:12,paddingVertical:12,color:C.text,fontSize:13},chips:{flexDirection:'row',flexWrap:'wrap',gap:7,marginBottom:14},chip:{borderRadius:10,backgroundColor:C.mint,borderWidth:1,borderColor:'#CCE9D0',paddingHorizontal:10,paddingVertical:8},chipActive:{backgroundColor:C.blue,borderColor:C.blue},chipText:{color:C.blue,fontSize:11,fontWeight:'700'},help:{fontSize:11,lineHeight:17,color:C.muted,marginTop:10,marginBottom:7},searchRow:{borderBottomColor:C.line,borderBottomWidth:1,paddingVertical:9,flexDirection:'row',justifyContent:'space-between'},targetRow:{borderTopWidth:1,borderTopColor:C.line,marginTop:12,paddingTop:10,flexDirection:'row',alignItems:'center',justifyContent:'space-between'},total:{backgroundColor:C.mint,borderRadius:12,padding:15,flexDirection:'row',justifyContent:'space-between',alignItems:'center'},totalNumber:{color:'#288A3C',fontWeight:'900',fontSize:18},linkText:{fontSize:12,fontWeight:'700',color:C.blue,marginTop:10},largeNumber:{fontSize:42,fontWeight:'900',color:C.deep,marginVertical:8},message:{marginTop:10,fontSize:11,color:C.amber},ambient:{position:'absolute',top:0,left:0,right:0,bottom:0,opacity:.85},
+ root:{flex:1,backgroundColor:C.bg},header:{paddingBottom:14,paddingHorizontal:20,backgroundColor:'#FBFFFD',flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderBottomColor:C.line,borderBottomWidth:1},brand:{fontSize:24,fontWeight:'900',color:C.blue,letterSpacing:-1},headerSubtitle:{fontSize:11,color:C.muted,marginTop:1},avatar:{height:40,width:40,borderRadius:14,backgroundColor:C.mint,alignItems:'center',justifyContent:'center'},scroll:{padding:19,paddingBottom:38},eyebrow:{color:C.green,fontWeight:'800',fontSize:11,marginBottom:6},heading:{fontSize:19,fontWeight:'800',color:C.text,marginBottom:14},hero:{borderRadius:23,padding:21,marginTop:6,overflow:'hidden',shadowColor:'#07518C',shadowOpacity:.22,shadowRadius:18,elevation:5},heroTitle:{color:C.white,fontSize:23,fontWeight:'900',marginTop:17,marginBottom:9,lineHeight:30,maxWidth:'91%'},heroSub:{color:'#DAF6EC',fontSize:11,marginBottom:16,lineHeight:18},metrics:{flexDirection:'row',justifyContent:'space-between',flexWrap:'wrap',marginTop:15,marginBottom:14},metric:{width:'48%',marginBottom:11},metricIcon:{fontSize:22,color:'#329E57',fontWeight:'700'},metricNumber:{fontSize:26,fontWeight:'900',color:C.text,marginBottom:5},panel:{backgroundColor:C.white,padding:16,marginBottom:13,borderRadius:18,borderWidth:1,borderColor:C.line,shadowOpacity:.04,shadowRadius:10,shadowColor:C.blue,elevation:1},muted:{color:C.muted,fontSize:12,lineHeight:19},body:{fontSize:13,fontWeight:'600',color:C.text},btn:{backgroundColor:C.blue,paddingVertical:13,paddingHorizontal:14,borderRadius:12,alignItems:'center',justifyContent:'center',marginVertical:4},btnLight:{backgroundColor:C.mint,borderWidth:1,borderColor:'#D4ECCC'},btnDanger:{backgroundColor:'#FFF0F2'},btnGhost:{backgroundColor:'transparent'},btnLabel:{color:C.white,fontSize:12,fontWeight:'800',textAlign:'center'},badge:{borderRadius:30,paddingHorizontal:9,paddingVertical:6,alignSelf:'flex-start'},badgeText:{fontWeight:'800',fontSize:10},topLine:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',gap:10,marginBottom:7},actions:{flexDirection:'row',gap:9,justifyContent:'space-between'},cardTitle:{fontWeight:'800',fontSize:14,color:C.text,flexShrink:1},info:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',paddingVertical:11,borderBottomColor:C.line,borderBottomWidth:1,gap:10},nav:{backgroundColor:'#FDFFFE',borderTopWidth:1,borderTopColor:C.line,flexDirection:'row',justifyContent:'space-between',paddingHorizontal:9,shadowColor:'#07518C',shadowOpacity:.08,shadowRadius:12,elevation:8},navItem:{alignItems:'center',flex:1,minHeight:52,paddingVertical:5,borderRadius:15,justifyContent:'center'},navActive:{backgroundColor:'#E8F9EC'},navIconWrap:{position:'relative',height:23,width:30,alignItems:'center',justifyContent:'center'},navIcon:{fontSize:22,color:'#93A4AA'},navLiveDot:{position:'absolute',right:1,top:0,width:7,height:7,borderRadius:4,backgroundColor:'#58C846',borderWidth:1.5,borderColor:'#FFFFFF'},navText:{fontSize:10,fontWeight:'700',color:'#93A4AA',marginTop:4},fieldLabel:{fontSize:12,fontWeight:'800',color:'#466879',marginBottom:6},input:{backgroundColor:'#FAFFFC',borderWidth:1,borderColor:'#DAEAE0',borderRadius:12,paddingHorizontal:12,paddingVertical:12,color:C.text,fontSize:13},chips:{flexDirection:'row',flexWrap:'wrap',gap:7,marginBottom:14},chip:{borderRadius:10,backgroundColor:C.mint,borderWidth:1,borderColor:'#CCE9D0',paddingHorizontal:10,paddingVertical:8},chipActive:{backgroundColor:C.blue,borderColor:C.blue},chipText:{color:C.blue,fontSize:11,fontWeight:'700'},help:{fontSize:11,lineHeight:17,color:C.muted,marginTop:10,marginBottom:7},searchRow:{borderBottomColor:C.line,borderBottomWidth:1,paddingVertical:9,flexDirection:'row',justifyContent:'space-between'},targetRow:{borderTopWidth:1,borderTopColor:C.line,marginTop:12,paddingTop:10,flexDirection:'row',alignItems:'center',justifyContent:'space-between'},total:{backgroundColor:C.mint,borderRadius:12,padding:15,flexDirection:'row',justifyContent:'space-between',alignItems:'center'},totalNumber:{color:'#288A3C',fontWeight:'900',fontSize:18},linkText:{fontSize:12,fontWeight:'700',color:C.blue,marginTop:10},largeNumber:{fontSize:42,fontWeight:'900',color:C.deep,marginVertical:8},message:{marginTop:10,fontSize:11,color:C.amber},ambient:{position:'absolute',top:0,left:0,right:0,bottom:0,opacity:.85},
  dailyCard:{borderRadius:22,marginBottom:13},nextCustomerName:{fontSize:17,fontWeight:'800',color:'#172943',marginTop:6},nextCustomerAddress:{fontSize:12,color:'#587789',marginTop:5},nextCustomerPlan:{fontSize:11,color:'#07518C',fontWeight:'700',marginTop:6},dailyAction:{backgroundColor:'#E9F8EF',borderRadius:13,paddingHorizontal:14,paddingVertical:13,flexDirection:'row',justifyContent:'space-between',marginTop:14},dailyActionLabel:{fontSize:12,color:'#07518C',fontWeight:'800'},dailyCount:{color:'#668290',fontSize:11,fontWeight:'700'},scheduleRow:{flexDirection:'row',alignItems:'center',gap:10,paddingVertical:12,borderBottomColor:'#E7F0ED',borderBottomWidth:1},scheduleDot:{height:9,width:9,borderRadius:5},scheduleTitle:{fontSize:12,fontWeight:'800',color:'#172943'},dailyNetworkRow:{flexDirection:'row',alignItems:'center',gap:7,padding:8,marginBottom:3},networkDot:{height:8,width:8,borderRadius:4},networkText:{fontSize:11,color:'#668290'},
  metricRow:{flexDirection:'row',gap:9,marginVertical:5},liveMetric:{flex:1,backgroundColor:'#FFFFFFCC',borderRadius:14,padding:13,minHeight:86},liveValue:{fontWeight:'900',color:'#07518C',fontSize:19,marginBottom:5},
  trackingSummary:{borderRadius:20,padding:18,marginBottom:14,borderWidth:1,borderColor:'#CDE8DC'},trackingBig:{fontSize:48,fontWeight:'900',color:'#07518C',marginTop:12},trackingStats:{flexDirection:'row',justifyContent:'space-between',marginVertical:16},trackingStatValue:{fontSize:23,fontWeight:'800',color:'#07518C'},
