@@ -17,6 +17,25 @@ class ZenCoreFieldMobileBridge(http.Controller):
         if user._is_public(): raise ValidationError('Login required')
         return user
 
+    @staticmethod
+    def _customer_domain(Partner):
+        """Return only genuine customer contacts, never staff or user contacts.
+
+        The mobile application uses this for every customer picker and for
+        server-side plan validation.  It keeps the Customer and Employee
+        concepts separate even when an employee has a res.partner record.
+        """
+        domain = [('active', '=', True), ('name', '!=', False)]
+        if 'customer_rank' in Partner._fields:
+            domain.append(('customer_rank', '>', 0))
+        if 'user_ids' in Partner._fields:
+            domain.append(('user_ids', '=', False))
+        if 'employee_ids' in Partner._fields:
+            domain.append(('employee_ids', '=', False))
+        if 'company_id' in Partner._fields:
+            domain.append(('company_id', 'in', [False, request.env.company.id]))
+        return domain
+
     # V18: authenticated read-only profile/dashboard; never substitute demo data.
     @http.route('/zencore/field/v6/profile',type='http',auth='user',csrf=False,methods=['GET'])
     def field_profile_v18(self, **kwargs):
@@ -190,7 +209,7 @@ class ZenCoreFieldMobileBridge(http.Controller):
                 raise ValidationError('Customer offset is too large')
             q = (q or '').strip()[:100]
             Partner = request.env['res.partner']
-            domain = [('active', '=', True), ('name', '!=', False)]
+            domain = self._customer_domain(Partner)
             if q:
                 searchable = [x for x in ('name', 'phone', 'email', 'mobile') if x in Partner._fields]
                 terms = [(name, 'ilike', q) for name in searchable]
@@ -272,9 +291,8 @@ class ZenCoreFieldMobileBridge(http.Controller):
             # belonging to another company or leaking whether a login exists.
             company_id = request.env.company.id
             if email:
-                exists = Partner.sudo().search([
-                    ('company_id', '=', company_id), ('email', '=ilike', email),
-                    ('active', '=', True)], limit=1)
+                exists = Partner.sudo().search(self._customer_domain(Partner) + [
+                    ('email', '=ilike', email)], limit=1)
                 if exists:
                     raise ValidationError('A customer with this email already exists in your company.')
             vals = {
@@ -353,7 +371,8 @@ class ZenCoreFieldMobileBridge(http.Controller):
                     raise ValidationError('Each target line needs 1-100 customers')
                 if len(employee_ids)>40:
                     raise ValidationError('Too many accompanying employees')
-                if len(Partner.search([('id','in',customer_ids)]))!=len(customer_ids):
+                customer_domain = [('id', 'in', customer_ids)] + self._customer_domain(Partner)
+                if len(Partner.search(customer_domain)) != len(customer_ids):
                     raise ValidationError('One or more customers are unavailable')
                 if employee_ids and len(Employee.search([('id','in',employee_ids), ('company_id','=',request.env.company.id)]))!=len(employee_ids):
                     raise ValidationError('One or more accompanying employees are unavailable')
@@ -368,7 +387,7 @@ class ZenCoreFieldMobileBridge(http.Controller):
                     raise ValidationError('Choose a valid From Location on the map or enter latitude and longitude')
                 if not source or not (-90 <= from_latitude <= 90 and -180 <= from_longitude <= 180):
                     raise ValidationError('Choose a valid From Location on the map or enter latitude and longitude')
-                partners=Partner.search([('id','in',customer_ids)])
+                partners=Partner.search(customer_domain)
                 primary=partners.filtered(lambda p: p.id == customer_ids[0])
                 primary=primary[:1]
                 lat=primary.partner_latitude if 'partner_latitude' in primary._fields else False

@@ -9,6 +9,23 @@ _logger = logging.getLogger(__name__)
 
 class MobileApiController(http.Controller):
 
+    @staticmethod
+    def _customer_domain(Partner):
+        """Limit customer-facing endpoints to actual customer contacts.
+
+        Employees and internal users also have partner records in Odoo.  They
+        must remain available through the employee APIs, but must never appear
+        in a customer search or customer picker.
+        """
+        domain = [('active', '=', True), ('customer_rank', '>', 0)]
+        if 'user_ids' in Partner._fields:
+            domain.append(('user_ids', '=', False))
+        if 'employee_ids' in Partner._fields:
+            domain.append(('employee_ids', '=', False))
+        if 'company_id' in Partner._fields:
+            domain.append(('company_id', 'in', [False, request.env.company.id]))
+        return domain
+
     def _json_response(self, data):
         return request.make_response(
             json.dumps(data),
@@ -220,7 +237,7 @@ class MobileApiController(http.Controller):
             terms = [('name', 'ilike', q), ('phone', 'ilike', q)]
             if 'mobile' in Partner._fields:
                 terms.append(('mobile', 'ilike', q))
-            domain = [('is_company', 'in', [True, False]), ('active', '=', True)]
+            domain = self._customer_domain(Partner)
             if terms:
                 domain += ['|'] * (len(terms) - 1) + terms
             partners = Partner.search(domain, limit=20)

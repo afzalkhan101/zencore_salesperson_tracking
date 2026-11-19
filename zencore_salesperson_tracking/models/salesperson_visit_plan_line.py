@@ -28,6 +28,7 @@ class SalespersonVisitPlanLine(models.Model):
     customer_ids = fields.Many2many(
         "res.partner",
         string="Customers",
+        domain="[('active', '=', True), ('customer_rank', '>', 0), ('user_ids', '=', False), ('employee_ids', '=', False)]",
         help="Customers to visit in this line"
     )
     customer_count = fields.Integer(compute="_compute_customer_count", store=True)

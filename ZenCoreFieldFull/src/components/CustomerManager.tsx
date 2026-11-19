@@ -1,4 +1,4 @@
-import React, {useRef,useState} from 'react';
+import React, {useEffect,useRef,useState} from 'react';
 import {ActivityIndicator,Pressable,StyleSheet,Text,TextInput,View} from 'react-native';
 import {WebView} from 'react-native-webview';
 import * as Odoo from '../services/odoo';
@@ -31,6 +31,14 @@ export default function CustomerManager({onClose,onSaved,onMapInteractionChange}
   setCustomers(items=>next?[...items,...p.partners.filter(c=>!items.some(x=>x.id===c.id))]:p.partners);
   setOffset(p.next_offset);setMore(p.has_more);setLoaded(true);
  };
+ useEffect(()=>{
+  // Opening Customer Management immediately shows the existing customer
+  // directory. This endpoint excludes employee and internal-user contacts.
+  void perform(()=>load());
+ // The directory is deliberately loaded only once when this screen opens;
+ // subsequent searches remain explicit through the Search button.
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ },[]);
  const lookup=async(mode:'address'|'coordinates')=>perform(async()=>{
   // Public Nominatim: one user-triggered lookup at a time, never keystroke autocomplete.
   if(Date.now()-lookupAt.current<1250)throw Error('Please allow a moment between location lookups.');
@@ -82,6 +90,7 @@ export default function CustomerManager({onClose,onSaved,onMapInteractionChange}
    <TextInput style={s.input} placeholder="Search customer name or phone" value={query} onChangeText={setQuery} placeholderTextColor="#9AABB8"/>
    <View style={s.horizontal}>{action('Search',()=>void perform(()=>load()))}{action('+ Add Customer',()=>{setForm(empty());setScreen('add');setError('');setNotice('')},true)}</View>
    {!loaded&&action('Load Customers',()=>void perform(()=>load()))}
+   {loaded&&<Text style={s.directoryTitle}>{query.trim()?'Customer search results':`Existing customers (${customers.length})`}</Text>}
    {loaded&&customers.length===0&&<Text style={s.note}>No customers found.</Text>}
    {customers.map(c=><View style={s.item} key={c.id}><Text style={s.name}>{c.name}</Text><Text style={s.note}>{[c.street,c.city].filter(Boolean).join(', ')||'No saved address'}</Text><Text style={s.note}>{c.phone||''}</Text></View>)}
    {more&&action('Load More',()=>void perform(()=>load(true)),true)}
@@ -109,4 +118,4 @@ export default function CustomerManager({onClose,onSaved,onMapInteractionChange}
   {busy&&<ActivityIndicator color="#07518C"/>}
  </View>;
 }
-const s=StyleSheet.create({wrapper:{backgroundColor:'#fff',borderRadius:18,padding:15,borderColor:'#DFECE9',borderWidth:1,marginBottom:16},heading:{flexDirection:'row',alignItems:'center',gap:17,marginBottom:16},back:{fontWeight:'800',color:'#07518C',fontSize:13},title:{fontSize:18,fontWeight:'900',color:textColor},field:{flex:1,marginBottom:10,minWidth:120},label:{fontSize:12,color:'#577081',fontWeight:'700',marginBottom:6},input:{borderWidth:1,borderColor:'#D6E5E0',backgroundColor:'#F9FFFC',borderRadius:12,paddingHorizontal:12,paddingVertical:11,color:textColor,fontSize:13},horizontal:{flexDirection:'row',gap:9,marginVertical:8},button:{flex:1,backgroundColor:'#07518C',paddingVertical:12,paddingHorizontal:10,alignItems:'center',borderRadius:12,marginVertical:5},light:{backgroundColor:'#E8F8EE',borderWidth:1,borderColor:'#D0EBD5'},buttonText:{fontWeight:'800',color:'#fff',fontSize:12,textAlign:'center'},item:{paddingVertical:12,borderBottomWidth:1,borderBottomColor:'#E4EEEB'},name:{fontWeight:'800',color:textColor,fontSize:14},note:{color:'#6D8591',fontSize:12,lineHeight:19,marginVertical:5},mapSearch:{flexDirection:'row',gap:8,alignItems:'center',marginTop:5},mapSearchInput:{flex:1},mapSearchButton:{backgroundColor:'#07518C',borderRadius:12,paddingHorizontal:14,paddingVertical:12},mapSearchText:{fontWeight:'800',color:'#fff',fontSize:12},mapWrap:{height:355,overflow:'hidden',borderRadius:15,marginVertical:12,borderWidth:1,borderColor:'#D6E5E0'},error:{color:'#BD3544',fontSize:12,paddingVertical:8},success:{color:'#177640',fontSize:12,paddingVertical:8}});
+const s=StyleSheet.create({wrapper:{backgroundColor:'#fff',borderRadius:18,padding:15,borderColor:'#DFECE9',borderWidth:1,marginBottom:16},heading:{flexDirection:'row',alignItems:'center',gap:17,marginBottom:16},back:{fontWeight:'800',color:'#07518C',fontSize:13},title:{fontSize:18,fontWeight:'900',color:textColor},field:{flex:1,marginBottom:10,minWidth:120},label:{fontSize:12,color:'#577081',fontWeight:'700',marginBottom:6},input:{borderWidth:1,borderColor:'#D6E5E0',backgroundColor:'#F9FFFC',borderRadius:12,paddingHorizontal:12,paddingVertical:11,color:textColor,fontSize:13},horizontal:{flexDirection:'row',gap:9,marginVertical:8},button:{flex:1,backgroundColor:'#07518C',paddingVertical:12,paddingHorizontal:10,alignItems:'center',borderRadius:12,marginVertical:5},light:{backgroundColor:'#E8F8EE',borderWidth:1,borderColor:'#D0EBD5'},buttonText:{fontWeight:'800',color:'#fff',fontSize:12,textAlign:'center'},directoryTitle:{fontSize:12,color:'#466879',fontWeight:'800',marginTop:12,marginBottom:3},item:{paddingVertical:12,borderBottomWidth:1,borderBottomColor:'#E4EEEB'},name:{fontWeight:'800',color:textColor,fontSize:14},note:{color:'#6D8591',fontSize:12,lineHeight:19,marginVertical:5},mapSearch:{flexDirection:'row',gap:8,alignItems:'center',marginTop:5},mapSearchInput:{flex:1},mapSearchButton:{backgroundColor:'#07518C',borderRadius:12,paddingHorizontal:14,paddingVertical:12},mapSearchText:{fontWeight:'800',color:'#fff',fontSize:12},mapWrap:{height:355,overflow:'hidden',borderRadius:15,marginVertical:12,borderWidth:1,borderColor:'#D6E5E0'},error:{color:'#BD3544',fontSize:12,paddingVertical:8},success:{color:'#177640',fontSize:12,paddingVertical:8}});

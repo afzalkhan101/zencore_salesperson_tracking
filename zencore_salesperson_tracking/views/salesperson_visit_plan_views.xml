@@ -76,7 +76,7 @@
                                     <field name="employee_ids" widget="many2many_tags"/>
                                     <field name="from_location" placeholder="From"/>
                                     <field name="expected_km" string="KM"/>
-                                    <field name="customer_ids" widget="many2many_tags" placeholder="Customers"/>
+                                    <field name="customer_ids" widget="many2many_tags" placeholder="Customers" domain="[('active', '=', True), ('customer_rank', '&gt;', 0), ('user_ids', '=', False), ('employee_ids', '=', False)]"/>
                                     <field name="notes"/>
                                 </list>
                             </field>

@@ -65,7 +65,7 @@
                                          same set as colored chips (dark green once actually
                                          visited, grey while pending) instead of the plain,
                                          visit-status-blind many2many_tags widget. -->
-                                    <field name="customer_ids" widget="many2many_tags" column_invisible="1"/>
+                                    <field name="customer_ids" widget="many2many_tags" column_invisible="1" domain="[('active', '=', True), ('customer_rank', '&gt;', 0), ('user_ids', '=', False), ('employee_ids', '=', False)]"/>
                                     <field name="customers_visited_html" widget="html" string="Customers"/>
                                     <field name="notes"/>
                                 </list>
