@@ -145,6 +145,7 @@ function ZenCoreFieldApp(){
  const [metrics,setMetrics]=useState<TrackingMetrics>({distanceMeters:0,durationMs:0,accuracyMeters:null,latestLat:null,latestLng:null,lastFixAt:null,acceptedFixes:0});
  const [now,setNow]=useState(Date.now());
  const [dialog,setDialog]=useState<DialogState|null>(null);
+ const [profileSettingsOpen,setProfileSettingsOpen]=useState(false);
  const [profileCustomersOpen,setProfileCustomersOpen]=useState(false);
  const [profile,setProfile]=useState<Odoo.FieldProfile|null>(null);
  const [dashboard,setDashboard]=useState<Odoo.FieldDashboard|null>(null);
@@ -255,12 +256,13 @@ function ZenCoreFieldApp(){
  // destination tab to its root screen.
  const go=(t:Tab)=>{
   if(t===tab)return;
-  setTab(t);setEditing(null);setDetail(null);setServerDetail(null);setProfileCustomersOpen(false);
+  setTab(t);setEditing(null);setDetail(null);setServerDetail(null);setProfileSettingsOpen(false);setProfileCustomersOpen(false);
  };
  useEffect(()=>{
   const onHardwareBack=()=>{
    if(dialog){setDialog(null);return true;}
    if(profileCustomersOpen){setProfileCustomersOpen(false);return true;}
+   if(profileSettingsOpen){setProfileSettingsOpen(false);return true;}
    if(tab==='Visits'&&(editing||detail||serverDetail!==null)){
     setEditing(null);setDetail(null);setServerDetail(null);return true;
    }
@@ -279,7 +281,7 @@ function ZenCoreFieldApp(){
   };
   const subscription=BackHandler.addEventListener('hardwareBackPress',onHardwareBack);
   return()=>subscription.remove();
- },[authPage,connected,detail,dialog,editing,profileCustomersOpen,serverDetail,tab,tracking]);
+ },[authPage,connected,detail,dialog,editing,profileCustomersOpen,profileSettingsOpen,serverDetail,tab,tracking]);
  const run=async(action:()=>Promise<void>)=>{if(busy)return;setBusy(true);try{await action()}catch(e){notify(e instanceof Error?e.message:String(e))}finally{setBusy(false);await refresh()}};
  const fetchServer=()=>run(async()=>{
   const activeProfile=await Odoo.fieldProfile();
@@ -591,9 +593,9 @@ function ZenCoreFieldApp(){
    
    {!tracking&&<B onPress={()=>go('Visits')}>Select Approved Plan in Visits</B>}
   </Panel></>}
- {tab==='Profile'&&<><PageBanner code="PROFILE" title={connected?'My Profile':'Connect to Odoo'} subtitle={connected?'Account and role information':'Secure Odoo login'}/>
+ {tab==='Profile'&&<><PageBanner code={profileSettingsOpen?'SETTINGS':'PROFILE'} title={connected?(profileSettingsOpen?'Settings':'My Profile'):'Connect to Odoo'} subtitle={connected?(profileSettingsOpen?'App preferences and customer management':'Account and role information'):'Secure Odoo login'}/>
   {connected?<>
-   <Panel><View style={st.profileHeader}>
+   {!profileSettingsOpen?<Panel><View style={st.profileHeader}>
     <View style={st.profileAvatar}><Text style={st.profileAvatarText}>{(profile?.name||userName||'ZF').trim().split(/\s+/).slice(0,2).map(x=>x[0]||'').join('').toUpperCase()}</Text></View>
     <View style={{flex:1}}><Text style={st.profileName}>{profile?.name||userName||'Odoo User'}</Text><Badge tone="green">{profile?.role||'User'}</Badge></View>
    </View>
@@ -603,14 +605,25 @@ function ZenCoreFieldApp(){
    <Info label="Role" value={profile?.role||'Not available'}/>
    <Info label="Reports To" value={profile?.reports_to||'Not assigned'}/>
    <Info label="App Version" value="v1"/>
-   <B variant="light" onPress={()=>setProfileCustomersOpen(v=>!v)}>{profileCustomersOpen?'Close Customers':'Customers / Add Customer'}</B>
+   <B variant="light" onPress={()=>setProfileSettingsOpen(true)}>Open Settings</B>
    <B variant="danger" onPress={()=>{
       const perform=()=>run(async()=>{await Odoo.logout();setConnected(false);setProfile(null);setDashboard(null);setUserName('');setServerPlans([]);setServerDetail(null);setRemoteDetailData(null);setCustomerVisits([]);setCheckinIds({});setPlanOwnerKey('');setLocalPlans([]);setEmail('');setPassword('');notify('Signed out. Local unsynced records have not been deleted.');});
       if(tracking||pending>0||pendingPhotos>0){Alert.alert('Sign out?', 'Tracking or unsynced data may need Odoo access. Local records will be preserved, but auto-upload pauses until you sign in again.',[{text:'Cancel',style:'cancel'},{text:'Sign Out',style:'destructive',onPress:perform}]);}
       else perform();
    }}>Sign Out</B>
-   </Panel>
-   {profileCustomersOpen&&<CustomerManager onClose={()=>setProfileCustomersOpen(false)} onSaved={()=>{setCustomerList([]);setCustomersOffset(0);setCustomersMore(false);}} onMapInteractionChange={setMapInteracting}/>}
+   </Panel>:<>
+    {!profileCustomersOpen&&<>
+     <Pressable style={st.settingsBack} onPress={()=>setProfileSettingsOpen(false)} accessibilityRole="button"><Text style={st.settingsBackText}>‹ Back to Profile</Text></Pressable>
+     <Panel style={st.settingsPanel}><Text style={st.settingsSectionTitle}>Account & App</Text><Info label="Odoo Connection" value={online?'Connected':'Offline (saved session)'}/><Info label="App Version" value="v1"/><Info label="Notifications" value="Device settings"/></Panel>
+     <Pressable style={st.customerSettingsCard} onPress={()=>setProfileCustomersOpen(true)} accessibilityRole="button">
+      <View style={st.customerSettingsIcon}><Text style={st.customerSettingsIconText}>⌖</Text></View>
+      <View style={st.customerSettingsCopy}><Text style={st.customerSettingsTitle}>Customer Management</Text><Text style={st.customerSettingsSub}>Add and manage customer locations</Text><Badge tone="green">Odoo customers</Badge></View>
+      <Text style={st.customerSettingsArrow}>›</Text>
+     </Pressable>
+     <Panel style={st.settingsPanel}><Text style={st.settingsSectionTitle}>Tracking Preferences</Text><Info label="GPS recording" value={tracking?'Active':'Ready when a plan starts'}/><Tiny>Tracking permissions and background access are managed through your phone settings.</Tiny></Panel>
+    </>}
+    {profileCustomersOpen&&<CustomerManager onClose={()=>setProfileCustomersOpen(false)} onSaved={()=>{setCustomerList([]);setCustomersOffset(0);setCustomersMore(false);}} onMapInteractionChange={setMapInteracting}/>}
+   </>}
   </>:<>
    {authPage==='login'?<Panel>
     <Text style={st.cardTitle}>Connect to Odoo</Text>
@@ -709,6 +722,17 @@ const st=StyleSheet.create({
  profileAvatar:{height:62,width:62,borderRadius:32,backgroundColor:'#D5EEFF',alignItems:'center',justifyContent:'center'},
  profileAvatarText:{fontSize:23,fontWeight:'900',color:'#07518C'},
  profileName:{fontSize:18,fontWeight:'800',color:'#172943',marginBottom:8},
+ settingsBack:{alignSelf:'flex-start',paddingVertical:8,paddingHorizontal:3,marginBottom:6},
+ settingsBackText:{fontSize:12,fontWeight:'800',color:'#07518C'},
+ settingsPanel:{paddingVertical:14},
+ settingsSectionTitle:{fontSize:14,fontWeight:'800',color:'#172943',marginBottom:5},
+ customerSettingsCard:{backgroundColor:'#F6FFF8',borderWidth:1.5,borderColor:'#A9E2B7',borderRadius:20,padding:16,marginBottom:13,flexDirection:'row',alignItems:'center',gap:13,shadowColor:'#137B48',shadowOpacity:.08,shadowRadius:12,elevation:2},
+ customerSettingsIcon:{width:49,height:49,borderRadius:16,backgroundColor:'#DDEEFF',alignItems:'center',justifyContent:'center'},
+ customerSettingsIconText:{fontSize:28,color:'#07518C',fontWeight:'900'},
+ customerSettingsCopy:{flex:1,gap:4},
+ customerSettingsTitle:{fontSize:15,fontWeight:'900',color:'#172943'},
+ customerSettingsSub:{fontSize:11,color:'#5B7480',lineHeight:16},
+ customerSettingsArrow:{fontSize:29,color:'#07518C',fontWeight:'400'},
  heroOrb:{position:'absolute',right:-85,top:-125,width:270,height:270,borderRadius:150,backgroundColor:'#FFFFFF1B'},
  heroOrbSmall:{position:'absolute',right:15,bottom:-65,width:150,height:150,borderRadius:80,backgroundColor:'#FFFFFF16'},
  heroButton:{marginTop:8,minHeight:42,width:174,alignSelf:'flex-start',backgroundColor:'#FFFFFF',borderRadius:13,flexDirection:'row',alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:'#E3EEF0'},
