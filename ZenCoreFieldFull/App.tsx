@@ -1,6 +1,6 @@
 import React,{useCallback,useEffect,useRef,useState} from 'react';
 import {startAutoSync,triggerAutoSync,type AutoSyncSnapshot} from './src/services/autoSync';
-import {Alert,ActivityIndicator,Animated,BackHandler,Easing,KeyboardAvoidingView,Modal,Platform,Pressable,ScrollView,StatusBar,StyleSheet,Text,TextInput,View,Image as RNImage,Linking} from 'react-native';
+import {ActivityIndicator,Animated,BackHandler,Easing,KeyboardAvoidingView,Modal,Platform,Pressable,ScrollView,StatusBar,StyleSheet,Text,TextInput,View,Image as RNImage,Linking} from 'react-native';
 import {SafeAreaProvider,useSafeAreaInsets} from 'react-native-safe-area-context';
 import {chooseAndQueuePhoto,deleteQueuedPhoto,getVisitPhotos,type VisitPhoto} from './src/services/photoEvidence';
 import {photoPendingCount} from './src/services/storage';
@@ -281,11 +281,17 @@ function ZenCoreFieldApp(){
    if(tab!=='Home'){
     setTab('Home');return true;
    }
-   Alert.alert(
-    'Exit ZenCore Field?',
-    tracking?'GPS tracking will continue in the background while this app is closed.':'Are you sure you want to exit?',
-    [{text:'Stay',style:'cancel'},{text:'Exit',style:'destructive',onPress:()=>BackHandler.exitApp()}],
-   );
+   setDialog({
+    title:'Exit ZenCore Field?',
+    message:tracking
+     ?'GPS tracking will continue safely in the background while the app is closed.'
+     :'Are you sure you want to exit the app?',
+    tone:'warning',
+    actions:[
+     {label:'Stay',variant:'light'},
+     {label:'Exit app',variant:'danger',onPress:()=>BackHandler.exitApp()},
+    ],
+   });
    return true;
   };
   const subscription=BackHandler.addEventListener('hardwareBackPress',onHardwareBack);
@@ -617,7 +623,12 @@ function ZenCoreFieldApp(){
    <B variant="light" onPress={()=>setProfileSettingsOpen(true)}>Open Settings</B>
    <B variant="danger" onPress={()=>{
       const perform=()=>run(async()=>{await Odoo.logout();setConnected(false);setProfile(null);setDashboard(null);setUserName('');setServerPlans([]);setServerDetail(null);setRemoteDetailData(null);setCustomerVisits([]);setCheckinIds({});setPlanOwnerKey('');setLocalPlans([]);setEmail('');setPassword('');notify('Signed out. Local unsynced records have not been deleted.');});
-      if(tracking||pending>0||pendingPhotos>0){Alert.alert('Sign out?', 'Tracking or unsynced data may need Odoo access. Local records will be preserved, but auto-upload pauses until you sign in again.',[{text:'Cancel',style:'cancel'},{text:'Sign Out',style:'destructive',onPress:perform}]);}
+      if(tracking||pending>0||pendingPhotos>0){setDialog({
+       title:'Sign out of ZenCore?',
+       message:'Tracking and unsynced records stay safely on this phone, but automatic Odoo upload pauses until you sign in again.',
+       tone:'warning',
+       actions:[{label:'Stay signed in',variant:'light'},{label:'Sign out',variant:'danger',onPress:perform}],
+      });}
       else perform();
    }}>Sign Out</B>
    </Panel>:<>
