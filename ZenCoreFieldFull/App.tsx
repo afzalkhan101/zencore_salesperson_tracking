@@ -16,7 +16,7 @@ import VisitPlanEditor from './src/components/VisitPlanEditor';
 import LiveRouteMap from './src/components/LiveRouteMap';
 import CustomerManager from './src/components/CustomerManager';
 
-type Tab='Home'|'Visits'|'Tracking'|'Map'|'Profile';
+type Tab='Home'|'Visits'|'Tracking'|'Map'|'Profile'|'Settings';
 const TODAY=()=>new Date().toISOString().slice(0,10);
 const BUILD_TAG='ZENCORE_FIELD_V39_SAFE_NAVIGATION';
 if (__DEV__) console.log('[ZenCore Build]',BUILD_TAG);
@@ -27,7 +27,7 @@ const purposes=[{key:'followup',label:'Follow Up'},{key:'order',label:'New Order
 const formatMoney=(n:number)=>`৳ ${Number(n||0).toFixed(2)}`;
 const freshPlan=():Plan=>({localId:createId(),name:'New Visit Plan',date:TODAY(),purpose:'followup',priority:'normal',targets:[],transport:0,food:0,other:0,state:'draft',notes:''});
 const safeNum=(s:string)=>Math.max(0,Number(s)||0);
-const icons:Record<Tab,string>={Home:'⌂',Visits:'▣',Tracking:'⌖',Map:'▱',Profile:'♙'};
+const icons:Record<Tab,string>={Home:'⌂',Visits:'▣',Tracking:'⌖',Map:'▱',Profile:'♙',Settings:'⚙'};
 type DialogTone='success'|'warning'|'error'|'info';
 type DialogAction={label:string;variant?:'primary'|'light'|'danger';onPress?:()=>void|Promise<void>};
 type DialogState={title:string;message:string;tone:DialogTone;actions:DialogAction[]};
@@ -146,6 +146,7 @@ function ZenCoreFieldApp(){
  const [now,setNow]=useState(Date.now());
  const [dialog,setDialog]=useState<DialogState|null>(null);
  const [profileSettingsOpen,setProfileSettingsOpen]=useState(false);
+ const [settingsReturnTab,setSettingsReturnTab]=useState<Tab>('Home');
  const [profileCustomersOpen,setProfileCustomersOpen]=useState(false);
  const [profile,setProfile]=useState<Odoo.FieldProfile|null>(null);
  const [dashboard,setDashboard]=useState<Odoo.FieldDashboard|null>(null);
@@ -259,15 +260,18 @@ function ZenCoreFieldApp(){
   setTab(t);setEditing(null);setDetail(null);setServerDetail(null);setProfileSettingsOpen(false);setProfileCustomersOpen(false);
  };
  const openSettings=()=>{
-  setEditing(null);setDetail(null);setServerDetail(null);setProfileCustomersOpen(false);setTab('Profile');
-  if(connected)setProfileSettingsOpen(true);
-  else{setProfileSettingsOpen(false);setAuthPage('login');}
+  setEditing(null);setDetail(null);setServerDetail(null);setProfileCustomersOpen(false);
+  setSettingsReturnTab(tab==='Settings'?settingsReturnTab:tab);
+  if(connected){setProfileSettingsOpen(true);setTab('Settings');}
+  else{setProfileSettingsOpen(false);setAuthPage('login');setTab('Profile');}
  };
  useEffect(()=>{
   const onHardwareBack=()=>{
    if(dialog){setDialog(null);return true;}
    if(profileCustomersOpen){setProfileCustomersOpen(false);return true;}
-   if(profileSettingsOpen){setProfileSettingsOpen(false);return true;}
+   if(profileSettingsOpen||tab==='Settings'){
+    setProfileSettingsOpen(false);setTab(settingsReturnTab==='Settings'?'Home':settingsReturnTab);return true;
+   }
    if(tab==='Visits'&&(editing||detail||serverDetail!==null)){
     setEditing(null);setDetail(null);setServerDetail(null);return true;
    }
@@ -286,7 +290,7 @@ function ZenCoreFieldApp(){
   };
   const subscription=BackHandler.addEventListener('hardwareBackPress',onHardwareBack);
   return()=>subscription.remove();
- },[authPage,connected,detail,dialog,editing,profileCustomersOpen,profileSettingsOpen,serverDetail,tab,tracking]);
+ },[authPage,connected,detail,dialog,editing,profileCustomersOpen,profileSettingsOpen,serverDetail,settingsReturnTab,tab,tracking]);
  const run=async(action:()=>Promise<void>)=>{if(busy)return;setBusy(true);try{await action()}catch(e){notify(e instanceof Error?e.message:String(e))}finally{setBusy(false);await refresh()}};
  const fetchServer=()=>run(async()=>{
   const activeProfile=await Odoo.fieldProfile();
@@ -598,9 +602,9 @@ function ZenCoreFieldApp(){
    
    {!tracking&&<B onPress={()=>go('Visits')}>Select Approved Plan in Visits</B>}
   </Panel></>}
- {tab==='Profile'&&<><PageBanner code={profileSettingsOpen?'SETTINGS':'PROFILE'} title={connected?(profileSettingsOpen?'Settings':'My Profile'):'Connect to Odoo'} subtitle={connected?(profileSettingsOpen?'App preferences and customer management':'Account and role information'):'Secure Odoo login'}/>
+ {(tab==='Profile'||tab==='Settings')&&<><PageBanner code={tab==='Settings'||profileSettingsOpen?'SETTINGS':'PROFILE'} title={connected?(tab==='Settings'||profileSettingsOpen?'Settings':'My Profile'):'Connect to Odoo'} subtitle={connected?(tab==='Settings'||profileSettingsOpen?'App preferences and customer management':'Account and role information'):'Secure Odoo login'}/>
   {connected?<>
-   {!profileSettingsOpen?<Panel><View style={st.profileHeader}>
+   {tab==='Profile'&&!profileSettingsOpen?<Panel><View style={st.profileHeader}>
     <View style={st.profileAvatar}><Text style={st.profileAvatarText}>{(profile?.name||userName||'ZF').trim().split(/\s+/).slice(0,2).map(x=>x[0]||'').join('').toUpperCase()}</Text></View>
     <View style={{flex:1}}><Text style={st.profileName}>{profile?.name||userName||'Odoo User'}</Text><Badge tone="green">{profile?.role||'User'}</Badge></View>
    </View>
@@ -618,7 +622,7 @@ function ZenCoreFieldApp(){
    }}>Sign Out</B>
    </Panel>:<>
     {!profileCustomersOpen&&<>
-     <Pressable style={st.settingsBack} onPress={()=>setProfileSettingsOpen(false)} accessibilityRole="button"><Text style={st.settingsBackText}>‹ Back to Profile</Text></Pressable>
+     <Pressable style={st.settingsBack} onPress={()=>{setProfileSettingsOpen(false);setTab(settingsReturnTab==='Settings'?'Home':settingsReturnTab)}} accessibilityRole="button"><Text style={st.settingsBackText}>‹ Back</Text></Pressable>
      <Panel style={st.settingsPanel}><Text style={st.settingsSectionTitle}>Account & App</Text><Info label="Odoo Connection" value={online?'Connected':'Offline (saved session)'}/><Info label="App Version" value="v1"/><Info label="Notifications" value="Device settings"/></Panel>
      <Pressable style={st.customerSettingsCard} onPress={()=>setProfileCustomersOpen(true)} accessibilityRole="button">
       <View style={st.customerSettingsIcon}><Text style={st.customerSettingsIconText}>⌖</Text></View>
@@ -673,7 +677,7 @@ function ZenCoreFieldApp(){
  {!!message&&<Text style={st.message}>{message}</Text>}
  </ScrollView></KeyboardAvoidingView>
  <View style={[st.nav,{paddingBottom:Math.max(insets.bottom,Platform.OS==='android'?28:12),paddingTop:10}]}>{(['Home','Visits','Tracking','Map','Profile'] as Tab[]).map(t=>{
-   const active=tab===t;
+   const active=tab===t||(tab==='Settings'&&t==='Profile');
    return <Pressable key={t} accessibilityRole="tab" accessibilityState={{selected:active}} accessibilityLabel={`${t}${t==='Tracking'&&tracking?', tracking active':''}`} hitSlop={6} style={[st.navItem,active&&st.navActive]} onPress={()=>go(t)}>
     <View style={st.navIconWrap}><Text style={[st.navIcon,active&&{color:C.green}]}>{icons[t]}</Text>{t==='Tracking'&&tracking&&<View style={st.navLiveDot}/>}</View>
     <Text style={[st.navText,active&&{color:C.green}]}>{t}</Text>
