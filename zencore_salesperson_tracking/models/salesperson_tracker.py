@@ -565,7 +565,7 @@ class SalespersonTracker(models.Model):
                 # transitions are only valid for a recent live fix.
                 recent_fix = log_time is None or abs((now - log_time).total_seconds()) <= 180
                 if self.is_tracking and recent_fix:
-                    self._check_geofence(latitude, longitude)
+                    self._check_geofence(latitude, longitude, event_time=tracked_at)
                 # Flush ORM writes (checkin create, current_checkin_id, visited_line)
                 # and invalidate cache so total_visited is fresh in the response.
                 self.env.flush_all()
@@ -752,7 +752,7 @@ class SalespersonTracker(models.Model):
                     status = "moving"
         return status, self.DASHBOARD_STATUS_COLORS[status], self.DASHBOARD_STATUS_LABELS[status]
 
-    def _check_geofence(self, latitude, longitude):
+    def _check_geofence(self, latitude, longitude, event_time=None):
         """Auto check-in/out based on geofence_radius_meters from planned customers.
         
         Check-in: salesperson enters radius of a planned customer.
@@ -784,7 +784,9 @@ class SalespersonTracker(models.Model):
                         self.id, p.name, dist_to_current, geofence_radius
                     )
                     # Call action_checkout on the checkin record
-                    self.current_checkin_id.action_checkout(latitude, longitude)
+                    self.current_checkin_id.action_checkout(
+                        latitude, longitude, checkout_time=event_time
+                    )
                     self.current_checkin_id = False
                 else:
                     # STILL within the current customer's radius — but for
@@ -801,11 +803,14 @@ class SalespersonTracker(models.Model):
                     # treat it as switching visits: checkout the current one
                     # and check in to the closer one immediately.
                     self._maybe_switch_to_closer_customer(
-                        latitude, longitude, geofence_radius, dist_to_current, haversine
+                        latitude, longitude, geofence_radius, dist_to_current,
+                        haversine, event_time=event_time,
                     )
             else:
                 # Partner has no coordinates — force checkout
-                self.current_checkin_id.action_checkout(latitude, longitude)
+                self.current_checkin_id.action_checkout(
+                    latitude, longitude, checkout_time=event_time
+                )
                 self.current_checkin_id = False
 
         # ── STEP 2: Entry check — only if not currently checked in ───────────
@@ -816,7 +821,9 @@ class SalespersonTracker(models.Model):
             return
 
         # Already-visited partner IDs — skip re-entry
-        visited_partner_ids = {v.partner_id.id for v in self.visited_line_ids}
+        visited_partner_ids = {
+            visit.partner_id.id for visit in self.visited_line_ids if visit.checkout_time
+        }
 
         # Fetch all planned customers with coordinates in one query
         lines = self.env["salesperson.visit.plan.line"].search([
@@ -860,7 +867,7 @@ class SalespersonTracker(models.Model):
             ("customer_ids", "in", nearest_customer.id),
         ], limit=1)
 
-        checkin_time = fields.Datetime.now()
+        checkin_time = event_time or fields.Datetime.now()
         
         # Create checkin record
         checkin = self.env["salesperson.checkin"].create({
@@ -884,7 +891,10 @@ class SalespersonTracker(models.Model):
         # Force recompute of visited count
         self._compute_counts()
 
-    def _maybe_switch_to_closer_customer(self, latitude, longitude, geofence_radius, dist_to_current, haversine):
+    def _maybe_switch_to_closer_customer(
+        self, latitude, longitude, geofence_radius, dist_to_current, haversine,
+        event_time=None,
+    ):
         """Called while still checked-in to a customer but not yet outside
         their radius. If a different, unvisited customer's OWN geofence
         radius also contains the current position right now, switch to
@@ -905,7 +915,9 @@ class SalespersonTracker(models.Model):
             return
 
         current_partner_id = self.current_checkin_id.partner_id.id
-        visited_partner_ids = {v.partner_id.id for v in self.visited_line_ids}
+        visited_partner_ids = {
+            visit.partner_id.id for visit in self.visited_line_ids if visit.checkout_time
+        }
         visited_partner_ids.add(current_partner_id)
 
         lines = self.env["salesperson.visit.plan.line"].search([("plan_id", "=", self.plan_id.id)])
@@ -933,14 +945,16 @@ class SalespersonTracker(models.Model):
             self.id, self.current_checkin_id.partner_id.name, nearest_customer.name,
             nearest_distance, geofence_radius,
         )
-        self.current_checkin_id.action_checkout(latitude, longitude)
+        self.current_checkin_id.action_checkout(
+            latitude, longitude, checkout_time=event_time
+        )
         self.current_checkin_id = False
 
         target_line = self.env["salesperson.visit.plan.line"].search([
             ("plan_id", "=", self.plan_id.id),
             ("customer_ids", "in", nearest_customer.id),
         ], limit=1)
-        checkin_time = fields.Datetime.now()
+        checkin_time = event_time or fields.Datetime.now()
         checkin = self.env["salesperson.checkin"].create({
             "tracker_id": self.id,
             "partner_id": nearest_customer.id,
@@ -1292,10 +1306,21 @@ class SalespersonTrackerTargetLine(models.Model):
              "(appears in Visited Lines), grey while still pending.",
     )
 
-    @api.depends("customer_ids", "tracker_id.visited_line_ids.partner_id")
+    @api.depends(
+        "customer_ids",
+        "tracker_id.visited_line_ids.partner_id",
+        "tracker_id.visited_line_ids.checkout_time",
+    )
     def _compute_customers_visited_html(self):
         for line in self:
-            visited_partner_ids = set(line.tracker_id.visited_line_ids.mapped("partner_id").ids)
+            # An open check-in means the salesperson is currently at the
+            # customer, not that the visit is finished.  Keep its chip pending
+            # until the exit/checkout reaches Odoo.
+            visited_partner_ids = set(
+                line.tracker_id.visited_line_ids.filtered(
+                    lambda visit: visit.checkout_time
+                ).mapped("partner_id").ids
+            )
             chips = []
             for customer in line.customer_ids:
                 if customer.id in visited_partner_ids:

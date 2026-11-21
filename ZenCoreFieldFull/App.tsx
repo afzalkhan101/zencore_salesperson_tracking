@@ -209,20 +209,18 @@ function ZenCoreFieldApp(){
  useEffect(()=>{
   if(!connected || !online || !activePlanId)return;
   let cancelled=false;
-  Odoo.getPlanDetail(activePlanId).then(({plan})=>{
-    if(cancelled)return;
-    const customers:Customer[]=[];
-    for(const line of plan.targets||[]){
-      (line.customer_ids||[]).forEach((id,index)=>{
-        if(customers.some(c=>c.id===id))return;
-        const geo=line.customer_locations?.find(c=>c.id===id);
-        customers.push({id,name:line.customer_names?.[index]||`Customer #${id}`,
-          latitude:geo?.latitude??undefined,longitude:geo?.longitude??undefined});
-      });
-    }
-    setCustomerVisits(customers);
-  }).catch(()=>{});
-  return()=>{cancelled=true};
+  const refreshPlanCustomers=()=>Odoo.planCustomers(activePlanId).then(customerResult=>{
+      if(cancelled)return;
+      // Prefer plan-scoped visit status over the static plan detail so map pins
+      // immediately reflect each customer's Odoo check-in / checkout state.
+      setCustomerVisits(customerResult.customers||[]);
+      setCheckinIds(Object.fromEntries((customerResult.customers||[])
+        .filter(customer=>customer.checkin_id)
+        .map(customer=>[customer.id,customer.checkin_id as number])));
+    }).catch(()=>{});
+  void refreshPlanCustomers();
+  const timer=setInterval(()=>{void refreshPlanCustomers()},7000);
+  return()=>{cancelled=true;clearInterval(timer)};
  },[connected,online,activePlanId]);
  useEffect(()=>{if(tab!=='Visits'||serverDetail===null)return;let alive=true;
   const poll=async()=>{
@@ -539,11 +537,15 @@ function ZenCoreFieldApp(){
    const activeCheckinId=checkinIds[cust.id]||cust.checkin_id||null;
    if(activeCheckinId){
      await Odoo.checkOut(activeCheckinId,{latitude:coords.coords.latitude,longitude:coords.coords.longitude,notes:visitNotes,outcome:'completed'});
-     setCheckinIds(old=>{const n={...old};delete n[cust.id];return n});
+     const current=await Odoo.planCustomers(serverDetail);
+     setCustomerVisits(current.customers||[]);
+     setCheckinIds(Object.fromEntries((current.customers||[]).filter(customer=>customer.checkin_id).map(customer=>[customer.id,customer.checkin_id as number])));
      notify('Customer checked out in Odoo.');
    }else{
-     const a=await Odoo.checkIn({partner_id:cust.id,tracker_id:trackerId,latitude:coords.coords.latitude,longitude:coords.coords.longitude});
-     setCheckinIds(old=>({...old,[cust.id]:a.checkin_id}));
+     await Odoo.checkIn({partner_id:cust.id,tracker_id:trackerId,latitude:coords.coords.latitude,longitude:coords.coords.longitude});
+     const current=await Odoo.planCustomers(serverDetail);
+     setCustomerVisits(current.customers||[]);
+     setCheckinIds(Object.fromEntries((current.customers||[]).filter(customer=>customer.checkin_id).map(customer=>[customer.id,customer.checkin_id as number])));
      notify('Customer checked in to Odoo.');
    }
  });
@@ -611,7 +613,7 @@ function ZenCoreFieldApp(){
  {(['approved','in_progress'].includes(serverPlans.find(p=>p.id===serverDetail)?.state||''))&& activePlanId!==serverDetail && <B disabled={busy} onPress={()=>{void startApprovedPlan(serverDetail)}}>{tracking?'Switch Tracking to This Plan':'Start Tracking for This Plan'}</B>}
  {tracking && activePlanId===serverDetail && <B variant="danger" onPress={confirmStopActivePlan}> Stop This Plan</B>}
  {!['approved','in_progress'].includes(serverPlans.find(p=>p.id===serverDetail)?.state||'') && <Tiny>Tracking locked until approval by your assigned superior.</Tiny>}</Panel>
- {customerVisits.length===0?<Panel><Tiny>No customers found for this plan.</Tiny></Panel>:customerVisits.map(c=><Panel key={c.id}><Text style={st.cardTitle}>{c.name}</Text><Tiny>{[c.street,c.city].filter(Boolean).join(', ')}</Tiny><Info label="Phone" value={c.phone||'—'}/><Info label="Visit" value={c.visited?'Visited':'Not visited'}/><B onPress={()=>checkCustomer(c)} variant={checkinIds[c.id]?'danger':'primary'}>{checkinIds[c.id]?'Check Out':'GPS Check In'}</B></Panel>)}
+ {customerVisits.length===0?<Panel><Tiny>No customers found for this plan.</Tiny></Panel>:customerVisits.map(c=>{const complete=Boolean(c.visited||c.visit_state==='completed');const checkedIn=Boolean(c.checkin_id||c.visit_state==='checked_in');return <Panel key={c.id}><View style={st.topLine}><Text style={st.cardTitle}>{c.name}</Text><Badge tone={complete?'green':checkedIn?'amber':'gray'}>{complete?'Completed':checkedIn?'At customer':'Pending'}</Badge></View><Tiny>{[c.street,c.city].filter(Boolean).join(', ')}</Tiny><Info label="Phone" value={c.phone||'—'}/>{complete?<><Info label="Check-in" value={c.checkin_display||c.checkin_time||'—'}/><Info label="Exit" value={c.checkout_display||c.checkout_time||'—'}/><Info label="Time spent" value={displayMinutes(c.time_spent_minutes||0)}/></>:<><Info label="Visit" value={checkedIn?'Checked in — exit the customer area to complete':'Not visited'}/><B onPress={()=>checkCustomer(c)} variant={checkedIn?'danger':'primary'}>{checkedIn?'GPS Check Out':'GPS Check In'}</B></>}</Panel>})}
  {tracking&&activePlanId===serverDetail&&trackerId&&<Panel style={st.actualExpenseCard}>
    <View style={st.topLine}><View><H>Actual Expenses</H><Tiny>Assign every tracking cost to the correct customer route.</Tiny></View><Badge tone="blue">Live sync</Badge></View>
    <Text style={st.fieldLabel}>Customer Target</Text>
@@ -660,7 +662,7 @@ function ZenCoreFieldApp(){
     
   </Panel></>}
  {tab==='Map'&&<><PageBanner code="MAP" title="Live Map" subtitle=""/>
-  <LiveRouteMap active={tracking} online={online} label={userName||'You'} onInteractionChange={setMapInteracting} destination={tracking?(()=>{const c=customerVisits.find(x=>Number.isFinite(x.latitude)&&Number.isFinite(x.longitude)&&x.latitude!==0&&x.longitude!==0);return c?.latitude!=null&&c.longitude!=null?{latitude:c.latitude,longitude:c.longitude}:null})():null}/>
+  <LiveRouteMap active={tracking} online={online} label={userName||'You'} onInteractionChange={setMapInteracting} customers={customerVisits}/>
   <Panel style={{marginTop:14}}><Text style={st.cardTitle}>Visit Route</Text>
    <Info label="Active Visit Plan" value={activePlanId?`#${activePlanId}`:'Not started'}/>
    <Info label="Tracking" value={tracking?'Recording':'Stopped'}/>

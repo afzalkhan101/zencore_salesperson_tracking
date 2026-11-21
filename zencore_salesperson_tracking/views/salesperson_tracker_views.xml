@@ -71,9 +71,9 @@
                                 </list>
                             </field>
                         </page>
-                        <page string="Visited Lines" name="visited_lines">
+                        <page string="Completed Customer Visits" name="visited_lines">
                             <field name="visited_line_ids">
-                                <list string="Visited Customers" decoration-success="time_spent_minutes > 0">
+                                <list string="Completed Customer Visits" decoration-success="checkout_time">
                                     <field name="partner_id"/>
                                     <field name="checkin_time" string="In"/>
                                     <field name="checkout_time" string="Exit"/>

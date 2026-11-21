@@ -4,6 +4,7 @@ import {WebView} from 'react-native-webview';
 import * as Location from 'expo-location';
 import {cleanDisplayedRoute} from '../services/routeQuality';
 import {getLastTrackingIdentity, getRecordedRoute, getTrackingIdentity, type RouteFix} from '../services/storage';
+import type {Customer} from '../types/models';
 
 // No Google Maps key. Leaflet is loaded on demand over HTTPS while online.
 // Map tiles are for interactive viewing only; this app never bulk-downloads tiles.
@@ -21,10 +22,11 @@ const HTML = `<!DOCTYPE html><html lang="en"><head><meta name="viewport" content
  const map=L.map('map',{zoomControl:true,attributionControl:true,dragging:true,touchZoom:true,doubleClickZoom:true,scrollWheelZoom:true,zoomAnimation:true,fadeAnimation:true,markerZoomAnimation:true,inertia:true,inertiaDeceleration:2800,inertiaMaxSpeed:1800}).setView([0,0],2);
  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap contributors'}).addTo(map);
  const lines=L.layerGroup().addTo(map);
- let last=null,first=null,target=null,initial=true,following=true;
+ const customersLayer=L.layerGroup().addTo(map);
+ let last=null,first=null,initial=true,following=true;
  map.on('dragstart',()=>{following=false});
  const dot=(latlng,color)=>L.circleMarker(latlng,{radius:9,color:'#fff',weight:3,fillColor:color,fillOpacity:1}).addTo(map);
- const customerTarget=(latlng)=>L.marker(latlng,{icon:L.divIcon({className:'zc-mobile-customer-target',html:'<svg width="14" height="19" viewBox="0 0 24 32" role="img" aria-label="Customer location"><path d="M12 31S1 19.3 1 11.8A11 11 0 1 1 23 11.8C23 19.3 12 31 12 31Z" fill="#06b6d4" stroke="#073b5c" stroke-width="1.6"/><circle cx="12" cy="12" r="4.2" fill="#fff" stroke="#073b5c" stroke-width="1.45"/></svg>',iconSize:[14,19],iconAnchor:[7,18]})}).addTo(map);
+ const customerTarget=(latlng,state,name)=>{const completed=state==='completed';const active=state==='checked_in';const fill=completed?'#16a34a':active?'#f59e0b':'#06b6d4';const stroke=completed?'#166534':active?'#92400e':'#073b5c';return L.marker(latlng,{icon:L.divIcon({className:'zc-mobile-customer-target',html:'<svg width="18" height="25" viewBox="0 0 24 32" role="img" aria-label="Customer location"><path d="M12 31S1 19.3 1 11.8A11 11 0 1 1 23 11.8C23 19.3 12 31 12 31Z" fill="'+fill+'" stroke="'+stroke+'" stroke-width="1.6"/><circle cx="12" cy="12" r="4.2" fill="#fff" stroke="'+stroke+'" stroke-width="1.45"/></svg>',iconSize:[18,25],iconAnchor:[9,24]})}).bindTooltip(escapeHtml(name||'Customer')+(completed?' · Completed':active?' · Checked in':' · Pending'));};
  const gapMeters=(a,b)=>{const rad=x=>x*Math.PI/180;const dLat=rad(b.latitude-a.latitude),dLon=rad(b.longitude-a.longitude);const h=Math.sin(dLat/2)**2+Math.cos(rad(a.latitude))*Math.cos(rad(b.latitude))*Math.sin(dLon/2)**2;return 6371000*2*Math.atan2(Math.sqrt(h),Math.sqrt(Math.max(0,1-h)));};
  const walker=(latlng)=>L.marker(latlng,{icon:L.divIcon({className:'zc-walker',html:'<div class="zc-walker-pin"><img src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2048%2072%22%20width%3D%2248%22%20height%3D%2272%22%20role%3D%22img%22%20aria-label%3D%22Walking%20salesperson%20carrying%20a%20small%20briefcase%22%3E%0A%20%20%3Cdefs%3E%3Cfilter%20id%3D%22sh%22%20x%3D%22-40%25%22%20y%3D%22-30%25%22%20width%3D%22180%25%22%20height%3D%22170%25%22%3E%3CfeGaussianBlur%20stdDeviation%3D%221.1%22%2F%3E%3C%2Ffilter%3E%3C%2Fdefs%3E%0A%20%20%3Cellipse%20cx%3D%2223%22%20cy%3D%2268%22%20rx%3D%2214%22%20ry%3D%222.1%22%20fill%3D%22%2316243A%22%20opacity%3D%22.19%22%20filter%3D%22url%28%23sh%29%22%2F%3E%0A%20%20%3Cg%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%0A%20%20%20%20%3C%21--%20Back%20walking%20leg%20and%20shoe%20--%3E%0A%20%20%20%20%3Cpath%20d%3D%22M21%2040%20L16%2052%20L9%2060%22%20stroke%3D%22%23243B55%22%20stroke-width%3D%225%22%20fill%3D%22none%22%2F%3E%0A%20%20%20%20%3Cpath%20d%3D%22M9%2060%20L5%2062%20L12%2063%22%20stroke%3D%22%23182736%22%20stroke-width%3D%223.6%22%20fill%3D%22none%22%2F%3E%0A%20%20%20%20%3C%21--%20Front%20walking%20leg%20and%20shoe%20--%3E%0A%20%20%20%20%3Cpath%20d%3D%22M27%2040%20L29%2052%20L38%2060%22%20stroke%3D%22%23203850%22%20stroke-width%3D%225.2%22%20fill%3D%22none%22%2F%3E%0A%20%20%20%20%3Cpath%20d%3D%22M38%2060%20L43%2062%20L35%2063%22%20stroke%3D%22%23172B42%22%20stroke-width%3D%223.6%22%20fill%3D%22none%22%2F%3E%0A%20%20%20%20%3C%21--%20Body%2C%20green%20field%20uniform%20--%3E%0A%20%20%20%20%3Cpath%20d%3D%22M17%2018%20Q23%2015%2030%2018%20L32%2039%20L19%2042%20L15%2028%20Z%22%20fill%3D%22%2319AA52%22%20stroke%3D%22%2308733E%22%20stroke-width%3D%221.3%22%2F%3E%0A%20%20%20%20%3Cpath%20d%3D%22M23%2019%20L26%2024%22%20stroke%3D%22%23BBF7D0%22%20stroke-width%3D%221.7%22%2F%3E%0A%20%20%20%20%3C%21--%20Rear%20arm%20moving%20behind%20body%20--%3E%0A%20%20%20%20%3Cpath%20d%3D%22M18%2023%20L12%2033%20L8%2037%22%20fill%3D%22none%22%20stroke%3D%22%23B6764B%22%20stroke-width%3D%223.9%22%2F%3E%0A%20%20%20%20%3Cpath%20d%3D%22M8%2037%20L6%2039%22%20fill%3D%22none%22%20stroke%3D%22%23E0A477%22%20stroke-width%3D%222.9%22%2F%3E%0A%20%20%20%20%3C%21--%20Face%20and%20hair%20--%3E%0A%20%20%20%20%3Cpath%20d%3D%22M21%206%20Q29%203%2031%2011%20Q32%2017%2026%2019%20Q19%2018%2019%2012%20Z%22%20fill%3D%22%23DE9B6B%22%20stroke%3D%22%23754A31%22%20stroke-width%3D%22.7%22%2F%3E%0A%20%20%20%20%3Cpath%20d%3D%22M19%2012%20Q18%204%2023%203%20Q30%201%2033%208%20L31%2012%20L28%207%20L24%208%20L20%2014%20Z%22%20fill%3D%22%23162D40%22%2F%3E%0A%20%20%20%20%3Cpath%20d%3D%22M30%2012%20L33%2014%20L29%2015%22%20fill%3D%22%23D68A5D%22%2F%3E%0A%20%20%20%20%3C%21--%20Front%20arm%20reaches%20down%20to%20SMALL%20hand-held%20bag%20--%3E%0A%20%20%20%20%3Cpath%20d%3D%22M30%2022%20L35%2033%20L34%2043%22%20fill%3D%22none%22%20stroke%3D%22%23D99260%22%20stroke-width%3D%223.7%22%2F%3E%0A%20%20%20%20%3Ccircle%20cx%3D%2234%22%20cy%3D%2243%22%20r%3D%221.9%22%20fill%3D%22%23E4A476%22%2F%3E%0A%20%20%20%20%3C%21--%20Briefcase%20is%20~8%20x%206px%20versus%2060px%20figure%20height%20--%3E%0A%20%20%20%20%3Cpath%20d%3D%22M32%2046%20V43.7%20Q32%2041.9%2034%2041.9%20Q36%2041.9%2036%2043.7%20V46%22%20fill%3D%22none%22%20stroke%3D%22%2353351F%22%20stroke-width%3D%221.1%22%2F%3E%0A%20%20%20%20%3Crect%20x%3D%2230%22%20y%3D%2245%22%20width%3D%229%22%20height%3D%227%22%20rx%3D%221.2%22%20fill%3D%22%2398602F%22%20stroke%3D%22%2356351E%22%20stroke-width%3D%22.9%22%2F%3E%0A%20%20%20%20%3Cpath%20d%3D%22M30.8%2048.2%20H38.2%22%20stroke%3D%22%23BB8449%22%20stroke-width%3D%22.8%22%2F%3E%0A%20%20%20%20%3Crect%20x%3D%2233.7%22%20y%3D%2247.4%22%20width%3D%221.6%22%20height%3D%221.6%22%20rx%3D%22.3%22%20fill%3D%22%23E8C780%22%2F%3E%0A%20%20%3C%2Fg%3E%0A%3C%2Fsvg%3E" alt="Salesperson holding small briefcase" /></div>',iconSize:[36,54],iconAnchor:[18,50]})}).addTo(map);
  const escapeHtml=value=>String(value==null?'':value).replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[char]));
@@ -57,7 +59,8 @@ const HTML = `<!DOCTYPE html><html lang="en"><head><meta name="viewport" content
     }
    });
    if(legend)legend.style.display=hasVisibleGap?'flex':'none';
-   if(first){map.removeLayer(first);first=null}if(last){map.removeLayer(last);last=null}if(target){map.removeLayer(target);target=null}
+   if(first){map.removeLayer(first);first=null}if(last){map.removeLayer(last);last=null}
+   customersLayer.clearLayers();
    if(coords.length){first=dot(coords[0],'#70BF36');}
    const live=payload.current&&Number.isFinite(payload.current.latitude)&&Number.isFinite(payload.current.longitude)
       ?[payload.current.latitude,payload.current.longitude]:(coords.length?coords[coords.length-1]:null);
@@ -73,9 +76,11 @@ const HTML = `<!DOCTYPE html><html lang="en"><head><meta name="viewport" content
     if(terminalSvg){terminalSvg.setAttribute('width','28');terminalSvg.setAttribute('height','38');}
     last.setZIndexOffset(1000);
    }
-   if(payload.destination&&Number.isFinite(payload.destination.latitude)&&Number.isFinite(payload.destination.longitude)){
-      target=customerTarget([payload.destination.latitude,payload.destination.longitude]);
-   }
+   (Array.isArray(payload.customers)?payload.customers:[]).forEach(customer=>{
+     if(Number.isFinite(customer.latitude)&&Number.isFinite(customer.longitude)){
+       customerTarget([customer.latitude,customer.longitude],customer.visit_state,customer.name).addTo(customersLayer);
+     }
+   });
    const notice=document.getElementById('notice');
    if(live||coords.length){notice.style.display='none';}else{notice.style.display='block';notice.textContent='Waiting for location. Open a Visit Plan to record a route.';}
    if(initial){if(coords.length>1){map.fitBounds(L.latLngBounds(coords).pad(.25),{maxZoom:16});initial=false;}
@@ -89,7 +94,7 @@ const HTML = `<!DOCTYPE html><html lang="en"><head><meta name="viewport" content
 </script></body></html>`;
 
 type Point={latitude:number;longitude:number;heading?:number|null};
-export default function LiveRouteMap({active,online,destination,label,onInteractionChange}:{active:boolean;online:boolean|null;destination?:Point|null;label?:string;onInteractionChange?:(active:boolean)=>void}){
+export default function LiveRouteMap({active,online,customers,label,onInteractionChange}:{active:boolean;online:boolean|null;customers?:Customer[];label?:string;onInteractionChange?:(active:boolean)=>void}){
  const view=useRef<WebView<{}>>(null);
  const [route,setRoute]=useState<RouteFix[]>([]);
  const [current,setCurrent]=useState<Point|null>(null);
@@ -126,9 +131,10 @@ export default function LiveRouteMap({active,online,destination,label,onInteract
   // A stale local identity can remain briefly after Stop, but it must never
   // keep the live direction arrow visible on a stopped route.
   const trackingActive=Boolean(active&&isLive);
-  const payload={points:recorded,segments,current:recorded.length?null:(trackingActive?current:null),destination,label:label||'You',active:trackingActive};
+  const mapCustomers=(customers||[]).filter(customer=>Number.isFinite(customer.latitude)&&Number.isFinite(customer.longitude)&&customer.latitude!==0&&customer.longitude!==0).map(customer=>({id:customer.id,name:customer.name,latitude:customer.latitude,longitude:customer.longitude,visit_state:customer.visited||customer.visit_state==='completed'?'completed':customer.visit_state==='checked_in'?'checked_in':'pending'}));
+  const payload={points:recorded,segments,current:recorded.length?null:(trackingActive?current:null),customers:mapCustomers,label:label||'You',active:trackingActive};
   view.current?.injectJavaScript(`window.updateZenCoreMap && window.updateZenCoreMap(${JSON.stringify(payload)});true;`);
- },[ready,route,current,destination,label,isLive,active]);
+ },[ready,route,current,customers,label,isLive,active]);
  return <View>
   <View style={styles.frame}>
    <WebView<{}> ref={view} source={{html:HTML}}

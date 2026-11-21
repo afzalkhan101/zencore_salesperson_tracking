@@ -2,4 +2,15 @@ export type TravelMode = 'walk'|'bike'|'car';
 export type Target = { id:string; customerId?:number; customer:string; customerIds?:number[]; customerNames?:string[]; employeeIds?:number[]; employeeNames?:string[]; from:string; fromLatitude?:number; fromLongitude?:number; /** Legacy local-draft data; never collected or rendered. */ to:string; km?:number; travelMode?:TravelMode; plannedDurationMinutes?:number; notes:string };
 export type Plan = { localId:string; serverId?:number; name:string; date:string; purpose:string; priority:string; targets:Target[]; transport:number; food:number; other:number; state:'draft'|'pending_upload'|'submitted'|'approved'|'in_progress'|'completed'|'rejected'; notes:string };
 export type GpsPoint = { id:string; session:string; trackerId:number; planId:number; latitude:number; longitude:number; accuracy:number; capturedAt:number; status:'pending'|'synced'; };
-export type Customer = {id:number; name:string; street?:string; city?:string; phone?:string; latitude?:number|null; longitude?:number|null; visited?:boolean; checkin_id?:number|null; checkin_time?:string;checkout_time?:string};
+export type Customer = {
+ id:number; name:string; street?:string; city?:string; phone?:string;
+ latitude?:number|null; longitude?:number|null;
+ /** True only after the individual customer checkout reached Odoo. */
+ visited?:boolean;
+ /** pending | checked_in | completed; retained alongside `visited` for compatibility. */
+ visit_state?:'pending'|'checked_in'|'completed'|string;
+ checkin_id?:number|null;
+ checkin_time?:string; checkout_time?:string;
+ checkin_display?:string; checkout_display?:string;
+ time_spent_minutes?:number;
+};

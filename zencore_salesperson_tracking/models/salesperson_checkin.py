@@ -64,19 +64,28 @@ class SalespersonCheckin(models.Model):
             else:
                 checkin.duration_minutes = 0.0
 
-    def action_checkout(self, latitude=None, longitude=None):
+    def action_checkout(self, latitude=None, longitude=None, checkout_time=None):
+        """Close this customer visit and create its completed-visit row.
+
+        ``checkout_time`` is supplied by the GPS pipeline when a device fix was
+        captured before it reached Odoo.  Persisting that capture time keeps
+        customer In/Exit times correct even after a short offline queue flush.
+        """
         self.ensure_one()
         if self.state == "checked_out":
             return
 
-        checkout_time = fields.Datetime.now()
+        checkout_time = checkout_time or fields.Datetime.now()
+        # A queued location fix must never create a negative customer visit.
+        if self.checkin_time and checkout_time < self.checkin_time:
+            checkout_time = self.checkin_time
         vals = {
             "checkout_time": checkout_time,
             "state": "checked_out",
         }
-        if latitude:
+        if latitude is not None:
             vals["checkout_latitude"] = latitude
-        if longitude:
+        if longitude is not None:
             vals["checkout_longitude"] = longitude
         self.write(vals)
 
@@ -110,7 +119,9 @@ class SalespersonCheckin(models.Model):
 
         # Mark target line as visited
         if self.target_line_id:
-            self.target_line_id.mark_visited(self.checkin_time, checkout_time)
+            self.target_line_id.mark_visited(
+                self.checkin_time, checkout_time, tracker=self.tracker_id
+            )
         
         _logger.info("action_checkout: completed for checkin=%s partner=%s", 
                     self.id, self.partner_id.name)

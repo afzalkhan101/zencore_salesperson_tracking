@@ -9,9 +9,6 @@ class SalespersonVisitPlanLine(models.Model):
     plan_id = fields.Many2one("salesperson.visit.plan", string="Visit Plan", required=True, ondelete="cascade")
     sequence = fields.Integer(string="Sequence", default=10)
 
-    # Legacy compatibility only. This value is no longer collected, displayed,
-    # reported, or exposed by mobile APIs; retaining the column preserves
-    # historic plan records during module upgrades.
     expected_time_minutes = fields.Integer(string="Expected Time (minutes)")
     employee_ids = fields.Many2many("hr.employee", string="Accompanies")
 
@@ -24,7 +21,7 @@ class SalespersonVisitPlanLine(models.Model):
     to_location = fields.Char(string="To Location")
     expected_km = fields.Float(string="Expected KM", digits=(16, 2))
 
-    # Customers - MANY2MANY
+
     customer_ids = fields.Many2many(
         "res.partner",
         string="Customers",
@@ -47,8 +44,30 @@ class SalespersonVisitPlanLine(models.Model):
         for line in self:
             line.customer_count = len(line.customer_ids)
 
-    def mark_visited(self, checkin_time, checkout_time):
+    def mark_visited(self, checkin_time, checkout_time, tracker=None):
+        """Update the line summary without completing a multi-customer line early.
+
+        The tracker stores one visited line per customer, which is the source
+        of truth for each customer's In/Exit time.  This plan-line summary can
+        only become completed when every customer assigned to the line has an
+        individual checkout.
+        """
         self.ensure_one()
+        if tracker and self.customer_ids:
+            completed_visits = self.env['salesperson.tracker.visited.line'].sudo().search([
+                ('tracker_id', '=', tracker.id),
+                ('partner_id', 'in', self.customer_ids.ids),
+                ('checkout_time', '!=', False),
+            ], order='checkin_time asc')
+            completed_partner_ids = set(completed_visits.mapped('partner_id').ids)
+            if not set(self.customer_ids.ids).issubset(completed_partner_ids):
+                # Leave aggregate completion false: individual customers still
+                # appear in the tracker Visited Lines tab with their own times.
+                self.write({'is_visited': False})
+                return
+            checkin_time = min(completed_visits.mapped('checkin_time'))
+            checkout_time = max(completed_visits.mapped('checkout_time'))
+
         duration = 0
         if checkout_time and checkin_time:
             duration = (checkout_time - checkin_time).total_seconds() / 60.0

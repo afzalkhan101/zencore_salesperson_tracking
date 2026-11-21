@@ -42,6 +42,14 @@ class MobileApiController(http.Controller):
             raise AccessError('Login required')
         return user
 
+    @staticmethod
+    def _display_datetime(value):
+        """Format a UTC datetime in the signed-in user's timezone for mobile."""
+        if not value:
+            return ''
+        local_value = fields.Datetime.context_timestamp(request.env.user, value)
+        return local_value.strftime('%d %b %Y, %I:%M %p').replace(' 0', ' ')
+
     def _is_manager(self, user):
         return getattr(user, 'salesperson_role', '') == 'manager'
 
@@ -174,19 +182,51 @@ class MobileApiController(http.Controller):
                 ('user_id', '=', user.id),
                 ('plan_id', '=', plan.id),
             ], limit=1, order='id desc')
-            visited_ids = set()
-            checkin_map = {}
+            completed_ids = set()
+            visit_map = {}
             if tracker:
-                visited_ids = {v.partner_id.id for v in tracker.visited_line_ids}
-                for v in tracker.visited_line_ids:
-                    checkin_map[v.partner_id.id] = {
+                # A green/completed customer means the salesperson has exited
+                # that customer's geofence.  An open check-in is intentionally
+                # a separate "checked_in" state, never a completed visit.
+                completed_lines = tracker.visited_line_ids.filtered(
+                    lambda line: line.checkout_time
+                )
+                completed_ids = set(completed_lines.mapped('partner_id').ids)
+                for v in completed_lines:
+                    visit_map[v.partner_id.id] = {
                         'checkin_time': str(v.checkin_time) if v.checkin_time else '',
                         'checkout_time': str(v.checkout_time) if v.checkout_time else '',
-                        'time_spent': v.time_spent_minutes,
+                        'checkin_display': self._display_datetime(v.checkin_time),
+                        'checkout_display': self._display_datetime(v.checkout_time),
+                        'time_spent_minutes': v.time_spent_minutes or 0,
+                        'visit_state': 'completed',
                     }
+                # Compatibility for historical completed check-ins that were
+                # recorded before visited-line rows were introduced.
+                completed_checkins = request.env['salesperson.checkin'].sudo().search([
+                    ('tracker_id', '=', tracker.id), ('state', '=', 'checked_out'),
+                ], order='checkout_time desc, id desc')
+                for checkin in completed_checkins:
+                    completed_ids.add(checkin.partner_id.id)
+                    visit_map.setdefault(checkin.partner_id.id, {
+                        'checkin_time': str(checkin.checkin_time) if checkin.checkin_time else '',
+                        'checkout_time': str(checkin.checkout_time) if checkin.checkout_time else '',
+                        'checkin_display': self._display_datetime(checkin.checkin_time),
+                        'checkout_display': self._display_datetime(checkin.checkout_time),
+                        'time_spent_minutes': checkin.duration_minutes or 0,
+                        'visit_state': 'completed',
+                    })
                 if tracker.current_checkin_id and tracker.current_checkin_id.state == 'checked_in':
                     active = tracker.current_checkin_id
-                    checkin_map.setdefault(active.partner_id.id, {})['checkin_id'] = active.id
+                    visit_map[active.partner_id.id] = {
+                        'checkin_id': active.id,
+                        'checkin_time': str(active.checkin_time) if active.checkin_time else '',
+                        'checkout_time': '',
+                        'checkin_display': self._display_datetime(active.checkin_time),
+                        'checkout_display': '',
+                        'time_spent_minutes': 0,
+                        'visit_state': 'checked_in',
+                    }
 
             customers = []
             seen = set()
@@ -195,7 +235,7 @@ class MobileApiController(http.Controller):
                     if partner.id in seen:
                         continue
                     seen.add(partner.id)
-                    info = checkin_map.get(partner.id, {})
+                    info = visit_map.get(partner.id, {})
                     customers.append({
                         'id': partner.id,
                         'name': partner.name,
@@ -204,10 +244,13 @@ class MobileApiController(http.Controller):
                         'phone': partner.phone or (partner.mobile if 'mobile' in partner._fields else '') or '',
                         'latitude': partner.partner_latitude or 0,
                         'longitude': partner.partner_longitude or 0,
-                        'visited': partner.id in visited_ids,
+                        'visited': partner.id in completed_ids,
+                        'visit_state': info.get('visit_state', 'pending'),
                         'checkin_time': info.get('checkin_time', ''),
                         'checkout_time': info.get('checkout_time', ''),
-                        'time_spent_minutes': info.get('time_spent', 0),
+                        'checkin_display': info.get('checkin_display', ''),
+                        'checkout_display': info.get('checkout_display', ''),
+                        'time_spent_minutes': info.get('time_spent_minutes', 0),
                         'checkin_id': info.get('checkin_id'),
                     })
 
@@ -330,6 +373,21 @@ class MobileApiController(http.Controller):
             ], limit=1)
             if not target_line:
                 return self._json_response({'ok': False, 'message': 'Customer is not part of the active Visit Plan'})
+
+            # One target customer gets one completed visit in a plan.  Without
+            # this guard, a manual GPS Check In after an automatic checkout
+            # could create a duplicate visited-line and make counters/timings
+            # disagree between Odoo and the mobile screen.
+            already_completed = request.env['salesperson.tracker.visited.line'].sudo().search_count([
+                ('tracker_id', '=', tracker.id),
+                ('partner_id', '=', partner.id),
+                ('checkout_time', '!=', False),
+            ])
+            if already_completed:
+                return self._json_response({
+                    'ok': False,
+                    'message': 'This customer visit is already completed for the active plan',
+                })
 
             # Close any open check-ins for this tracker
             open_checkins = request.env['salesperson.checkin'].sudo().search([
