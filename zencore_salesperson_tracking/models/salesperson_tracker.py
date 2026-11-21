@@ -73,6 +73,7 @@ class SalespersonTracker(models.Model):
     checkout_time = fields.Datetime(string="Last Check-Out")
     duration_hours = fields.Float(string="Duration (Hours)", compute="_compute_duration", store=True)
     duration_minutes = fields.Float(string="Duration (Min)", compute="_compute_duration", store=True)
+    duration_display = fields.Char(string="Duration", compute="_compute_duration_display")
 
     # Expenses Claim (Left group - Planned)
     transport_cost = fields.Float(string="Transport Cost")
@@ -115,8 +116,14 @@ class SalespersonTracker(models.Model):
     total_distance_km = fields.Float(string="Total Distance Covered (KM)", default=0.0)
     total_tracking_time_seconds = fields.Integer(string="Total Tracking Time (sec)", default=0)
     total_tracking_time_minutes = fields.Float(string="Total Tracking Time (min)", compute="_compute_tracking_minutes", store=True)
+    total_tracking_time_display = fields.Char(
+        string="Total Tracking Time", compute="_compute_tracking_time_display"
+    )
     total_visit_time_minutes = fields.Float(string="Total Time Spent in Visits (min)", default=0.0)
     traveling_time_minutes = fields.Float(string="Traveling Time (min)", compute="_compute_traveling_time", store=True)
+    traveling_time_display = fields.Char(
+        string="Traveling Time", compute="_compute_traveling_time_display"
+    )
 
     # Live Tracking
     is_tracking = fields.Boolean(string="Tracking Active", default=False)
@@ -362,11 +369,39 @@ class SalespersonTracker(models.Model):
         for tracker in self:
             tracker.total_tracking_time_minutes = round(tracker.total_tracking_time_seconds / 60.0, 2)
 
+    @api.model
+    def _format_duration(self, minutes):
+        """Format a stored minute total for human-facing Odoo forms/reports."""
+        total_minutes = max(0, int(round(minutes or 0.0)))
+        hours, remaining_minutes = divmod(total_minutes, 60)
+        if hours:
+            return f"{hours} h {remaining_minutes} min"
+        return f"{remaining_minutes} min"
+
+    @api.depends("duration_minutes")
+    def _compute_duration_display(self):
+        for tracker in self:
+            tracker.duration_display = self._format_duration(tracker.duration_minutes)
+
+    @api.depends("total_tracking_time_minutes")
+    def _compute_tracking_time_display(self):
+        for tracker in self:
+            tracker.total_tracking_time_display = self._format_duration(
+                tracker.total_tracking_time_minutes
+            )
+
     @api.depends("total_tracking_time_seconds", "total_visit_time_minutes")
     def _compute_traveling_time(self):
         for tracker in self:
             tracking_minutes = tracker.total_tracking_time_seconds / 60.0
             tracker.traveling_time_minutes = tracking_minutes - tracker.total_visit_time_minutes
+
+    @api.depends("traveling_time_minutes")
+    def _compute_traveling_time_display(self):
+        for tracker in self:
+            tracker.traveling_time_display = self._format_duration(
+                tracker.traveling_time_minutes
+            )
 
     @api.depends("last_latitude", "last_longitude")
     def _compute_map_url(self):

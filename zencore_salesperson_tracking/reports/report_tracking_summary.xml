@@ -70,7 +70,7 @@
                                 <tr>
                                     <td style="font-size:12px; font-weight:bold; padding-right:32px;"><t t-esc="tracker.user_id.name"/></td>
                                     <td style="font-size:12px; font-weight:bold; padding-right:32px;"><t t-esc="tracker.visit_date"/></td>
-                                    <td style="font-size:12px; font-weight:bold; padding-right:32px;"><t t-esc="'%.2f' % tracker.duration_minutes"/> min</td>
+                                    <td style="font-size:12px; font-weight:bold; padding-right:32px;"><t t-esc="tracker.duration_display"/></td>
                                     <td style="font-size:12px; font-weight:bold;"><t t-esc="tracker.total_distance_km"/> km</td>
                                 </tr>
                             </table>
@@ -110,9 +110,9 @@
                                             </td>
                                         </tr>
                                         <tr>
-                                            <td class="label">Duration (Min)</td>
+                                            <td class="label">Duration</td>
                                             <td>
-                                                <t t-esc="'%.2f' % tracker.duration_minutes"/> min</td>
+                                                <t t-esc="tracker.duration_display"/></td>
                                         </tr>
                                         <tr>
                                             <td class="label">Distance</td>
@@ -121,14 +121,14 @@
  km</td>
                                         </tr>
                                         <tr>
-                                            <td class="label">Total Tracking Time (min)</td>
+                                            <td class="label">Total Tracking Time</td>
                                             <td>
-                                                <t t-esc="'%.2f' % tracker.total_tracking_time_minutes"/> min</td>
+                                                <t t-esc="tracker.total_tracking_time_display"/></td>
                                         </tr>
                                         <tr>
-                                            <td class="label">Traveling Time (min)</td>
+                                            <td class="label">Traveling Time</td>
                                             <td>
-                                                <t t-esc="'%.2f' % tracker.traveling_time_minutes"/> min</td>
+                                                <t t-esc="tracker.traveling_time_display"/></td>
                                         </tr>
                                     </tbody>
                                 </table>

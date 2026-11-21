@@ -42,6 +42,15 @@
         <field name="model">salesperson.tracker</field>
         <field name="inherit_id" ref="zencore_salesperson_tracking.view_salesperson_tracker_form"/>
         <field name="arch" type="xml">
+            <xpath expr="//group/field[@name='duration_minutes']" position="replace">
+                <field name="duration_display" string="Duration" readonly="1"/>
+            </xpath>
+            <xpath expr="//field[@name='total_tracking_time_minutes']" position="replace">
+                <field name="total_tracking_time_display" string="Total Tracking Time" readonly="1"/>
+            </xpath>
+            <xpath expr="//field[@name='traveling_time_minutes']" position="replace">
+                <field name="traveling_time_display" string="Traveling Time" readonly="1"/>
+            </xpath>
             <xpath expr="//page[@name='target_lines']//field[@name='expected_km']" position="after">
                 <field name="travel_mode" readonly="1"/>
                 <field name="planned_duration_minutes" string="ETA (min)" readonly="1"/>
