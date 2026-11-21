@@ -262,6 +262,31 @@
        <field name="groups" eval="[(4, ref('group_salesperson_ceo'))]"/>
        <field name="domain_force">[('tracker_id.user_id','in',user.zc_team_user_ids.ids)]</field>
     </record>
+    <!-- Actual expense entries follow the exact tracker reporting hierarchy. -->
+    <record id="rule_zc_salesperson_tracker_expense_salesman" model="ir.rule">
+       <field name="name">salesperson_tracker_expense salesman scope</field>
+       <field name="model_id" ref="model_salesperson_tracker_expense"/>
+       <field name="groups" eval="[(4, ref('group_salesperson_salesman'))]"/>
+       <field name="domain_force">[('tracker_id.user_id','=',user.id)]</field>
+    </record>
+    <record id="rule_zc_salesperson_tracker_expense_supervisor" model="ir.rule">
+       <field name="name">salesperson_tracker_expense supervisor scope</field>
+       <field name="model_id" ref="model_salesperson_tracker_expense"/>
+       <field name="groups" eval="[(4, ref('group_salesperson_supervisor'))]"/>
+       <field name="domain_force">[('tracker_id.user_id','in',user.zc_team_user_ids.ids)]</field>
+    </record>
+    <record id="rule_zc_salesperson_tracker_expense_manager" model="ir.rule">
+       <field name="name">salesperson_tracker_expense manager scope</field>
+       <field name="model_id" ref="model_salesperson_tracker_expense"/>
+       <field name="groups" eval="[(4, ref('group_salesperson_manager'))]"/>
+       <field name="domain_force">[('tracker_id.user_id','in',user.zc_team_user_ids.ids)]</field>
+    </record>
+    <record id="rule_zc_salesperson_tracker_expense_ceo" model="ir.rule">
+       <field name="name">salesperson_tracker_expense ceo scope</field>
+       <field name="model_id" ref="model_salesperson_tracker_expense"/>
+       <field name="groups" eval="[(4, ref('group_salesperson_ceo'))]"/>
+       <field name="domain_force">[('tracker_id.user_id','in',user.zc_team_user_ids.ids)]</field>
+    </record>
     <record id="rule_zc_salesperson_visit_plan_admin" model="ir.rule">
        <field name="name">salesperson.visit.plan system administrator</field>
        <field name="model_id" ref="model_salesperson_visit_plan"/>
@@ -313,6 +338,12 @@
     <record id="rule_zc_salesperson_tracker_idle_line_admin" model="ir.rule">
        <field name="name">salesperson.tracker.idle.line system administrator</field>
        <field name="model_id" ref="model_salesperson_tracker_idle_line"/>
+       <field name="groups" eval="[(4, ref('base.group_system'))]"/>
+       <field name="domain_force">[(1,'=',1)]</field>
+    </record>
+    <record id="rule_zc_salesperson_tracker_expense_admin" model="ir.rule">
+       <field name="name">salesperson.tracker.expense system administrator</field>
+       <field name="model_id" ref="model_salesperson_tracker_expense"/>
        <field name="groups" eval="[(4, ref('base.group_system'))]"/>
        <field name="domain_force">[(1,'=',1)]</field>
     </record>

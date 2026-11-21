@@ -85,6 +85,9 @@ class SalespersonTracker(models.Model):
     actual_food_cost = fields.Float(string="Actual Food")
     actual_other_cost = fields.Float(string="Actual Other")
     actual_total_cost = fields.Float(string="Actual Total", compute="_compute_actual_costs", store=True)
+    actual_expense_line_ids = fields.One2many(
+        "salesperson.tracker.expense", "tracker_id", string="Actual Expense Entries"
+    )
 
     def _recalculate_verified_distance(self):
         """Rebuild persisted distance from recorded GPS logs (also repairs historical totals)."""
@@ -302,6 +305,43 @@ class SalespersonTracker(models.Model):
     def _compute_actual_costs(self):
         for tracker in self:
             tracker.actual_total_cost = tracker.actual_transport_cost + tracker.actual_food_cost + tracker.actual_other_cost
+
+    def add_actual_expense(self, reason, amount, notes=False):
+        """Create a mobile expense entry and atomically update report totals.
+
+        Historical trackers can already contain manually entered actual costs.
+        Incrementing the matching total (rather than recomputing it exclusively
+        from the new lines) preserves that historical data.
+        """
+        self.ensure_one()
+        reason_to_field = {
+            "transport": "actual_transport_cost",
+            "food": "actual_food_cost",
+            "other": "actual_other_cost",
+        }
+        if reason not in reason_to_field:
+            raise ValidationError(_("Choose Transport, Food, or Other as the expense reason."))
+        try:
+            amount = round(float(amount), 2)
+        except (TypeError, ValueError):
+            raise ValidationError(_("Enter a valid expense amount."))
+        if amount <= 0:
+            raise ValidationError(_("Actual expense amount must be greater than zero."))
+
+        # Prevent concurrent mobile submissions from overwriting one another.
+        self.env.cr.execute(
+            "SELECT id FROM salesperson_tracker WHERE id = %s FOR UPDATE", (self.id,)
+        )
+        field_name = reason_to_field[reason]
+        self.invalidate_recordset([field_name, "actual_total_cost"])
+        expense = self.env["salesperson.tracker.expense"].create({
+            "tracker_id": self.id,
+            "reason": reason,
+            "amount": amount,
+            "notes": (notes or "").strip(),
+        })
+        self.write({field_name: (self[field_name] or 0.0) + amount})
+        return expense
 
     @api.depends("checkin_time", "checkout_time")
     def _compute_duration(self):

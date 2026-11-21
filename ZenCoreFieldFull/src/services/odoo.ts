@@ -215,6 +215,12 @@ export type RemotePlanDetail = RemotePlan & {
 };
 export const getPlanDetail=(id:number)=>call<{ok:boolean;plan:RemotePlanDetail}>(`/zencore/field/v4/plans/${id}`);
 
+export type ActualExpenseReason='transport'|'food'|'other';
+export type ActualExpense={id:number;reason:ActualExpenseReason;reason_label:string;amount:number;notes:string;expense_date:string};
+export type ActualExpenseSummary={ok:boolean;tracker_id:number;planned_total:number;actual_total:number;remaining_balance:number;expenses:ActualExpense[];expense?:ActualExpense};
+export const getTrackerExpenses=(trackerId:number)=>call<ActualExpenseSummary>(`/zencore/field/v12/trackers/${trackerId}/expenses`);
+export const addTrackerExpense=(trackerId:number,data:{reason:ActualExpenseReason;amount:number;notes:string})=>call<ActualExpenseSummary>(`/zencore/field/v12/trackers/${trackerId}/expenses`,'POST',data);
+
 export type PhotoUploadPayload={id:string;plan_id:number;tracker_id:number|null;customer_id:number|null;file_name:string;mime_type:string;captured_at:number;note:string;content_base64:string;latitude?:number|null;longitude?:number|null;accuracy_m?:number|null;location_name?:string;device_name?:string;photo_origin?:'camera'|'gallery'};
 export type PhotoUploadReceipt={ok:boolean;photo_id:string;attachment_id:number;message_id:number;already_uploaded?:boolean};
 export const uploadVisitPhoto=(payload:PhotoUploadPayload)=>call<PhotoUploadReceipt>('/zencore/field/v5/photos/upload','POST',payload);

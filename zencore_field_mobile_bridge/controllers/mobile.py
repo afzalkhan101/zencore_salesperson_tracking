@@ -603,6 +603,71 @@ class ZenCoreFieldMobileBridge(http.Controller):
         except Exception as ex:
             return self._json({'ok': False, 'message': str(ex)}, 400)
 
+    def _owned_tracker(self, tracker_id, user):
+        tracker = request.env['salesperson.tracker'].sudo().browse(int(tracker_id or 0))
+        if not tracker.exists() or tracker.user_id.id != user.id:
+            raise ValidationError('Tracking record not found for your account')
+        if tracker.company_id and tracker.company_id != user.company_id:
+            raise ValidationError('Tracking record belongs to another company')
+        return tracker
+
+    @staticmethod
+    def _expense_payload(expense):
+        labels = dict(expense._fields['reason'].selection)
+        return {
+            'id': expense.id,
+            'reason': expense.reason,
+            'reason_label': labels.get(expense.reason, expense.reason),
+            'amount': round(float(expense.amount or 0.0), 2),
+            'notes': expense.notes or '',
+            'expense_date': expense.expense_date,
+        }
+
+    def _expense_summary(self, tracker):
+        expenses = request.env['salesperson.tracker.expense'].sudo().search(
+            [('tracker_id', '=', tracker.id)], order='expense_date desc, id desc'
+        )
+        planned_total = max(0.0, float(tracker.total_cost or 0.0))
+        actual_total = max(0.0, float(tracker.actual_total_cost or 0.0))
+        return {
+            'ok': True,
+            'tracker_id': tracker.id,
+            'planned_total': round(planned_total, 2),
+            'actual_total': round(actual_total, 2),
+            'remaining_balance': round(planned_total - actual_total, 2),
+            'expenses': [self._expense_payload(expense) for expense in expenses],
+        }
+
+    @http.route('/zencore/field/v12/trackers/<int:tracker_id>/expenses',
+                type='http', auth='user', csrf=False, methods=['GET'])
+    def tracker_expenses(self, tracker_id, **kwargs):
+        """Read only the authenticated salesperson's tracking expenses."""
+        try:
+            return self._json(self._expense_summary(self._owned_tracker(tracker_id, self._owner())))
+        except Exception as ex:
+            return self._json({'ok': False, 'message': str(ex)}, 400)
+
+    @http.route('/zencore/field/v12/trackers/<int:tracker_id>/expenses',
+                type='http', auth='user', csrf=False, methods=['POST'])
+    def add_tracker_expense(self, tracker_id, **kwargs):
+        """Store one actual expense while the plan is actively being tracked."""
+        try:
+            user = self._owner()
+            tracker = self._owned_tracker(tracker_id, user)
+            if not tracker.is_tracking:
+                raise ValidationError('Start tracking this Visit Plan before adding actual expenses')
+            data = self._body()
+            reason = str(data.get('reason') or '').strip().lower()
+            notes = str(data.get('notes') or '').strip()
+            if len(notes) > 1000:
+                raise ValidationError('Expense notes must be 1,000 characters or fewer')
+            expense = tracker.add_actual_expense(reason, data.get('amount'), notes)
+            result = self._expense_summary(tracker)
+            result['expense'] = self._expense_payload(expense)
+            return self._json(result)
+        except Exception as ex:
+            return self._json({'ok': False, 'message': str(ex)}, 400)
+
     @http.route(['/zencore/field/v2/gps/batch', '/zencore/field/v3/gps/batch'],type='http',auth='user',csrf=False,methods=['POST'])
     def batch_gps(self,**kwargs):
         try:
