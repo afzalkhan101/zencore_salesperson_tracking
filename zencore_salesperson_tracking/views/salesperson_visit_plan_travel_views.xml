@@ -7,7 +7,7 @@
         <field name="model">salesperson.visit.plan</field>
         <field name="inherit_id" ref="zencore_salesperson_tracking.view_salesperson_visit_plan_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//group[@string='Expenses Claim']" position="after">
+            <xpath expr="//field[@name='total_cost']/.." position="after">
                 <group string="Travel &amp; Cost Summary" col="4">
                     <field name="planned_distance_km" readonly="1"/>
                     <field name="planned_travel_minutes" readonly="1"/>
