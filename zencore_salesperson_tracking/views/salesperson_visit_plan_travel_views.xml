@@ -21,6 +21,9 @@
                 <field name="travel_mode" readonly="1"/>
                 <field name="planned_duration_minutes" string="ETA (min)" readonly="1"/>
             </xpath>
+            <xpath expr="//field[@name='from_location']" position="after">
+                <field name="to_location" string="Customer Address" readonly="1"/>
+            </xpath>
         </field>
     </record>
 
@@ -32,6 +35,9 @@
             <xpath expr="//page[@name='target_lines']//field[@name='expected_km']" position="after">
                 <field name="travel_mode" readonly="1"/>
                 <field name="planned_duration_minutes" string="ETA (min)" readonly="1"/>
+            </xpath>
+            <xpath expr="//page[@name='target_lines']//field[@name='from_location']" position="after">
+                <field name="to_location" string="Customer Address" readonly="1"/>
             </xpath>
         </field>
     </record>
