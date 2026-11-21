@@ -73,7 +73,7 @@
                         <page string="Target Lines">
                             <field name="target_line_ids" nolabel="1">
                                 <list editable="bottom" string="Target Lines">
-                                    <field name="employee_ids" widget="many2many_tags"/>
+                                    <field name="employee_ids" widget="many2many_tags" domain="[('active', '=', True)]"/>
                                     <field name="from_location" placeholder="From"/>
                                     <field name="expected_km" string="KM"/>
                                     <field name="customer_ids" widget="many2many_tags" placeholder="Customers" domain="[('active', '=', True), ('customer_rank', '&gt;', 0), ('user_ids', '=', False)]"/>

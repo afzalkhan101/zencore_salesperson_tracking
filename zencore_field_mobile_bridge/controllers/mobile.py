@@ -321,7 +321,7 @@ class ZenCoreFieldMobileBridge(http.Controller):
 
     @http.route('/zencore/field/v4/employees', type='http', auth='user', csrf=False, methods=['GET'])
     def list_employees(self, q='', limit='50', offset='0', **kwargs):
-        """Read-only selector respecting employee record rules (no sudo)."""
+        """Return active staff only; customer partners are never queried here."""
         try:
             self._owner()
             limit = min(100, max(1, int(limit)))
@@ -330,7 +330,7 @@ class ZenCoreFieldMobileBridge(http.Controller):
             # Only return minimal employee names from the user's active company.
             # HR employee access may be restricted for field staff.
             Employee = request.env['hr.employee'].sudo()
-            domain = [('company_id', '=', request.env.company.id)]
+            domain = [('company_id', '=', request.env.company.id), ('active', '=', True)]
             if q:
                 # The mobile picker advertises name, phone or email search.
                 # Include the linked login too, so freshly registered mobile
@@ -377,7 +377,11 @@ class ZenCoreFieldMobileBridge(http.Controller):
                 customer_domain = [('id', 'in', customer_ids)] + self._customer_domain(Partner)
                 if len(Partner.search(customer_domain)) != len(customer_ids):
                     raise ValidationError('One or more customers are unavailable')
-                if employee_ids and len(Employee.search([('id','in',employee_ids), ('company_id','=',request.env.company.id)]))!=len(employee_ids):
+                if employee_ids and len(Employee.search([
+                    ('id', 'in', employee_ids),
+                    ('company_id', '=', request.env.company.id),
+                    ('active', '=', True),
+                ])) != len(employee_ids):
                     raise ValidationError('One or more accompanying employees are unavailable')
                 km=float(t.get('km') or 0)
                 if not 0<=km<=10000:

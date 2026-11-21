@@ -57,7 +57,7 @@
                         <page string="Target Lines" name="target_lines">
                             <field name="target_line_ids">
                                 <list>
-                                    <field name="employee_ids" widget="many2many_tags"/>
+                                    <field name="employee_ids" widget="many2many_tags" domain="[('active', '=', True)]"/>
                                     <field name="from_location"/>
                                     <field name="expected_km"/>
                                     <!-- customer_ids kept editable for Add-a-line/reassignment,
