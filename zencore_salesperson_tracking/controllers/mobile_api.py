@@ -13,13 +13,15 @@ class MobileApiController(http.Controller):
     def _customer_domain(Partner):
         """Limit customer-facing endpoints to actual customer contacts.
 
-        Employees and internal users also have partner records in Odoo.  A
-        customer's ``customer_rank`` is safe for field users to query, unlike
-        HR's employee relation, which requires HR-specific access rights.
+        Employees and internal users also have partner records in Odoo. This
+        domain is evaluated using a sudoed partner model, so HR's employee
+        relation can safely exclude staff without granting HR access.
         """
         domain = [('active', '=', True), ('customer_rank', '>', 0)]
         if 'user_ids' in Partner._fields:
             domain.append(('user_ids', '=', False))
+        if 'employee_ids' in Partner._fields:
+            domain.append(('employee_ids', '=', False))
         if 'company_id' in Partner._fields:
             domain.append(('company_id', 'in', [False, request.env.company.id]))
         return domain

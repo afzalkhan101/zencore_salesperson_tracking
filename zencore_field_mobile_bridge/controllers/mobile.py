@@ -22,15 +22,18 @@ class ZenCoreFieldMobileBridge(http.Controller):
         """Return only genuine customer contacts, never staff or user contacts.
 
         The mobile application uses this for every customer picker and for
-        server-side plan validation. ``customer_rank`` is the customer marker
-        available to field users; unlike HR's ``employee_ids`` relation it can
-        be read without granting employee-directory access to a salesperson.
+        server-side plan validation. The caller must use this domain with a
+        sudoed partner model: HR's ``employee_ids`` is intentionally not made
+        readable to field users, but it is needed to remove employee contacts
+        that happen to have a customer rank in old data.
         """
         domain = [('active', '=', True), ('name', '!=', False)]
         if 'customer_rank' in Partner._fields:
             domain.append(('customer_rank', '>', 0))
         if 'user_ids' in Partner._fields:
             domain.append(('user_ids', '=', False))
+        if 'employee_ids' in Partner._fields:
+            domain.append(('employee_ids', '=', False))
         if 'company_id' in Partner._fields:
             domain.append(('company_id', 'in', [False, request.env.company.id]))
         return domain
@@ -207,7 +210,7 @@ class ZenCoreFieldMobileBridge(http.Controller):
             if offset > 100000:
                 raise ValidationError('Customer offset is too large')
             q = (q or '').strip()[:100]
-            Partner = request.env['res.partner']
+            Partner = request.env['res.partner'].sudo()
             domain = self._customer_domain(Partner)
             if q:
                 searchable = [x for x in ('name', 'phone', 'email', 'mobile') if x in Partner._fields]
@@ -355,8 +358,9 @@ class ZenCoreFieldMobileBridge(http.Controller):
             priority={'normal':'0','high':'1','urgent':'2','0':'0','1':'1','2':'2'}.get(d.get('priority','normal'))
             if priority is None:raise ValidationError('Invalid priority')
             # Validate every selected partner, not merely the first customer in a line.
-            # Access checks use the logged-in user's record rules.
-            Partner=request.env['res.partner']
+            # This uses sudo solely to test the HR employee relation inside the
+            # customer-only domain; the API returns only minimal customer data.
+            Partner=request.env['res.partner'].sudo()
             Employee=request.env['hr.employee'].sudo()
             lines=[]
             for t in targets:
