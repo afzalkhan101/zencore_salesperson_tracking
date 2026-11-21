@@ -1,6 +1,6 @@
 {
     'name': 'ZenCore Field Mobile Bridge',
-    'version': '19.0.16.0.6',
+    'version': '19.0.16.0.7',
     'author': 'ZenCore',
     'summary': 'Mobile tracking, photo evidence and instant registration and mobile customer geolocation',
     'depends': ['zencore_salesperson_tracking', 'auth_signup', 'base_geolocalize'],

@@ -172,8 +172,11 @@ export async function submitPlan(p:Plan,submit=true) {
   if(!p.targets.length || p.targets.length>40) throw Error('Add 1 to 40 target lines.');
   if(p.targets.some(t=>!(t.customerIds?.length || t.customerId))) throw Error('Select at least one Odoo customer for every target.');
   await checkMobileBridge();
+  // Target-line notes were retired. Plan notes are sent separately and render
+  // in the Odoo Notes tab, preserving one clear source of plan commentary.
+  const targets=p.targets.map(({notes: _legacyNotes,...target})=>target);
   return call<{ok:boolean;plan_id:number;plan_name:string;state:string}>('/zencore/field/v3/plans','POST',{
-    date:p.date,purpose:p.purpose,priority:p.priority,targets:p.targets,
+    date:p.date,purpose:p.purpose,priority:p.priority,targets,
     transport:p.transport,food:p.food,other:p.other,notes:p.notes,submit,
   });
 }
@@ -211,15 +214,16 @@ export type RemotePlanDetail = RemotePlan & {
  priority:string; transport:number;food:number;other:number;total_cost:number;planned_distance_km:number;planned_travel_minutes:number;actual_distance_km:number;actual_travel_minutes:number;actual_expense_total:number;expense_balance:number;notes:string;
  targets:{id:number; employee_ids:number[];employee_names:string[];
  customer_ids:number[];customer_names:string[];customer_locations?:{id:number;latitude:number|null;longitude:number|null}[];from_location:string;from_latitude?:number;from_longitude?:number;to_location?:string;
- expected_km:number;travel_mode:'walk'|'bike'|'car';planned_duration_minutes:number;notes:string}[];
+ expected_km:number;travel_mode:'walk'|'bike'|'car';planned_duration_minutes:number;claimed_cost:number;actual_cost:number;expense_balance:number}[];
 };
 export const getPlanDetail=(id:number)=>call<{ok:boolean;plan:RemotePlanDetail}>(`/zencore/field/v4/plans/${id}`);
 
 export type ActualExpenseReason='transport'|'food'|'other';
-export type ActualExpense={id:number;reason:ActualExpenseReason;reason_label:string;amount:number;notes:string;expense_date:string};
-export type ActualExpenseSummary={ok:boolean;tracker_id:number;planned_total:number;actual_total:number;remaining_balance:number;expenses:ActualExpense[];expense?:ActualExpense};
+export type ActualExpense={id:number;reason:ActualExpenseReason;reason_label:string;amount:number;notes:string;expense_date:string;target_line_id:number|null;customer_id:number|null;customer_name:string};
+export type ActualExpenseTarget={id:number;customer_ids:number[];customer_names:string[];claimed_cost:number;actual_cost:number;balance:number};
+export type ActualExpenseSummary={ok:boolean;tracker_id:number;planned_total:number;actual_total:number;remaining_balance:number;expenses:ActualExpense[];targets:ActualExpenseTarget[];expense?:ActualExpense};
 export const getTrackerExpenses=(trackerId:number)=>call<ActualExpenseSummary>(`/zencore/field/v12/trackers/${trackerId}/expenses`);
-export const addTrackerExpense=(trackerId:number,data:{reason:ActualExpenseReason;amount:number;notes:string})=>call<ActualExpenseSummary>(`/zencore/field/v12/trackers/${trackerId}/expenses`,'POST',data);
+export const addTrackerExpense=(trackerId:number,data:{reason:ActualExpenseReason;amount:number;notes:string;target_line_id:number;customer_id:number})=>call<ActualExpenseSummary>(`/zencore/field/v12/trackers/${trackerId}/expenses`,'POST',data);
 
 export type PhotoUploadPayload={id:string;plan_id:number;tracker_id:number|null;customer_id:number|null;file_name:string;mime_type:string;captured_at:number;note:string;content_base64:string;latitude?:number|null;longitude?:number|null;accuracy_m?:number|null;location_name?:string;device_name?:string;photo_origin?:'camera'|'gallery'};
 export type PhotoUploadReceipt={ok:boolean;photo_id:string;attachment_id:number;message_id:number;already_uploaded?:boolean};

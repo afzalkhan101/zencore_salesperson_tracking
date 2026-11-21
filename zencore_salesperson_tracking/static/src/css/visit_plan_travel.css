@@ -1,0 +1,34 @@
+/* A predictable target-line layout keeps route and customer cost data readable.
+   The x2many stays horizontally scrollable on smaller back-office screens. */
+.o_zc_plan_target_lines .o_list_renderer {
+    overflow-x: auto;
+}
+.o_zc_plan_target_lines .o_list_table {
+    min-width: 1280px;
+    table-layout: fixed;
+}
+.o_zc_plan_target_lines .o_list_table th:nth-child(1),
+.o_zc_plan_target_lines .o_list_table td:nth-child(1) { width: 125px; }
+.o_zc_plan_target_lines .o_list_table th:nth-child(2),
+.o_zc_plan_target_lines .o_list_table td:nth-child(2) { width: 220px; }
+.o_zc_plan_target_lines .o_list_table th:nth-child(3),
+.o_zc_plan_target_lines .o_list_table td:nth-child(3) { width: 245px; }
+.o_zc_plan_target_lines .o_list_table th:nth-child(4),
+.o_zc_plan_target_lines .o_list_table td:nth-child(4) { width: 66px; }
+.o_zc_plan_target_lines .o_list_table th:nth-child(5),
+.o_zc_plan_target_lines .o_list_table td:nth-child(5) { width: 82px; }
+.o_zc_plan_target_lines .o_list_table th:nth-child(6),
+.o_zc_plan_target_lines .o_list_table td:nth-child(6) { width: 76px; }
+.o_zc_plan_target_lines .o_list_table th:nth-child(7),
+.o_zc_plan_target_lines .o_list_table td:nth-child(7),
+.o_zc_plan_target_lines .o_list_table th:nth-child(8),
+.o_zc_plan_target_lines .o_list_table td:nth-child(8),
+.o_zc_plan_target_lines .o_list_table th:nth-child(9),
+.o_zc_plan_target_lines .o_list_table td:nth-child(9) { width: 104px; }
+.o_zc_plan_target_lines .o_list_table th:nth-child(10),
+.o_zc_plan_target_lines .o_list_table td:nth-child(10) { width: 150px; }
+.o_zc_plan_target_lines .o_list_table td {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}

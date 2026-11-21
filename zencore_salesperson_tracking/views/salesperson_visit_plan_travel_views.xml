@@ -20,9 +20,19 @@
             <xpath expr="//field[@name='expected_km']" position="after">
                 <field name="travel_mode" readonly="1"/>
                 <field name="planned_duration_minutes" string="ETA (min)" readonly="1"/>
+                <field name="claimed_cost" string="Claimed Cost" readonly="1"/>
+                <field name="actual_expense_total" string="Actual Cost" readonly="1"/>
+                <field name="expense_balance" string="Balance" readonly="1"/>
             </xpath>
             <xpath expr="//field[@name='from_location']" position="after">
                 <field name="to_location" string="Customer Address" readonly="1"/>
+            </xpath>
+            <!-- Notes belong to the plan's Notes tab. They are not entered per
+                 target line by the mobile app, so keep this operational grid
+                 focused on route, customer and cost data. -->
+            <xpath expr="//field[@name='target_line_ids']//field[@name='notes']" position="replace"/>
+            <xpath expr="//field[@name='target_line_ids']" position="attributes">
+                <attribute name="class">o_zc_plan_target_lines</attribute>
             </xpath>
         </field>
     </record>
@@ -35,9 +45,16 @@
             <xpath expr="//page[@name='target_lines']//field[@name='expected_km']" position="after">
                 <field name="travel_mode" readonly="1"/>
                 <field name="planned_duration_minutes" string="ETA (min)" readonly="1"/>
+                <field name="claimed_cost" string="Claimed Cost" readonly="1"/>
+                <field name="actual_expense_total" string="Actual Cost" readonly="1"/>
+                <field name="expense_balance" string="Balance" readonly="1"/>
             </xpath>
             <xpath expr="//page[@name='target_lines']//field[@name='from_location']" position="after">
                 <field name="to_location" string="Customer Address" readonly="1"/>
+            </xpath>
+            <xpath expr="//page[@name='target_lines']//field[@name='notes']" position="replace"/>
+            <xpath expr="//page[@name='target_lines']//field[@name='target_line_ids']" position="attributes">
+                <attribute name="class">o_zc_plan_target_lines</attribute>
             </xpath>
         </field>
     </record>

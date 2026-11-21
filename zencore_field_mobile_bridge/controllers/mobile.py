@@ -422,7 +422,10 @@ class ZenCoreFieldMobileBridge(http.Controller):
                     'expected_km':km,
                     'travel_mode':travel_mode,
                     'planned_duration_minutes':planned_duration_minutes,
-                    'notes':str(t.get('notes') or '')[:1000],
+                    # Target-line notes are intentionally not collected in the
+                    # mobile flow. Plan notes are saved in internal_notes and
+                    # displayed in Odoo's Notes tab.
+                    'notes':'',
                 }))
             def amount(k):
                 value=float(d.get(k) or 0)
@@ -503,7 +506,9 @@ class ZenCoreFieldMobileBridge(http.Controller):
                     'expected_km':line.expected_km,
                     'travel_mode':line.travel_mode or 'car',
                     'planned_duration_minutes':line.planned_duration_minutes or 0,
-                    'notes':line.notes or '',
+                    'claimed_cost':round(float(line.claimed_cost or 0.0), 2),
+                    'actual_cost':round(float(line.actual_expense_total or 0.0), 2),
+                    'expense_balance':round(float(line.expense_balance or 0.0), 2),
                 } for line in plan.target_line_ids],
             })
             return self._json({'ok':True,'plan':data})
@@ -641,6 +646,9 @@ class ZenCoreFieldMobileBridge(http.Controller):
             'amount': round(float(expense.amount or 0.0), 2),
             'notes': expense.notes or '',
             'expense_date': expense.expense_date,
+            'target_line_id': expense.plan_line_id.id or None,
+            'customer_id': expense.customer_id.id or None,
+            'customer_name': expense.customer_id.display_name or '',
         }
 
     def _expense_summary(self, tracker):
@@ -656,6 +664,14 @@ class ZenCoreFieldMobileBridge(http.Controller):
             'actual_total': round(actual_total, 2),
             'remaining_balance': round(planned_total - actual_total, 2),
             'expenses': [self._expense_payload(expense) for expense in expenses],
+            'targets': [{
+                'id': line.id,
+                'customer_ids': line.customer_ids.ids,
+                'customer_names': line.customer_ids.mapped('display_name'),
+                'claimed_cost': round(float(line.claimed_cost or 0.0), 2),
+                'actual_cost': round(float(line.actual_expense_total or 0.0), 2),
+                'balance': round(float(line.expense_balance or 0.0), 2),
+            } for line in tracker.plan_id.target_line_ids],
         }
 
     @http.route('/zencore/field/v12/trackers/<int:tracker_id>/expenses',
@@ -681,7 +697,25 @@ class ZenCoreFieldMobileBridge(http.Controller):
             notes = str(data.get('notes') or '').strip()
             if len(notes) > 1000:
                 raise ValidationError('Expense notes must be 1,000 characters or fewer')
-            expense = tracker.add_actual_expense(reason, data.get('amount'), notes)
+            try:
+                line_id = int(data.get('target_line_id') or 0)
+                customer_id = int(data.get('customer_id') or 0)
+            except (TypeError, ValueError):
+                raise ValidationError('Select a customer before adding an actual expense')
+            plan_lines = tracker.plan_id.target_line_ids
+            # Keep older mobile builds usable for a one-customer plan while new
+            # builds always submit the explicit customer route.
+            line = plan_lines.filtered(lambda item: item.id == line_id)[:1]
+            if not line and len(plan_lines) == 1:
+                line = plan_lines[:1]
+            if not line:
+                raise ValidationError('Select the customer route for this actual expense')
+            customer = line.customer_ids.filtered(lambda partner: partner.id == customer_id)[:1]
+            if not customer and len(line.customer_ids) == 1:
+                customer = line.customer_ids[:1]
+            if not customer:
+                raise ValidationError('Select a customer for this actual expense')
+            expense = tracker.add_actual_expense(reason, data.get('amount'), notes, line, customer)
             result = self._expense_summary(tracker)
             result['expense'] = self._expense_payload(expense)
             return self._json(result)

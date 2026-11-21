@@ -22,6 +22,51 @@ class SalespersonVisitPlanLineTravel(models.Model):
         string="Planned Travel Time (min)", default=0,
         help="Estimated travel time returned by the route selected in the mobile app.",
     )
+    claimed_cost = fields.Float(
+        string="Claimed Cost", compute="_compute_target_cost_summary",
+        help="The plan's claimed budget allocated to this customer route by planned distance.",
+    )
+    actual_expense_total = fields.Float(
+        string="Actual Cost", compute="_compute_target_cost_summary",
+        help="Actual mobile expenses recorded against this customer route.",
+    )
+    expense_balance = fields.Float(
+        string="Cost Balance", compute="_compute_target_cost_summary",
+        help="Claimed Cost minus Actual Cost for this customer route.",
+    )
+    expense_ids = fields.One2many(
+        "salesperson.tracker.expense", "plan_line_id", string="Actual Expenses"
+    )
+
+    @api.depends(
+        "plan_id.total_cost",
+        "plan_id.target_line_ids",
+        "plan_id.target_line_ids.expected_km",
+        "expense_ids.amount",
+    )
+    def _compute_target_cost_summary(self):
+        """Allocate the existing claimed plan budget transparently per route.
+
+        Claim categories remain at plan level (Transport/Food/Other), preserving
+        existing business logic. The allocation gives every customer route a
+        clear budget: distance weighted when route distances are available,
+        otherwise split evenly between target lines.
+        """
+        for line in self:
+            siblings = line.plan_id.target_line_ids
+            count = len(siblings)
+            budget = float(line.plan_id.total_cost or 0.0)
+            total_distance = sum(siblings.mapped("expected_km"))
+            if not count:
+                claimed = 0.0
+            elif total_distance > 0:
+                claimed = budget * float(line.expected_km or 0.0) / total_distance
+            else:
+                claimed = budget / count
+            actual = sum(line.expense_ids.mapped("amount"))
+            line.claimed_cost = round(claimed, 2)
+            line.actual_expense_total = round(actual, 2)
+            line.expense_balance = round(claimed - actual, 2)
 
 
 class SalespersonTrackerTargetLineTravel(models.Model):

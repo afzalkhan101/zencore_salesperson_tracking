@@ -141,7 +141,7 @@ function ZenCoreFieldApp(){
  const [regName,setRegName]=useState('');const [regPhone,setRegPhone]=useState('');
  const [regPassword,setRegPassword]=useState('');const [regConfirmPassword,setRegConfirmPassword]=useState('');
  const [trackerId,setTrackerId]=useState<number|null>(null);const [remoteDetailData,setRemoteDetailData]=useState<Odoo.RemotePlanDetail|null>(null);const [customerVisits,setCustomerVisits]=useState<Customer[]>([]);const [checkinIds,setCheckinIds]=useState<Record<number,number>>({});const [visitNotes,setVisitNotes]=useState('');
- const [actualExpenses,setActualExpenses]=useState<Odoo.ActualExpenseSummary|null>(null);const [expenseReason,setExpenseReason]=useState<Odoo.ActualExpenseReason>('transport');const [expenseAmount,setExpenseAmount]=useState('');const [expenseNotes,setExpenseNotes]=useState('');
+ const [actualExpenses,setActualExpenses]=useState<Odoo.ActualExpenseSummary|null>(null);const [expenseReason,setExpenseReason]=useState<Odoo.ActualExpenseReason>('transport');const [expenseAmount,setExpenseAmount]=useState('');const [expenseNotes,setExpenseNotes]=useState('');const [expenseTargetLineId,setExpenseTargetLineId]=useState<number|null>(null);const [expenseCustomerId,setExpenseCustomerId]=useState<number|null>(null);
  const [photos,setPhotos]=useState<VisitPhoto[]>([]);const [pendingPhotos,setPendingPhotos]=useState(0);
  const [autoSync,setAutoSync]=useState<AutoSyncSnapshot>({phase:'waiting',pending:0,lastSuccessAt:null,lastError:null,nextAttemptAt:null});
  const [gpsStats,setGpsStats]=useState<GpsSummary>({total:0,pending:0,lastCapturedAt:null,lastAccuracy:null});
@@ -499,6 +499,9 @@ function ZenCoreFieldApp(){
      throw Error('This Visit Plan is not assigned to the currently logged-in account. The plan list was refreshed.');
    }
    setRemoteDetailData(detailed.plan);
+   const defaultTarget=detailed.plan.targets[0];
+   setExpenseTargetLineId(defaultTarget?.id??null);
+   setExpenseCustomerId(defaultTarget?.customer_ids?.[0]??null);
    // Load plan-scoped customer status so automatic server geofence events are
    // reflected in the mobile UI (including an active check-in ID).
    const customerResult=await Odoo.planCustomers(id);
@@ -522,8 +525,10 @@ function ZenCoreFieldApp(){
    const amount=Number(expenseAmount);
    if(!Number.isFinite(amount)||amount<=0)throw Error('Enter an actual expense amount greater than zero.');
    if(amount>10000000)throw Error('Expense amount is too large. Check the amount and try again.');
-   const summary=await Odoo.addTrackerExpense(trackerId,{reason:expenseReason,amount,notes:expenseNotes.trim()});
+   if(!expenseTargetLineId||!expenseCustomerId)throw Error('Select the customer this expense belongs to.');
+   const summary=await Odoo.addTrackerExpense(trackerId,{reason:expenseReason,amount,notes:expenseNotes.trim(),target_line_id:expenseTargetLineId,customer_id:expenseCustomerId});
    setActualExpenses(summary);setExpenseAmount('');setExpenseNotes('');
+   const detailed=await Odoo.getPlanDetail(serverDetail);setRemoteDetailData(detailed.plan);
    notify('Actual expense saved to Odoo and included in report totals.');
  });
  const checkCustomer=(cust:Customer)=>run(async()=>{
@@ -546,6 +551,8 @@ function ZenCoreFieldApp(){
  const nextVisitDistance=todaySummary?.next_visit&&metrics.latestLat!=null&&metrics.latestLng!=null&&todaySummary.next_visit.latitude!=null&&todaySummary.next_visit.longitude!=null
   ? `${straightLineKm(metrics.latestLat,metrics.latestLng,todaySummary.next_visit.latitude,todaySummary.next_visit.longitude).toFixed(2)} km away`
   : 'Distance unavailable';
+ const selectedExpenseTarget=remoteDetailData?.targets.find(line=>line.id===expenseTargetLineId)??null;
+ const expenseTargetCustomers=selectedExpenseTarget?.customer_ids.map((id,index)=>({id,name:selectedExpenseTarget.customer_names[index]||'Customer'}))??[];
  return <View style={st.root}><StatusBar barStyle="dark-content"/>
  <View style={[st.header,{paddingTop:Math.max(insets.top,Platform.OS==='ios'?18:14)}]}><View><Text style={st.brand}>zen<Text style={{color:C.green}}>core</Text> <Text style={{fontSize:13,color:C.green}}>FIELD</Text></Text><Text style={st.headerSubtitle}>Field Sales Workspace</Text></View><Pressable style={st.avatar} onPress={openSettings} accessibilityRole="button" accessibilityLabel="Open Settings" hitSlop={8}><Text style={st.settingsGear}>⚙</Text></Pressable></View>
  <KeyboardAvoidingView style={{flex:1}} behavior={Platform.OS==='ios'?'padding':undefined}><ScrollView contentContainerStyle={[st.scroll,{paddingBottom:28}]} keyboardShouldPersistTaps="handled" nestedScrollEnabled scrollEnabled={!mapInteracting}><GradientBackground pointerEvents="none" colors={["#F3FBF7","#EDF9F5","#E9F6FE","#F4FBF8"]} start={{x:0,y:0}} end={{x:1,y:1}} style={st.ambient}/>
@@ -600,13 +607,17 @@ function ZenCoreFieldApp(){
    <View style={st.travelCostGrid}><View style={st.travelCostStat}><Tiny>Planned route</Tiny><Text style={st.travelCostValue}>{displayDistance(remoteDetailData.planned_distance_km)}</Text><Tiny>{displayMinutes(remoteDetailData.planned_travel_minutes)}</Tiny></View><View style={st.travelCostStat}><Tiny>Actual GPS travel</Tiny><Text style={st.travelCostValue}>{displayDistance(remoteDetailData.actual_distance_km)}</Text><Tiny>{displayMinutes(remoteDetailData.actual_travel_minutes)}</Tiny></View></View>
    <View style={st.travelCostGrid}><View style={st.travelCostStat}><Tiny>Claimed cost</Tiny><Text style={st.travelCostValue}>{formatMoney(remoteDetailData.total_cost)}</Text></View><View style={st.travelCostStat}><Tiny>{remoteDetailData.expense_balance<0?'Over budget':'Balance left'}</Tiny><Text style={[st.travelCostValue,{color:remoteDetailData.expense_balance<0?C.danger:'#258243'}]}>{formatMoney(Math.abs(remoteDetailData.expense_balance))}</Text><Tiny>Actual: {formatMoney(remoteDetailData.actual_expense_total)}</Tiny></View></View>
   </View>
-  {remoteDetailData.targets.map((line,i)=><View key={line.id} style={st.targetRow}><View style={{flex:1}}><Text style={st.body}>Line {i+1}: {line.customer_names.join(', ')}</Text><Tiny>{line.employee_names.join(', ')||'No accompanies'}</Tiny><Tiny>From: {line.from_location}</Tiny><Tiny>To: {line.to_location||'Customer location'}</Tiny><Tiny>{line.travel_mode==='walk'?'🚶 Walk':line.travel_mode==='bike'?'🚲 Bike':'🚗 Car'} · {Number(line.expected_km||0).toFixed(2)} KM · ETA {displayMinutes(line.planned_duration_minutes)}</Tiny>{Boolean(line.notes)&&<Tiny>{line.notes}</Tiny>}</View></View>)}</>}
+  {remoteDetailData.targets.map((line,i)=><View key={line.id} style={st.targetRow}><View style={{flex:1}}><Text style={st.body}>Line {i+1}: {line.customer_names.join(', ')}</Text><Tiny>{line.employee_names.join(', ')||'No accompanies'}</Tiny><Tiny>From: {line.from_location}</Tiny><Tiny>To: {line.to_location||'Customer location'}</Tiny><Tiny>{line.travel_mode==='walk'?'🚶 Walk':line.travel_mode==='bike'?'🚲 Bike':'🚗 Car'} · {Number(line.expected_km||0).toFixed(2)} KM · ETA {displayMinutes(line.planned_duration_minutes)}</Tiny><View style={st.lineCostRow}><Tiny>Claimed: {formatMoney(line.claimed_cost)}</Tiny><Tiny>Actual: {formatMoney(line.actual_cost)}</Tiny><Tiny>{line.expense_balance<0?'Over:':'Balance:'} {formatMoney(Math.abs(line.expense_balance))}</Tiny></View></View></View>)}</>}
  {(['approved','in_progress'].includes(serverPlans.find(p=>p.id===serverDetail)?.state||''))&& activePlanId!==serverDetail && <B disabled={busy} onPress={()=>{void startApprovedPlan(serverDetail)}}>{tracking?'Switch Tracking to This Plan':'Start Tracking for This Plan'}</B>}
  {tracking && activePlanId===serverDetail && <B variant="danger" onPress={confirmStopActivePlan}> Stop This Plan</B>}
  {!['approved','in_progress'].includes(serverPlans.find(p=>p.id===serverDetail)?.state||'') && <Tiny>Tracking locked until approval by your assigned superior.</Tiny>}</Panel>
  {customerVisits.length===0?<Panel><Tiny>No customers found for this plan.</Tiny></Panel>:customerVisits.map(c=><Panel key={c.id}><Text style={st.cardTitle}>{c.name}</Text><Tiny>{[c.street,c.city].filter(Boolean).join(', ')}</Tiny><Info label="Phone" value={c.phone||'—'}/><Info label="Visit" value={c.visited?'Visited':'Not visited'}/><B onPress={()=>checkCustomer(c)} variant={checkinIds[c.id]?'danger':'primary'}>{checkinIds[c.id]?'Check Out':'GPS Check In'}</B></Panel>)}
  {tracking&&activePlanId===serverDetail&&trackerId&&<Panel style={st.actualExpenseCard}>
-   <View style={st.topLine}><View><H>Actual Expenses</H><Tiny>Add each tracking cost to this Visit Plan.</Tiny></View><Badge tone="blue">Live sync</Badge></View>
+   <View style={st.topLine}><View><H>Actual Expenses</H><Tiny>Assign every tracking cost to the correct customer route.</Tiny></View><Badge tone="blue">Live sync</Badge></View>
+   <Text style={st.fieldLabel}>Customer Target</Text>
+   <View style={st.expenseReasonRow}>{(remoteDetailData?.targets||[]).map((line,index)=><Pressable key={line.id} onPress={()=>{setExpenseTargetLineId(line.id);setExpenseCustomerId(line.customer_ids[0]??null)}} style={[st.expenseReason,{backgroundColor:expenseTargetLineId===line.id?'#07518C':'#ECF8EF',borderColor:expenseTargetLineId===line.id?'#07518C':'#CDE9D4'}]}><Text numberOfLines={1} style={[st.expenseReasonText,{color:expenseTargetLineId===line.id?'#FFFFFF':'#07518C'}]}>Line {index+1}</Text></Pressable>)}</View>
+   {expenseTargetCustomers.length>1&&<><Text style={st.fieldLabel}>Customer</Text><View style={st.expenseReasonRow}>{expenseTargetCustomers.map(customer=><Pressable key={customer.id} onPress={()=>setExpenseCustomerId(customer.id)} style={[st.expenseReason,{backgroundColor:expenseCustomerId===customer.id?'#07518C':'#ECF8EF',borderColor:expenseCustomerId===customer.id?'#07518C':'#CDE9D4'}]}><Text numberOfLines={1} style={[st.expenseReasonText,{color:expenseCustomerId===customer.id?'#FFFFFF':'#07518C'}]}>{customer.name}</Text></Pressable>)}</View></>}
+   {selectedExpenseTarget&&<View style={st.customerCostHint}><Tiny>{expenseTargetCustomers.find(customer=>customer.id===expenseCustomerId)?.name||'Selected customer'}</Tiny><Text style={st.customerCostHintText}>Claimed {formatMoney(selectedExpenseTarget.claimed_cost)} · Actual {formatMoney(selectedExpenseTarget.actual_cost)} · {selectedExpenseTarget.expense_balance<0?'Over':'Balance'} {formatMoney(Math.abs(selectedExpenseTarget.expense_balance))}</Text></View>}
    <Text style={st.fieldLabel}>Expense Reason</Text>
    <View style={st.expenseReasonRow}>{(['transport','food','other'] as Odoo.ActualExpenseReason[]).map(reason=><Pressable key={reason} onPress={()=>setExpenseReason(reason)} style={[st.expenseReason,{backgroundColor:expenseReason===reason?'#07518C':'#ECF8EF',borderColor:expenseReason===reason?'#07518C':'#CDE9D4'}]}><Text style={[st.expenseReasonText,{color:expenseReason===reason?'#FFFFFF':'#07518C'}]}>{reason==='transport'?'Transport':reason==='food'?'Food':'Other'}</Text></Pressable>)}</View>
    <Field label="Cost (BDT)" value={expenseAmount} onChange={setExpenseAmount} placeholder="Enter actual cost" keyboardType="numeric"/>
@@ -617,7 +628,7 @@ function ZenCoreFieldApp(){
     <View style={[st.expenseStat,{backgroundColor:(actualExpenses?.remaining_balance??0)<0?'#FFF1F2':'#EAF8EF'}]}><Tiny>{(actualExpenses?.remaining_balance??0)<0?'Over budget':'Balance left'}</Tiny><Text style={[st.expenseStatValue,{color:(actualExpenses?.remaining_balance??0)<0?C.danger:'#258243'}]}>{formatMoney(Math.abs(actualExpenses?.remaining_balance??0))}</Text></View>
    </View>
    <B disabled={busy||!expenseAmount.trim()} onPress={saveActualExpense}>+ Add Actual Expense</B>
-   {(actualExpenses?.expenses||[]).length>0&&<View style={st.expenseHistory}><Text style={st.expenseHistoryTitle}>Recent expense entries</Text>{actualExpenses!.expenses.slice(0,4).map(expense=><View key={expense.id} style={st.expenseLine}><View style={{flex:1}}><Text style={st.body}>{expense.reason_label}</Text>{Boolean(expense.notes)&&<Text style={st.muted} numberOfLines={1}>{expense.notes}</Text>}</View><Text style={st.expenseAmount}>{formatMoney(expense.amount)}</Text></View>)}</View>}
+   {(actualExpenses?.expenses||[]).length>0&&<View style={st.expenseHistory}><Text style={st.expenseHistoryTitle}>Recent expense entries</Text>{actualExpenses!.expenses.slice(0,4).map(expense=><View key={expense.id} style={st.expenseLine}><View style={{flex:1}}><Text style={st.body}>{expense.reason_label}{expense.customer_name?` · ${expense.customer_name}`:''}</Text>{Boolean(expense.notes)&&<Text style={st.muted} numberOfLines={1}>{expense.notes}</Text>}</View><Text style={st.expenseAmount}>{formatMoney(expense.amount)}</Text></View>)}</View>}
   </Panel>}
  <Panel><H>Visit Photos & Chatter Evidence</H><Field label="Visit Notes (saved with new photos)" value={visitNotes} onChange={setVisitNotes}/><View style={st.actions}><B onPress={()=>choosePhoto(true)}>Take Photo</B><B variant="light" onPress={()=>choosePhoto(false)}>Gallery</B></View><B variant="ghost" onPress={()=>run(async()=>{if(serverDetail!==null){triggerAutoSync(true);setPhotos(await getVisitPhotos(serverDetail));}})}>Refresh Photo Status</B>{photos.length===0?<Tiny>No photos selected yet.</Tiny>:photos.map(p=><View key={p.id} style={{marginTop:10}}><RNImage source={{uri:p.fileUri}} style={{height:170,width:"100%",borderRadius:12}} resizeMode="cover"/><Text style={st.body}>{p.fileName}</Text><Badge tone={p.status==='uploaded'?'green':'amber'}>{p.status==='uploaded'?`Uploaded to Odoo Chatter #${p.messageId}`:'Pending upload'}</Badge>{Boolean(p.error)&&<Tiny>{p.error}</Tiny>}{p.status==='pending'&&<B variant="ghost" onPress={()=>removePhoto(p)}>Remove Pending Photo</B>}</View>)}</Panel></>:<>
  <View style={st.topLine}><H>My Visit Plans</H><B onPress={()=>{setEditing(freshPlan());setTarget({id:createId(),customer:'',from:'',to:'',notes:''})}}>+ New Plan</B></View>
@@ -817,7 +828,10 @@ const st=StyleSheet.create({
  travelCostTitle:{fontSize:13,fontWeight:'800',color:C.text,marginBottom:8},
  travelCostGrid:{flexDirection:'row',gap:8,marginBottom:8},
  travelCostStat:{flex:1,backgroundColor:'#FFFFFF',borderRadius:10,paddingVertical:8,paddingHorizontal:9,borderWidth:1,borderColor:'#E1EEE5'},
- travelCostValue:{fontSize:14,fontWeight:'900',color:C.blue,marginTop:3,marginBottom:2}
+ travelCostValue:{fontSize:14,fontWeight:'900',color:C.blue,marginTop:3,marginBottom:2},
+ lineCostRow:{flexDirection:'row',flexWrap:'wrap',gap:9,marginTop:7,paddingTop:7,borderTopWidth:1,borderTopColor:'#E1EEE5'},
+ customerCostHint:{backgroundColor:'#F3FBF6',borderWidth:1,borderColor:'#CDE9D4',borderRadius:10,padding:10,marginBottom:10},
+ customerCostHintText:{fontSize:11,color:'#1E6948',fontWeight:'800',marginTop:4}
 });
 const modalSt=StyleSheet.create({
  backdrop:{flex:1,backgroundColor:'#07152299',justifyContent:'center',alignItems:'center',padding:24},

@@ -306,7 +306,7 @@ class SalespersonTracker(models.Model):
         for tracker in self:
             tracker.actual_total_cost = tracker.actual_transport_cost + tracker.actual_food_cost + tracker.actual_other_cost
 
-    def add_actual_expense(self, reason, amount, notes=False):
+    def add_actual_expense(self, reason, amount, notes=False, plan_line=False, customer=False):
         """Create a mobile expense entry and atomically update report totals.
 
         Historical trackers can already contain manually entered actual costs.
@@ -336,6 +336,8 @@ class SalespersonTracker(models.Model):
         self.invalidate_recordset([field_name, "actual_total_cost"])
         expense = self.env["salesperson.tracker.expense"].create({
             "tracker_id": self.id,
+            "plan_line_id": plan_line.id if plan_line else False,
+            "customer_id": customer.id if customer else False,
             "reason": reason,
             "amount": amount,
             "notes": (notes or "").strip(),
