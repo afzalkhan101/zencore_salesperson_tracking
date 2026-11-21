@@ -80,6 +80,18 @@ class SalespersonTrackerTargetLineTravel(models.Model):
     planned_duration_minutes = fields.Integer(
         related="plan_line_id.planned_duration_minutes", string="ETA (min)", readonly=True
     )
+    # Tracker target lines are generated from Visit Plan target lines. Expose
+    # the route-level costs here as read-only values so the tracker form can
+    # show the same data without duplicating or recalculating expense records.
+    claimed_cost = fields.Float(
+        related="plan_line_id.claimed_cost", string="Claimed Cost", readonly=True
+    )
+    actual_expense_total = fields.Float(
+        related="plan_line_id.actual_expense_total", string="Actual Cost", readonly=True
+    )
+    expense_balance = fields.Float(
+        related="plan_line_id.expense_balance", string="Cost Balance", readonly=True
+    )
 
 
 class SalespersonVisitPlanTravelSummary(models.Model):
