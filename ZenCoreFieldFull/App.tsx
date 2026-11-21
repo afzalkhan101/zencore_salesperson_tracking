@@ -94,6 +94,10 @@ function TrackingPulse({active}:{active:boolean}){
  </View>;
 }
 const displayDistance=(km:number|null)=>`${Number(km??0).toFixed(2)} km`;
+const displayMinutes=(minutes:number|null|undefined)=>{
+ const total=Math.max(0,Math.round(Number(minutes||0)));
+ return `${Math.floor(total/60)} h ${total%60} min`;
+};
 const customerDistance=(m:TrackingMetrics,customers:Customer[])=>{
  if(m.latestLat==null||m.latestLng==null)return 'GPS pending';
  const dest=customers.find(c=>Number.isFinite(c.latitude)&&Number.isFinite(c.longitude));
@@ -590,7 +594,13 @@ function ZenCoreFieldApp(){
  <View style={st.dailyNetworkRow}><View style={[st.networkDot,{backgroundColor:online?'#70BF36':'#95A8B4'}]}/><Text style={st.networkText}>{online?'Online':'Offline'} · GPS data syncs automatically</Text></View>
  </>}
   {tab==='Visits'&&<><PageBanner code="VISITS" title="Visit Plans" subtitle="Plan, submit and manage customer visits"/>{editing?<VisitPlanEditor plan={editing} salesperson={userName} onChange={updateEdit} onSave={saveDraft} onSubmit={()=>submit(editing)} onCancel={()=>setEditing(null)} busy={busy} onMapInteractionChange={setMapInteracting}/>:detail?<><B variant="ghost" onPress={()=>setDetail(null)}>‹ Back to Plans</B><H>{detail.name}</H><Panel><Info label="Status" value={detail.state}/><Info label="Date" value={detail.date}/><Info label="Purpose" value={detail.purpose}/><Info label="Targets" value={String(detail.targets.length)}/><Info label="Expense Total" value={formatMoney(detail.transport+detail.food+detail.other)}/>{detail.targets.map(x=><View style={st.targetRow} key={x.id}><View><Text style={st.body}>{x.customer}</Text><Tiny>{x.from} → {x.to}</Tiny></View></View>)}{detail.state==='draft'&&<B onPress={()=>submit(detail)}>Submit for Approval</B>}</Panel></>:serverDetail!==null?<><B variant="ghost" onPress={()=>setServerDetail(null)}>‹ Back to Plans</B><H>{serverPlans.find(p=>p.id===serverDetail)?.name || `Odoo Visit #${serverDetail}`}</H>
- <Panel><Info label="Salesperson" value={serverPlans.find(p=>p.id===serverDetail)?.salesperson||'—'}/><Info label="Plan ID" value={String(serverDetail)}/><Info label="Plan Status" value={visitPlanStatus(serverPlans.find(p=>p.id===serverDetail)?.state||'',serverDetail,tracking,activePlanId).label}/><Info label="Tracker ID" value={String(serverPlans.find(p=>p.id===serverDetail)?.tracker_id||'Not started')}/>{remoteDetailData&&<><Info label="Priority" value={remoteDetailData.priority}/><Info label="Expenses Total" value={formatMoney(remoteDetailData.total_cost)}/><Info label="Target Lines" value={String(remoteDetailData.targets.length)}/>{remoteDetailData.targets.map((line,i)=><View key={line.id} style={st.targetRow}><View style={{flex:1}}><Text style={st.body}>Line {i+1}: {line.customer_names.join(', ')}</Text><Tiny>{line.employee_names.join(', ')||'No accompanies'}</Tiny><Tiny>{line.from_location} to {line.to_location} | {line.expected_km} KM</Tiny><Tiny>{line.notes}</Tiny></View></View>)}</>}
+ <Panel><Info label="Salesperson" value={serverPlans.find(p=>p.id===serverDetail)?.salesperson||'—'}/><Info label="Plan ID" value={String(serverDetail)}/><Info label="Plan Status" value={visitPlanStatus(serverPlans.find(p=>p.id===serverDetail)?.state||'',serverDetail,tracking,activePlanId).label}/><Info label="Tracker ID" value={String(serverPlans.find(p=>p.id===serverDetail)?.tracker_id||'Not started')}/>{remoteDetailData&&<>
+  <Info label="Priority" value={remoteDetailData.priority}/><Info label="Target Lines" value={String(remoteDetailData.targets.length)}/>
+  <View style={st.travelCostSummary}><Text style={st.travelCostTitle}>Travel &amp; Cost Summary</Text>
+   <View style={st.travelCostGrid}><View style={st.travelCostStat}><Tiny>Planned route</Tiny><Text style={st.travelCostValue}>{displayDistance(remoteDetailData.planned_distance_km)}</Text><Tiny>{displayMinutes(remoteDetailData.planned_travel_minutes)}</Tiny></View><View style={st.travelCostStat}><Tiny>Actual GPS travel</Tiny><Text style={st.travelCostValue}>{displayDistance(remoteDetailData.actual_distance_km)}</Text><Tiny>{displayMinutes(remoteDetailData.actual_travel_minutes)}</Tiny></View></View>
+   <View style={st.travelCostGrid}><View style={st.travelCostStat}><Tiny>Claimed cost</Tiny><Text style={st.travelCostValue}>{formatMoney(remoteDetailData.total_cost)}</Text></View><View style={st.travelCostStat}><Tiny>{remoteDetailData.expense_balance<0?'Over budget':'Balance left'}</Tiny><Text style={[st.travelCostValue,{color:remoteDetailData.expense_balance<0?C.danger:'#258243'}]}>{formatMoney(Math.abs(remoteDetailData.expense_balance))}</Text><Tiny>Actual: {formatMoney(remoteDetailData.actual_expense_total)}</Tiny></View></View>
+  </View>
+  {remoteDetailData.targets.map((line,i)=><View key={line.id} style={st.targetRow}><View style={{flex:1}}><Text style={st.body}>Line {i+1}: {line.customer_names.join(', ')}</Text><Tiny>{line.employee_names.join(', ')||'No accompanies'}</Tiny><Tiny>From: {line.from_location}</Tiny><Tiny>To: {line.to_location||'Customer location'}</Tiny><Tiny>{line.travel_mode==='walk'?'🚶 Walk':line.travel_mode==='bike'?'🚲 Bike':'🚗 Car'} · {Number(line.expected_km||0).toFixed(2)} KM · ETA {displayMinutes(line.planned_duration_minutes)}</Tiny>{Boolean(line.notes)&&<Tiny>{line.notes}</Tiny>}</View></View>)}</>}
  {(['approved','in_progress'].includes(serverPlans.find(p=>p.id===serverDetail)?.state||''))&& activePlanId!==serverDetail && <B disabled={busy} onPress={()=>{void startApprovedPlan(serverDetail)}}>{tracking?'Switch Tracking to This Plan':'Start Tracking for This Plan'}</B>}
  {tracking && activePlanId===serverDetail && <B variant="danger" onPress={confirmStopActivePlan}> Stop This Plan</B>}
  {!['approved','in_progress'].includes(serverPlans.find(p=>p.id===serverDetail)?.state||'') && <Tiny>Tracking locked until approval by your assigned superior.</Tiny>}</Panel>
@@ -802,7 +812,12 @@ const st=StyleSheet.create({
  pageBannerOrb:{position:'absolute',height:170,width:170,borderRadius:85,right:-45,top:-72,backgroundColor:'#FFFFFF23'},
  pageBannerEyebrow:{color:'#D9F8E5',fontSize:10,fontWeight:'800',letterSpacing:1.4,marginBottom:7},
  pageBannerTitle:{color:'#FFFFFF',fontSize:24,fontWeight:'900',marginBottom:5},pageBannerSub:{color:'#EAF9F6',fontSize:11,lineHeight:16},
- busy:{...StyleSheet.absoluteFill,backgroundColor:'#FFFFFF99',justifyContent:'center',alignItems:'center'}
+ busy:{...StyleSheet.absoluteFill,backgroundColor:'#FFFFFF99',justifyContent:'center',alignItems:'center'},
+ travelCostSummary:{backgroundColor:'#F3FBF6',borderRadius:14,borderWidth:1,borderColor:'#CDE9D4',padding:11,marginTop:12},
+ travelCostTitle:{fontSize:13,fontWeight:'800',color:C.text,marginBottom:8},
+ travelCostGrid:{flexDirection:'row',gap:8,marginBottom:8},
+ travelCostStat:{flex:1,backgroundColor:'#FFFFFF',borderRadius:10,paddingVertical:8,paddingHorizontal:9,borderWidth:1,borderColor:'#E1EEE5'},
+ travelCostValue:{fontSize:14,fontWeight:'900',color:C.blue,marginTop:3,marginBottom:2}
 });
 const modalSt=StyleSheet.create({
  backdrop:{flex:1,backgroundColor:'#07152299',justifyContent:'center',alignItems:'center',padding:24},

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Travel fields come from the mobile route planner.  They are read-only
+         in the operational form so approved route assumptions remain auditable. -->
+    <record id="view_salesperson_visit_plan_form_travel_summary" model="ir.ui.view">
+        <field name="name">salesperson.visit.plan.form.travel.summary</field>
+        <field name="model">salesperson.visit.plan</field>
+        <field name="inherit_id" ref="zencore_salesperson_tracking.view_salesperson_visit_plan_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group[@string='Expenses Claim']" position="after">
+                <group string="Travel &amp; Cost Summary" col="4">
+                    <field name="planned_distance_km" readonly="1"/>
+                    <field name="planned_travel_minutes" readonly="1"/>
+                    <field name="actual_distance_km" readonly="1"/>
+                    <field name="actual_travel_minutes" readonly="1"/>
+                    <field name="actual_expense_total" readonly="1"/>
+                    <field name="expense_balance" readonly="1"/>
+                </group>
+            </xpath>
+            <xpath expr="//field[@name='expected_km']" position="after">
+                <field name="travel_mode" readonly="1"/>
+                <field name="planned_duration_minutes" string="ETA (min)" readonly="1"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_salesperson_tracker_form_travel_summary" model="ir.ui.view">
+        <field name="name">salesperson.tracker.form.travel.summary</field>
+        <field name="model">salesperson.tracker</field>
+        <field name="inherit_id" ref="zencore_salesperson_tracking.view_salesperson_tracker_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='target_lines']//field[@name='expected_km']" position="after">
+                <field name="travel_mode" readonly="1"/>
+                <field name="planned_duration_minutes" string="ETA (min)" readonly="1"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -386,6 +386,15 @@ class ZenCoreFieldMobileBridge(http.Controller):
                 km=float(t.get('km') or 0)
                 if not 0<=km<=10000:
                     raise ValidationError('Expected KM is out of allowed range')
+                travel_mode = str(t.get('travelMode') or 'car').strip().lower()
+                if travel_mode not in ('walk', 'bike', 'car'):
+                    raise ValidationError('Choose Walk, Bike, or Car as the travel mode')
+                try:
+                    planned_duration_minutes = int(float(t.get('plannedDurationMinutes') or 0))
+                except (TypeError, ValueError):
+                    raise ValidationError('Invalid planned travel time')
+                if not 0 <= planned_duration_minutes <= 1440:
+                    raise ValidationError('Planned travel time is out of allowed range')
                 source=str(t.get('from') or '').strip()[:250]
                 try:
                     from_latitude=float(t.get('fromLatitude'))
@@ -411,6 +420,8 @@ class ZenCoreFieldMobileBridge(http.Controller):
                     'from_longitude':from_longitude,
                     'to_location':destination,
                     'expected_km':km,
+                    'travel_mode':travel_mode,
+                    'planned_duration_minutes':planned_duration_minutes,
                     'notes':str(t.get('notes') or '')[:1000],
                 }))
             def amount(k):
@@ -467,6 +478,12 @@ class ZenCoreFieldMobileBridge(http.Controller):
                 'food':plan.food_cost,
                 'other':plan.other_cost,
                 'total_cost':plan.total_cost,
+                'planned_distance_km':plan.planned_distance_km,
+                'planned_travel_minutes':plan.planned_travel_minutes,
+                'actual_distance_km':plan.actual_distance_km,
+                'actual_travel_minutes':plan.actual_travel_minutes,
+                'actual_expense_total':plan.actual_expense_total,
+                'expense_balance':plan.expense_balance,
                 'notes':plan.internal_notes or '',
                 'targets':[{
                     'id':line.id,
@@ -482,7 +499,10 @@ class ZenCoreFieldMobileBridge(http.Controller):
                     'from_location':line.from_location or '',
                     'from_latitude':line.from_latitude,
                     'from_longitude':line.from_longitude,
+                    'to_location':line.to_location or '',
                     'expected_km':line.expected_km,
+                    'travel_mode':line.travel_mode or 'car',
+                    'planned_duration_minutes':line.planned_duration_minutes or 0,
                     'notes':line.notes or '',
                 } for line in plan.target_line_ids],
             })

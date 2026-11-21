@@ -89,10 +89,14 @@
 
                         <!-- ══ KPI SUMMARY ══ -->
                         <p><strong>Total Stops:</strong> <t t-esc="plan.total_visits"/>   
+                           <strong>Planned Route:</strong> <t t-esc="'%.2f' % plan.planned_distance_km"/> km / <t t-esc="plan.planned_travel_minutes"/> min   
+                           <strong>Actual GPS:</strong> <t t-esc="'%.2f' % plan.actual_distance_km"/> km / <t t-esc="'%.0f' % plan.actual_travel_minutes"/> min   
                            <strong>Transport:</strong> <t t-esc="plan.transport_cost"/>   
                            <strong>Food:</strong> <t t-esc="plan.food_cost"/>   
                            <strong>Other:</strong> <t t-esc="plan.other_cost"/>   
-                           <strong>Total Budget:</strong> <t t-esc="plan.total_cost"/>
+                           <strong>Total Budget:</strong> <t t-esc="plan.total_cost"/>   
+                           <strong>Actual Expense:</strong> <t t-esc="plan.actual_expense_total"/>   
+                           <strong>Balance:</strong> <t t-esc="plan.expense_balance"/>
                         </p>
 
                         <!-- ══ EXPENSES CLAIM ══ -->
@@ -144,7 +148,10 @@
                                     <th>#</th>
                                     <th>Customer(s)</th>
                                     <th>From Location</th>
+                                    <th>To Location</th>
+                                    <th>Mode</th>
                                     <th class="right">Est. KM</th>
+                                    <th class="right">ETA</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -159,16 +166,23 @@
                                         <td>
                                             <span class="route-chip"><t t-esc="line.from_location"/></span>
                                         </td>
+                                        <td><t t-esc="line.to_location or '—'"/></td>
+                                        <td>
+                                            <t t-if="line.travel_mode == 'walk'">Walk</t>
+                                            <t t-elif="line.travel_mode == 'bike'">Bike</t>
+                                            <t t-else="">Car</t>
+                                        </td>
                                         <td class="right">
                                             <span class="pill blue">
                                                 <t t-esc="line.expected_km"/> km
                                             </span>
                                         </td>
+                                        <td class="right"><t t-esc="line.planned_duration_minutes or 0"/> min</td>
                                     </tr>
                                 </t>
                                 <t t-if="not plan.target_line_ids">
                                     <tr>
-                                        <td colspan="4" style="text-align:center; color:#94a3b8; padding:20px;">
+                                        <td colspan="7" style="text-align:center; color:#94a3b8; padding:20px;">
                                             No target lines added yet.
                                         </td>
                                     </tr>
